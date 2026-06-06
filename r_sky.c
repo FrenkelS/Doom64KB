@@ -1,7 +1,7 @@
 /*-----------------------------------------------------------------------------
  *
  *
- *  Copyright (C) 2023-2025 Frenkel Smeijers
+ *  Copyright (C) 2023-2026 Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -54,7 +54,7 @@ static const patch_t __far* skypatch;
 
 void R_LoadSkyPatch(void)
 {
-	skypatch = W_TryGetLumpByNum(skypatchnum);
+	skypatch = W_GetLumpByNum(skypatchnum);
 }
 
 
@@ -70,27 +70,22 @@ void R_FreeSkyPatch(void)
 
 void R_DrawSky(draw_column_vars_t *dcvars)
 {
-	if (skypatch == NULL)
-		R_DrawColumnFlat(FLAT_SKY_COLOR, dcvars);
-	else
-	{
-		dcvars->texturemid = (SCREENHEIGHT_VGA / 2) * FRACUNIT;
+	dcvars->texturemid = (SCREENHEIGHT_VGA / 2) * FRACUNIT;
 
-		if (!(dcvars->colormap = fixedcolormap))
-			dcvars->colormap = fullcolormap;
+	if (!(dcvars->colormap = fixedcolormap))
+		dcvars->colormap = fullcolormap;
 
-		dcvars->fracstep = ((FRACUNIT * SCREENHEIGHT_VGA) / (VIEWWINDOWHEIGHT + 16)) >> COLEXTRABITS;
+	dcvars->fracstep = ((FRACUNIT * SCREENHEIGHT_VGA) / (VIEWWINDOWHEIGHT + 16)) >> COLEXTRABITS;
 
-		int16_t xc = viewangle >> FRACBITS;
-		xc += xtoviewangleTable[dcvars->x];
-		xc >>= ANGLETOSKYSHIFT - FRACBITS;
-		xc &= skywidthmask;
+	int16_t xc = viewangle >> FRACBITS;
+	xc += xtoviewangleTable[dcvars->x];
+	xc >>= ANGLETOSKYSHIFT - FRACBITS;
+	xc &= skywidthmask;
 
-		const column_t __far* column = (const column_t __far*) ((const byte __far*)skypatch + (uint16_t)skypatch->columnofs[xc]);
+	const column_t __far* column = (const column_t __far*) ((const byte __far*)skypatch + (uint16_t)skypatch->columnofs[xc]);
 
-		dcvars->source = (const byte __far*)column + 3;
-		R_DrawColumnWall(dcvars);
-	}
+	dcvars->source = (const byte __far*)column + 3;
+	R_DrawColumnWall(dcvars);
 }
 
 #else
@@ -114,12 +109,7 @@ static void R_DrawSkyFlat(visplane_t __far* pl)
 
 void R_DrawSky(visplane_t __far* pl)
 {
-	const patch_t __far* patch = W_TryGetLumpByNum(skypatchnum);
-	if (patch == NULL)
-	{
-		R_DrawSkyFlat(pl);
-		return;
-	}
+	const patch_t __far* patch = W_GetLumpByNum(skypatchnum);
 
 	// Normal Doom sky, only one allowed per level
 	draw_column_vars_t dcvars;

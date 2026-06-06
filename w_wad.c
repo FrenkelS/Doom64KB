@@ -212,17 +212,3 @@ boolean PUREFUNC W_IsLumpCached(int16_t num)
 {
 	return lumpcache[num] != NULL;
 }
-
-
-const void __far* PUREFUNC W_TryGetLumpByNum(int16_t num)
-{
-	if (lumpcache[num])
-	{
-		Z_ChangeTagToStatic(lumpcache[num]);
-		return lumpcache[num];
-	}
-	else if (Z_IsEnoughFreeMemory(W_LumpLength(num)))
-		return W_GetLumpByNum(num);
-	else
-		return NULL;
-}

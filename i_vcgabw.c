@@ -499,18 +499,13 @@ void V_DrawBackground(int16_t backgroundnum)
 
 void V_DrawRaw(int16_t num, uint16_t offset)
 {
-	const uint8_t __far* lump = W_TryGetLumpByNum(num);
+	const uint8_t __far* lump = W_GetLumpByNum(num);
 
 	offset = (offset / SCREENWIDTH) * VIEWWINDOWWIDTH;
 
-	if (lump != NULL)
-	{
-		uint16_t lumpLength = W_LumpLength(num);
-		_fmemcpy(&_s_screen[offset], lump, lumpLength);
-		Z_ChangeTagToCache(lump);
-	}
-	else
-		W_ReadLumpByNum(num, &_s_screen[offset]);
+	uint16_t lumpLength = W_LumpLength(num);
+	_fmemcpy(&_s_screen[offset], lump, lumpLength);
+	Z_ChangeTagToCache(lump);
 }
 
 

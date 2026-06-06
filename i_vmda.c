@@ -377,15 +377,10 @@ void V_DrawBackground(int16_t backgroundnum)
 
 void V_DrawRawFullScreen(int16_t num)
 {
-	const uint8_t __far* lump = W_TryGetLumpByNum(num);
+	const uint8_t __far* lump = W_GetLumpByNum(num);
 
-	if (lump != NULL)
-	{
-		_fmemcpy(_s_screen, lump, PLANEWIDTH * VIEWWINDOWHEIGHT);
-		Z_ChangeTagToCache(lump);
-	}
-	else
-		W_ReadLumpByNum(num, _s_screen);
+	_fmemcpy(_s_screen, lump, PLANEWIDTH * VIEWWINDOWHEIGHT);
+	Z_ChangeTagToCache(lump);
 }
 
 

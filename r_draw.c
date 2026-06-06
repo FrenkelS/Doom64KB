@@ -1851,9 +1851,7 @@ static const byte __far* R_ComposeColumn(const int16_t texture, const texture_t 
             if (xc < x1)
                 continue;
 
-            const patch_t __far* realpatch = W_TryGetLumpByNum(patch->patch_num);
-            if (realpatch == NULL)
-                return NULL;
+            const patch_t __far* realpatch = W_GetLumpByNum(patch->patch_num);
 
             const int16_t x2 = x1 + realpatch->width;
 
@@ -1883,28 +1881,18 @@ static void R_DrawSegTextureColumn(const texture_t __far* tex, int16_t texture, 
         int16_t x_c;
         R_GetColumn(tex, texcolumn, &patch_num, &x_c);
 
-        const patch_t __far* patch = W_TryGetLumpByNum(patch_num);
-        if (patch == NULL)
-            R_DrawColumnFlat(texture, dcvars);
-        else
-        {
-            const column_t __far* column = (const column_t __far*) ((const byte __far*)patch + (uint16_t)patch->columnofs[x_c]);
+        const patch_t __far* patch = W_GetLumpByNum(patch_num);
 
-            dcvars->source = (const byte __far*)column + 3;
-            R_DrawColumnWall(dcvars);
-            Z_ChangeTagToCache(patch);
-        }
+        const column_t __far* column = (const column_t __far*) ((const byte __far*)patch + (uint16_t)patch->columnofs[x_c]);
+
+        dcvars->source = (const byte __far*)column + 3;
+        R_DrawColumnWall(dcvars);
+        Z_ChangeTagToCache(patch);
     }
     else
     {
-        const byte __far* source = R_ComposeColumn(texture, tex, texcolumn);
-        if (source == NULL)
-            R_DrawColumnFlat(texture, dcvars);
-        else
-        {
-            dcvars->source = source;
-            R_DrawColumnWall(dcvars);
-        }
+        dcvars->source = R_ComposeColumn(texture, tex, texcolumn);
+        R_DrawColumnWall(dcvars);
     }
 }
 #endif

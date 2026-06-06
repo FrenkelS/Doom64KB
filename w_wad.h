@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -49,7 +49,6 @@ uint16_t          PUREFUNC W_LumpLength(          int16_t num);
 boolean           PUREFUNC W_IsLumpCached(        int16_t num);
 int16_t                    W_GetFirstInt16(       int16_t num);
 const void __far* PUREFUNC W_GetLumpByNum(        int16_t num);
-const void __far* PUREFUNC W_TryGetLumpByNum(     int16_t num);
 const void __far* PUREFUNC W_GetLumpByNumAutoFree(int16_t num);
 void                       W_ReadLumpByNum(       int16_t num, void __far* ptr);
 

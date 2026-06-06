@@ -638,29 +638,26 @@ void V_DrawRawFullScreen(int16_t num)
 {
 	if (cachedLumpNum != num)
 	{
-		const uint8_t __far* lump = W_TryGetLumpByNum(num);
+		const uint8_t __far* lump = W_GetLumpByNum(num);
 
-		if (lump != NULL)
+		static const int16_t DXI = SCREENWIDTH / VIEWWINDOWWIDTH;
+		static const fixed_t DYI = ((fixed_t)SCREENHEIGHT << FRACBITS) / VIEWWINDOWHEIGHT;
+		fixed_t y = 0;
+		uint8_t __far* dst = D_MK_FP(PAGE3, 1 + __djgpp_conventional_base);
+		for (int16_t h = 0; h < VIEWWINDOWHEIGHT; h++)
 		{
-			static const int16_t DXI = SCREENWIDTH / VIEWWINDOWWIDTH;
-			static const fixed_t DYI = ((fixed_t)SCREENHEIGHT << FRACBITS) / VIEWWINDOWHEIGHT;
-			fixed_t y = 0;
-			uint8_t __far* dst = D_MK_FP(PAGE3, 1 + __djgpp_conventional_base);
-			for (int16_t h = 0; h < VIEWWINDOWHEIGHT; h++)
+			int16_t x = 0;
+			for (int16_t w = 0; w < VIEWWINDOWWIDTH; w++)
 			{
-				int16_t x = 0;
-				for (int16_t w = 0; w < VIEWWINDOWWIDTH; w++)
-				{
-					*dst = lump[(y >> FRACBITS) * SCREENWIDTH + x];
-					x += DXI;
-					dst += 2;
-				}
-				y += DYI;
+				*dst = lump[(y >> FRACBITS) * SCREENWIDTH + x];
+				x += DXI;
+				dst += 2;
 			}
-			Z_ChangeTagToCache(lump);
-
-			cachedLumpNum = num;
+			y += DYI;
 		}
+		Z_ChangeTagToCache(lump);
+
+		cachedLumpNum = num;
 	}
 
 	V_Blit(num);

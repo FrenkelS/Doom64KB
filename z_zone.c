@@ -490,18 +490,6 @@ void __far* Z_CallocLevSpec(uint16_t size)
 }
 
 
-boolean Z_IsEnoughFreeMemory(uint16_t size)
-{
-	const uint8_t __far* ptr = Z_TryMallocStatic(size);
-	if (ptr)
-	{
-		Z_Free(ptr);
-		return true;
-	} else
-		return false;
-}
-
-
 //
 // Z_FreeTags
 //

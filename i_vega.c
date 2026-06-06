@@ -1,7 +1,7 @@
 /*-----------------------------------------------------------------------------
  *
  *
- *  Copyright (C) 2024-2025 Frenkel Smeijers
+ *  Copyright (C) 2024-2026 Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -584,59 +584,56 @@ void V_DrawRaw(int16_t num, uint16_t offset)
 
 	if (cachedLumpNum != num)
 	{
-		const uint8_t __far* lump = W_TryGetLumpByNum(num);
+		const uint8_t __far* lump = W_GetLumpByNum(num);
 
-		if (lump != NULL)
+		// set write mode 2
+		outp(GC_INDEX, GC_MODE);
+		outp(GC_INDEX + 1, 2);
+
+		outp(GC_INDEX, GC_BITMASK);
+		uint8_t bitmask = 128;
+
+		uint16_t lumpLength = W_LumpLength(num);
+		cachedLumpHeight = lumpLength / SCREENWIDTH;
+		uint8_t __far* src  = (uint8_t __far*)lump;
+		volatile uint8_t __far* dest = D_MK_FP(PAGE3 + (256 >> 4), 0 + __djgpp_conventional_base);
+		for (int16_t y = 0; y < cachedLumpHeight; y++)
 		{
-			// set write mode 2
-			outp(GC_INDEX, GC_MODE);
-			outp(GC_INDEX + 1, 2);
-
-			outp(GC_INDEX, GC_BITMASK);
-			uint8_t bitmask = 128;
-
-			uint16_t lumpLength = W_LumpLength(num);
-			cachedLumpHeight = lumpLength / SCREENWIDTH;
-			uint8_t __far* src  = (uint8_t __far*)lump;
-			volatile uint8_t __far* dest = D_MK_FP(PAGE3 + (256 >> 4), 0 + __djgpp_conventional_base);
-			for (int16_t y = 0; y < cachedLumpHeight; y++)
+			for (int16_t x = 0; x < SCREENWIDTH; x++)
 			{
-				for (int16_t x = 0; x < SCREENWIDTH; x++)
-				{
-					volatile uint8_t loadLatches;
-					uint8_t c = *src++;
-					outp(GC_INDEX + 1, bitmask);
-					loadLatches = *dest;
+				volatile uint8_t loadLatches;
+				uint8_t c = *src++;
+				outp(GC_INDEX + 1, bitmask);
+				loadLatches = *dest;
 
 #if VIEWWINDOWWIDTH == 30
 
 #elif VIEWWINDOWWIDTH == 60
-					*dest = c >> 4;
-					bitmask >>= 1;
-					outp(GC_INDEX + 1, bitmask);
-					loadLatches = *dest;
+				*dest = c >> 4;
+				bitmask >>= 1;
+				outp(GC_INDEX + 1, bitmask);
+				loadLatches = *dest;
 #else
 #error unsupported VIEWWINDOWWIDTH value
 #endif
 
-					*dest = c;
-					bitmask >>= 1;
-					if (!bitmask)
-					{
-						bitmask = 128;
-						dest++;
-					}
+				*dest = c;
+				bitmask >>= 1;
+				if (!bitmask)
+				{
+					bitmask = 128;
+					dest++;
 				}
-				dest += PLANEWIDTH - VIEWWINDOWWIDTH;
 			}
-
-			Z_ChangeTagToCache(lump);
-			cachedLumpNum = num;
-
-			// set write mode 1
-			outp(GC_INDEX, GC_MODE);
-			outp(GC_INDEX + 1, 1);
+			dest += PLANEWIDTH - VIEWWINDOWWIDTH;
 		}
+
+		Z_ChangeTagToCache(lump);
+		cachedLumpNum = num;
+
+		// set write mode 1
+		outp(GC_INDEX, GC_MODE);
+		outp(GC_INDEX + 1, 1);
 	}
 
 	V_Blit(num, offset, cachedLumpHeight);

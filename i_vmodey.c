@@ -1,7 +1,7 @@
 /*-----------------------------------------------------------------------------
  *
  *
- *  Copyright (C) 2023-2025 Frenkel Smeijers
+ *  Copyright (C) 2023-2026 Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -93,51 +93,16 @@ void I_ReloadPalette(void)
 }
 
 
-static const uint8_t colors[14][3] =
-{
-	// normal
-	{0, 0, 0},
-
-	// red
-	{0x07, 0, 0},
-	{0x0e, 0, 0},
-	{0x15, 0, 0},
-	{0x1c, 0, 0},
-	{0x23, 0, 0},
-	{0x2a, 0, 0},
-	{0x31, 0, 0},
-	{0x3b, 0, 0},
-
-	// yellow
-	{0x06, 0x05, 0x02},
-	{0x0d, 0x0b, 0x04},
-	{0x14, 0x11, 0x06},
-	{0x1a, 0x17, 0x08},
-
-	// green
-	{0, 0x08, 0}
-};
-
-
 static void I_UploadNewPalette(int8_t pal)
 {
-	const uint8_t __far* palette_lump = W_TryGetLumpByNum(palettelumpnum);
-	if (palette_lump != NULL)
-	{
-		const byte __far* palette = &palette_lump[pal * 256 * 3];
-		outp(PEL_WRITE_ADR, 0);
-		for (int_fast16_t i = 0; i < 256 * 3; i++)
-			outp(PEL_DATA, (*palette++) >> 2);
+	const uint8_t __far* palette_lump = W_GetLumpByNum(palettelumpnum);
 
-		Z_ChangeTagToCache(palette_lump);
-	}
-	else
-	{
-		outp(PEL_WRITE_ADR, 0);
-		outp(PEL_DATA, colors[pal][0]);
-		outp(PEL_DATA, colors[pal][1]);
-		outp(PEL_DATA, colors[pal][2]);
-	}
+	const byte __far* palette = &palette_lump[pal * 256 * 3];
+	outp(PEL_WRITE_ADR, 0);
+	for (int_fast16_t i = 0; i < 256 * 3; i++)
+		outp(PEL_DATA, (*palette++) >> 2);
+
+	Z_ChangeTagToCache(palette_lump);
 }
 
 
@@ -637,31 +602,28 @@ void V_DrawRaw(int16_t num, uint16_t offset)
 
 	if (cachedLumpNum != num)
 	{
-		const uint8_t __far* lump = W_TryGetLumpByNum(num);
+		const uint8_t __far* lump = W_GetLumpByNum(num);
 
-		if (lump != NULL)
+		uint16_t lumpLength = W_LumpLength(num);
+		cachedLumpHeight = lumpLength / SCREENWIDTH;
+		for (int16_t plane = 0; plane < 4; plane++)
 		{
-			uint16_t lumpLength = W_LumpLength(num);
-			cachedLumpHeight = lumpLength / SCREENWIDTH;
-			for (int16_t plane = 0; plane < 4; plane++)
+			outp(SC_INDEX + 1, 1 << plane);
+			for (int16_t y = 0; y < cachedLumpHeight; y++)
 			{
-				outp(SC_INDEX + 1, 1 << plane);
-				for (int16_t y = 0; y < cachedLumpHeight; y++)
+				uint8_t __far* dest = D_MK_FP(PAGE3, y * PLANEWIDTH + __djgpp_conventional_base);
+				for (int16_t x = 0; x < SCREENWIDTH / 4; x++)
 				{
-					uint8_t __far* dest = D_MK_FP(PAGE3, y * PLANEWIDTH + __djgpp_conventional_base);
-					for (int16_t x = 0; x < SCREENWIDTH / 4; x++)
-					{
-						*dest++ = lump[y * SCREENWIDTH + (x * 4) + plane];
-					}
+					*dest++ = lump[y * SCREENWIDTH + (x * 4) + plane];
 				}
 			}
-#if VIEWWINDOWWIDTH == 60
-			outp(SC_INDEX + 1, 15);
-#endif
-			Z_ChangeTagToCache(lump);
-
-			cachedLumpNum = num;
 		}
+#if VIEWWINDOWWIDTH == 60
+		outp(SC_INDEX + 1, 15);
+#endif
+		Z_ChangeTagToCache(lump);
+
+		cachedLumpNum = num;
 	}
 
 	V_Blit(num, offset, cachedLumpHeight);
