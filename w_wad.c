@@ -53,8 +53,6 @@
 
 #include "globdata.h"
 
-//#define BACKWARDS
-
 
 //
 // TYPES
@@ -115,16 +113,13 @@ void W_Init(void)
 	fread(doom_iwad, sizeof(doom_iwad), 1, fileWAD);
 	fclose(fileWAD);
 
-	wadinfo_t header;
-	W_ReadDataFromFile(&header, 0, sizeof(header));
+	wadinfo_t *header = (wadinfo_t*)&doom_iwad[0];
+	fileinfo = (filelump_t __far*)&doom_iwad[header->infotableofs];
 
-	fileinfo = Z_MallocStatic(header.numlumps * sizeof(filelump_t));
-	W_ReadDataFromFile(fileinfo, header.infotableofs, sizeof(filelump_t) * header.numlumps);
+	lumpcache = Z_MallocStatic(header->numlumps * sizeof(*lumpcache));
+	_fmemset(lumpcache, 0, header->numlumps * sizeof(*lumpcache));
 
-	lumpcache = Z_MallocStatic(header.numlumps * sizeof(*lumpcache));
-	_fmemset(lumpcache, 0, header.numlumps * sizeof(*lumpcache));
-
-	numlumps = header.numlumps;
+	numlumps = header->numlumps;
 }
 
 
@@ -159,11 +154,7 @@ int16_t PUREFUNC W_GetNumForName(const char *name)
 	char name8[8];
 	strncpy(name8, name, sizeof(name8));
 
-#if BACKWARDS
-	for (int16_t i = numlumps - 1; i >= 0; i--)
-#else
 	for (int16_t i = 0; i < numlumps; i++)
-#endif
 	{
 		if (Z_EqualNames(fileinfo[i].name, name8))
 		{
