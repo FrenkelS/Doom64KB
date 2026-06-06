@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023-2025 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -73,7 +73,7 @@ typedef struct
 // GLOBALS
 //
 
-static FILE* fileWAD;
+static unsigned char doom_iwad[1357504UL];
 
 static int16_t numlumps;
 
@@ -85,75 +85,10 @@ static void __far*__far* lumpcache;
 // LUMP BASED ROUTINES.
 //
 
-#define BUFFERSIZE 512
-
-static void _ffread(void __far* ptr, uint16_t size, FILE* fp)
-{
-	uint8_t __far* dest = ptr;
-	uint8_t buffer[BUFFERSIZE];
-
-	while (size >= BUFFERSIZE)
-	{
-		fread(buffer, BUFFERSIZE, 1, fp);
-		_fmemcpy(dest, buffer, BUFFERSIZE);
-		dest += BUFFERSIZE;
-		size -= BUFFERSIZE;
-	}
-
-	if (size > 0)
-	{
-		fread(buffer, size, 1, fp);
-		_fmemcpy(dest, buffer, size);
-	}
-}
-
-
-static boolean W_LoadWADIntoXMS(void)
-{
-	fseek(fileWAD, 0, SEEK_END);
-	int32_t size = ftell(fileWAD);
-	boolean xms = Z_InitXms(size);
-	if (!xms)
-	{
-		printf("Not enough XMS available\n");
-		return false;
-	}
-
-	printf("Loading WAD into XMS\n");
-	printf("Get Psyched!\n");
-
-	uint8_t buffer[BUFFERSIZE];
-
-	fseek(fileWAD, 0, SEEK_SET);
-	uint32_t dest = 0;
-
-	while (size >= BUFFERSIZE)
-	{
-		fread(buffer, BUFFERSIZE, 1, fileWAD);
-		Z_MoveConventionalMemoryToExtendedMemory(dest, buffer, BUFFERSIZE);
-		dest += BUFFERSIZE;
-		size -= BUFFERSIZE;
-	}
-
-	if (size > 0)
-	{
-		fread(buffer, size, 1, fileWAD);
-		Z_MoveConventionalMemoryToExtendedMemory(dest, buffer, size);
-	}
-
-	return true;
-}
-
-
 static void W_ReadDataFromFile(void __far* dest, uint32_t src, uint16_t length)
 {
-	fseek(fileWAD, src, SEEK_SET);
-	_ffread(dest, length, fileWAD);
+	memcpy(dest, &doom_iwad[src], length);
 }
-
-
-typedef void (*W_ReadData_f)(void __far* dest, uint32_t src, uint16_t length);
-static W_ReadData_f readfunc;
 
 
 typedef struct
@@ -173,18 +108,18 @@ void W_Init(void)
 	printf("\tadding " WAD_FILE "\n");
 	printf("\tshareware version.\n");
 
-	fileWAD = fopen(WAD_FILE, "rb");
+	FILE *fileWAD = fopen(WAD_FILE, "rb");
 	if (fileWAD == NULL)
 		I_Error("Can't open " WAD_FILE ".");
 
-	boolean xms = W_LoadWADIntoXMS();
-	readfunc = xms ? Z_MoveExtendedMemoryToConventionalMemory : W_ReadDataFromFile;
+	fread(doom_iwad, sizeof(doom_iwad), 1, fileWAD);
+	fclose(fileWAD);
 
 	wadinfo_t header;
-	readfunc(&header, 0, sizeof(header));
+	W_ReadDataFromFile(&header, 0, sizeof(header));
 
 	fileinfo = Z_MallocStatic(header.numlumps * sizeof(filelump_t));
-	readfunc(fileinfo, header.infotableofs, sizeof(filelump_t) * header.numlumps);
+	W_ReadDataFromFile(fileinfo, header.infotableofs, sizeof(filelump_t) * header.numlumps);
 
 	lumpcache = Z_MallocStatic(header.numlumps * sizeof(*lumpcache));
 	_fmemset(lumpcache, 0, header.numlumps * sizeof(*lumpcache));
@@ -195,7 +130,7 @@ void W_Init(void)
 
 void W_Shutdown(void)
 {
-	readfunc = W_ReadDataFromFile;
+	// Do nothing
 }
 
 
@@ -244,7 +179,7 @@ int16_t PUREFUNC W_GetNumForName(const char *name)
 void W_ReadLumpByNum(int16_t num, void __far* ptr)
 {
 	const filelump_t __far* lump = &fileinfo[num];
-	readfunc(ptr, lump->filepos, lump->size);
+	W_ReadDataFromFile(ptr, lump->filepos, lump->size);
 }
 
 
@@ -254,7 +189,7 @@ const void __far* PUREFUNC W_GetLumpByNumAutoFree(int16_t num)
 
 	void __far* ptr = Z_MallocLevel(lump->size, NULL);
 
-	readfunc(ptr, lump->filepos, lump->size);
+	W_ReadDataFromFile(ptr, lump->filepos, lump->size);
 	return ptr;
 }
 
@@ -265,7 +200,7 @@ static void __far* PUREFUNC W_GetLumpByNumWithUser(int16_t num, void __far*__far
 
 	void __far* ptr = Z_MallocStaticWithUser(lump->size, user);
 
-	readfunc(ptr, lump->filepos, lump->size);
+	W_ReadDataFromFile(ptr, lump->filepos, lump->size);
 	return ptr;
 }
 
@@ -276,7 +211,7 @@ int16_t W_GetFirstInt16(int16_t num)
 
 	int16_t firstInt16;
 
-	readfunc(&firstInt16, lump->filepos, sizeof(int16_t));
+	W_ReadDataFromFile(&firstInt16, lump->filepos, sizeof(int16_t));
 	return firstInt16;
 }
 
