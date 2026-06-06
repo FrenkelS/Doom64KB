@@ -1,7 +1,7 @@
 /*-----------------------------------------------------------------------------
  *
  *
- *  Copyright (C) 2024 Frenkel Smeijers
+ *  Copyright (C) 2024-2026 Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -65,7 +65,6 @@ void F_TextWrite(int32_t count)
 			const patch_t __far* patch = W_GetLumpByNum(c + font_lump_offset);
 			V_DrawPatchNotScaled(cx, cy, patch);
 			cx += patch->width;
-			Z_ChangeTagToCache(patch);
 		} else {
 			cx += HU_FONT_SPACE_WIDTH;
 		}

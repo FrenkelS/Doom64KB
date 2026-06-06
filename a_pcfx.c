@@ -1,6 +1,6 @@
 /*
 Copyright (C) 1994-1995 Apogee Software, Ltd.
-Copyright (C) 2023-2025 Frenkel Smeijers
+Copyright (C) 2023-2026 Frenkel Smeijers
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -133,7 +133,6 @@ void PCFX_Play(int16_t lumpnum)
 	const pcspkmuse_t __far* pcspkmuse = W_GetLumpByNum(lumpnum);
 	PCFX_LengthLeft = pcspkmuse->length;
 	_fmemcpy(data, pcspkmuse->data, pcspkmuse->length * sizeof(uint16_t));
-	Z_ChangeTagToCache(pcspkmuse);
 
 	_disable();
 

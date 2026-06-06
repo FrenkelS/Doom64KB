@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -169,11 +169,9 @@ static void HUlib_drawTextLine(hu_textline_t* textline)
 			int16_t w = patch->width;
 			if (x + w > SCREENWIDTH)
 			{
-				Z_ChangeTagToCache(patch);
 				break;
 			}
 			V_DrawPatchNotScaled(x, y, patch);
-			Z_ChangeTagToCache(patch);
 			x += w;
 		}
 		else

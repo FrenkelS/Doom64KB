@@ -194,39 +194,6 @@ void Z_Init (void)
 }
 
 
-static void Z_ChangeTag(const void __far* ptr, uint_fast8_t tag)
-{
-#if defined RANGECHECK
-	if ((((uint32_t) ptr) & (PARAGRAPH_SIZE - 1)) != 0)
-		I_Error("Z_ChangeTag: pointer is not aligned: 0x%lx", ptr);
-#endif
-
-#if defined _M_I86
-	memblock_t __far* block = (memblock_t __far*)(((uint32_t)ptr) - 0x00010000);
-#else
-	memblock_t __far* block = (memblock_t __far*)(((uint32_t)ptr) - 0x00010);
-#endif
-
-#if defined ZONEIDCHECK
-	if (block->id != ZONEID)
-		I_Error("Z_ChangeTag: block has id %x instead of ZONEID", block->id);
-#endif
-	block->tag = tag;
-}
-
-
-void Z_ChangeTagToStatic(const void __far* ptr)
-{
-	Z_ChangeTag(ptr, PU_STATIC);
-}
-
-
-void Z_ChangeTagToCache(const void __far* ptr)
-{
-	Z_ChangeTag(ptr, PU_CACHE);
-}
-
-
 static void Z_FreeBlock(memblock_t __far* block)
 {
 #if defined ZONEIDCHECK
@@ -459,12 +426,6 @@ void __far* Z_TryMallocStatic(uint16_t size)
 void __far* Z_MallocStatic(uint16_t size)
 {
 	return Z_Malloc(size, PU_STATIC, NULL);
-}
-
-
-void __far* Z_MallocStaticWithUser(uint16_t size, void __far*__far* user)
-{
-	return Z_Malloc(size, PU_STATIC, user);
 }
 
 

@@ -625,8 +625,6 @@ void V_DrawBackground(int16_t backgroundnum)
 			}
 		}
 
-		Z_ChangeTagToCache(lump);
-
 		cachedLumpNum = backgroundnum;
 	}
 
@@ -655,7 +653,6 @@ void V_DrawRawFullScreen(int16_t num)
 			}
 			y += DYI;
 		}
-		Z_ChangeTagToCache(lump);
 
 		cachedLumpNum = num;
 	}

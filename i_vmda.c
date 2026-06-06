@@ -370,8 +370,6 @@ void V_DrawBackground(int16_t backgroundnum)
 			*dest++ = 0x07;
 		}
 	}
-
-	Z_ChangeTagToCache(src);
 }
 
 
@@ -380,7 +378,6 @@ void V_DrawRawFullScreen(int16_t num)
 	const uint8_t __far* lump = W_GetLumpByNum(num);
 
 	_fmemcpy(_s_screen, lump, PLANEWIDTH * VIEWWINDOWHEIGHT);
-	Z_ChangeTagToCache(lump);
 }
 
 

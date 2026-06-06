@@ -135,7 +135,7 @@ enum {
 
 static void P_LoadSegs (int16_t lump)
 {
-    _g_segs = (const seg_t __far*)W_GetLumpByNumAutoFree(lump);
+    _g_segs = (const seg_t __far*)W_GetLumpByNum(lump);
 }
 
 //
@@ -166,8 +166,6 @@ static void P_LoadSubsectors (int16_t lump)
     _g_subsectors[i].firstline = firstseg;
     firstseg += data[i].numsegs;
   }
-
-  Z_Free(data);
 }
 
 //
@@ -239,8 +237,6 @@ static void P_LoadSectors (int16_t lump)
       ss->thinglist = NULL;
       ss->touching_thinglist = NULL;
     }
-
-  Z_Free(data);
 }
 
 
@@ -251,7 +247,7 @@ static void P_LoadSectors (int16_t lump)
 static void P_LoadNodes (int16_t lump)
 {
   numnodes = W_LumpLength (lump) / sizeof(mapnode_t);
-  nodes = W_GetLumpByNumAutoFree (lump);
+  nodes = W_GetLumpByNum(lump);
 }
 
 
@@ -281,8 +277,6 @@ static void P_LoadThings2(int16_t lump)
         // Do spawn all other stuff.
         P_SpawnMapThing(mt);
     }
-
-    Z_Free(data);
 }
 
 //
@@ -345,8 +339,6 @@ static void P_LoadLineDefs (int16_t lump)
 		_g_lines[i].r_flags      = 0;
 		_g_lines[i].special      = lines[i].const_special;
 	}
-
-	Z_Free(lines);
 }
 
 
@@ -391,8 +383,6 @@ static void P_LoadSideDefs (int16_t lump)
         P_LoadTexture(sd->toptexture);
         P_LoadTexture(sd->bottomtexture);
     }
-
-    Z_Free(data);
 }
 
 
@@ -408,7 +398,7 @@ static void P_LoadSideDefs (int16_t lump)
 
 static void P_LoadBlockMap (int16_t lump)
 {
-    _g_blockmaplump = W_GetLumpByNumAutoFree(lump);
+    _g_blockmaplump = W_GetLumpByNum(lump);
 
     _g_bmaporgx = ((int32_t)_g_blockmaplump[0])<<FRACBITS;
     _g_bmaporgy = ((int32_t)_g_blockmaplump[1])<<FRACBITS;
@@ -428,7 +418,7 @@ static void P_LoadBlockMap (int16_t lump)
 
 static void P_LoadReject(int16_t lump)
 {
-  _g_rejectmatrix = W_GetLumpByNumAutoFree(lump);
+  _g_rejectmatrix = W_GetLumpByNum(lump);
 }
 
 //

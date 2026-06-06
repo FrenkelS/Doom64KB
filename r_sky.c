@@ -60,11 +60,7 @@ void R_LoadSkyPatch(void)
 
 void R_FreeSkyPatch(void)
 {
-	if (skypatch)
-	{
-		Z_ChangeTagToCache(skypatch);
-		skypatch = NULL;
-	}
+	skypatch = NULL;
 }
 
 
@@ -139,8 +135,6 @@ void R_DrawSky(visplane_t __far* pl)
 			R_DrawColumn(&dcvars);
 		}
 	}
-
-	Z_ChangeTagToCache(patch);
 }
 #endif
 

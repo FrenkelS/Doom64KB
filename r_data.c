@@ -53,7 +53,6 @@ int16_t V_NumPatchWidth(int16_t num)
 {
 	const patch_t __far* patch = W_GetLumpByNum(num);
 	int16_t width = patch->width;
-	Z_ChangeTagToCache(patch);
 	return width;
 }
 
@@ -143,8 +142,6 @@ static void R_LoadTexture(int16_t texture_num)
     }
 
     pnames -= 4;
-    Z_ChangeTagToCache(pnames);
-    Z_ChangeTagToCache(maptex);
 
     for (uint8_t j = 0; j < texture->patchcount; j++)
     {
@@ -215,7 +212,6 @@ static int16_t R_GetTextureNumForName(const char* tex_name)
 
         if (Z_EqualNames(mtexture->name, name8))
         {
-            Z_ChangeTagToCache(maptex);
             return i;
         }
     }
@@ -261,7 +257,6 @@ static void R_InitTextures()
 {
 	const int32_t __far* mtex1 = W_GetLumpByName("TEXTURE1");
 	numtextures = *mtex1;
-	Z_ChangeTagToCache(mtex1);
 
 	textures = Z_MallocStatic(numtextures*sizeof*textures);
 	_fmemset(textures, 0, numtextures*sizeof*textures);

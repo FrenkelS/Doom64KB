@@ -565,8 +565,6 @@ void V_DrawBackground(int16_t backgroundnum)
 			}
 		}
 
-		Z_ChangeTagToCache(lump);
-
 		cachedLumpNum = backgroundnum;
 
 		// set write mode 1
@@ -628,7 +626,6 @@ void V_DrawRaw(int16_t num, uint16_t offset)
 			dest += PLANEWIDTH - VIEWWINDOWWIDTH;
 		}
 
-		Z_ChangeTagToCache(lump);
 		cachedLumpNum = num;
 
 		// set write mode 1

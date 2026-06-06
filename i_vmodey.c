@@ -101,8 +101,6 @@ static void I_UploadNewPalette(int8_t pal)
 	outp(PEL_WRITE_ADR, 0);
 	for (int_fast16_t i = 0; i < 256 * 3; i++)
 		outp(PEL_DATA, (*palette++) >> 2);
-
-	Z_ChangeTagToCache(palette_lump);
 }
 
 
@@ -587,8 +585,6 @@ void V_DrawBackground(int16_t backgroundnum)
 		outp(SC_INDEX + 1, 15);
 #endif
 
-		Z_ChangeTagToCache(lump);
-
 		cachedLumpNum = backgroundnum;
 	}
 
@@ -621,7 +617,6 @@ void V_DrawRaw(int16_t num, uint16_t offset)
 #if VIEWWINDOWWIDTH == 60
 		outp(SC_INDEX + 1, 15);
 #endif
-		Z_ChangeTagToCache(lump);
 
 		cachedLumpNum = num;
 	}

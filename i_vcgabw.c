@@ -492,8 +492,6 @@ void V_DrawBackground(int16_t backgroundnum)
 			_fmemcpy(d, s, len);
 		}
 	}
-
-	Z_ChangeTagToCache(src);
 }
 
 
@@ -505,7 +503,6 @@ void V_DrawRaw(int16_t num, uint16_t offset)
 
 	uint16_t lumpLength = W_LumpLength(num);
 	_fmemcpy(&_s_screen[offset], lump, lumpLength);
-	Z_ChangeTagToCache(lump);
 }
 
 

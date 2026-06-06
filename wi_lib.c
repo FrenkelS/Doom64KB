@@ -1,7 +1,7 @@
 /*-----------------------------------------------------------------------------
  *
  *
- *  Copyright (C) 2024-2025 Frenkel Smeijers
+ *  Copyright (C) 2024-2026 Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -114,12 +114,10 @@ void WI_drawLF(int16_t map)
 	V_DrawPatchScaled((SCREENWIDTH_VGA - patch->width)/2, y, patch);
 
 	y += (5 * patch->height) / 4;
-	Z_ChangeTagToCache(patch);
 
 	// draw "Finished!"
 	const patch_t __far* finishedpatch = W_GetLumpByName(finished);
 	V_DrawPatchScaled((SCREENWIDTH_VGA - finishedpatch->width)/2, y, finishedpatch);
-	Z_ChangeTagToCache(finishedpatch);
 }
 
 
@@ -140,12 +138,10 @@ void WI_drawEL(int16_t map)
 	// draw "Entering"
 	const patch_t __far* enteringpatch = W_GetLumpByName(entering);
 	V_DrawPatchScaled((SCREENWIDTH_VGA - enteringpatch->width)/2, y, enteringpatch);
-	Z_ChangeTagToCache(enteringpatch);
 
 	// draw level
 	y += (5 * patch->height) / 4;
 	V_DrawPatchScaled((SCREENWIDTH_VGA - patch->width)/2, y, patch);
-	Z_ChangeTagToCache(patch);
 }
 
 
@@ -165,7 +161,6 @@ void WI_drawSucks(int16_t x, int16_t y)
 {
 	const patch_t __far* patch = W_GetLumpByName(sucks);
 	V_DrawPatchScaled(x - patch->width, y, patch);
-	Z_ChangeTagToCache(patch);
 }
 
 

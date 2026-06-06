@@ -44,11 +44,10 @@ void W_Init(void);
 void W_Shutdown(void);
 
 int16_t           PUREFUNC W_GetNumForName(const char *name);
-const char __far* PUREFUNC W_GetNameForNum(       int16_t num);
-uint16_t          PUREFUNC W_LumpLength(          int16_t num);
-const void __far* PUREFUNC W_GetLumpByNum(        int16_t num);
-const void __far* PUREFUNC W_GetLumpByNumAutoFree(int16_t num);
-void                       W_ReadLumpByNum(       int16_t num, void __far* ptr);
+const char __far* PUREFUNC W_GetNameForNum(int16_t num);
+uint16_t          PUREFUNC W_LumpLength(   int16_t num);
+const void __far* PUREFUNC W_GetLumpByNum( int16_t num);
+void                       W_ReadLumpByNum(int16_t num, void __far* ptr);
 
 #define W_GetLumpByName(x)    W_GetLumpByNum(W_GetNumForName(x))
 

@@ -77,7 +77,6 @@ static int16_t numlumps;
 
 static filelump_t __far* fileinfo;
 
-static void __far*__far* lumpcache;
 
 //
 // LUMP BASED ROUTINES.
@@ -109,9 +108,6 @@ void W_Init(void)
 
 	wadinfo_t *header = (wadinfo_t*)&doom_iwad[0];
 	fileinfo = (filelump_t __far*)&doom_iwad[header->infotableofs];
-
-	lumpcache = Z_MallocStatic(header->numlumps * sizeof(*lumpcache));
-	_fmemset(lumpcache, 0, header->numlumps * sizeof(*lumpcache));
 
 	numlumps = header->numlumps;
 }
@@ -168,30 +164,8 @@ void W_ReadLumpByNum(int16_t num, void __far* ptr)
 }
 
 
-const void __far* PUREFUNC W_GetLumpByNumAutoFree(int16_t num)
+const void __far* PUREFUNC W_GetLumpByNum(int16_t num)
 {
 	const filelump_t __far* lump = &fileinfo[num];
 	return &doom_iwad[lump->filepos];
-}
-
-
-static void __far* PUREFUNC W_GetLumpByNumWithUser(int16_t num, void __far*__far* user)
-{
-	const filelump_t __far* lump = &fileinfo[num];
-
-	void __far* ptr = Z_MallocStaticWithUser(lump->size, user);
-
-	memcpy(ptr, &doom_iwad[lump->filepos], lump->size);
-	return ptr;
-}
-
-
-const void __far* PUREFUNC W_GetLumpByNum(int16_t num)
-{
-	if (lumpcache[num])
-		Z_ChangeTagToStatic(lumpcache[num]);
-	else
-		lumpcache[num] = W_GetLumpByNumWithUser(num, &lumpcache[num]);
-
-	return lumpcache[num];
 }

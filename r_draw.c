@@ -1120,8 +1120,6 @@ static void R_DrawVisSprite(const vissprite_t *vis)
 
         dcvars.x++;
     }
-
-    Z_ChangeTagToCache(patch);
 }
 
 
@@ -1228,8 +1226,6 @@ static void R_RenderMaskedSegRange(const drawseg_t *ds, int16_t x1, int16_t x2)
 			maskedtexturecol[dcvars.x] = SHRT_MAX; // dropoff overflow
 		}
 	}
-
-	Z_ChangeTagToCache(patch);
 
 	curline = NULL; /* cph 2001/11/18 - must clear curline now we're done with it, so R_LoadColorMap doesn't try using it for other things */
 }
@@ -1403,12 +1399,10 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
     // off the side
     if (x2 < 0 || x1 > VIEWWINDOWWIDTH)
     {
-        Z_ChangeTagToCache(patch);
         return;
     }
 
     topoffset = ((int32_t)patch->topoffset) << FRACBITS;
-    Z_ChangeTagToCache(patch);
 
     // store information in a vissprite
     vis = &avis;
@@ -1653,7 +1647,6 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
     // off the side?
     if (x1 > VIEWWINDOWWIDTH)
     {
-        Z_ChangeTagToCache(patch);
         return;
     }
 
@@ -1663,14 +1656,12 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
     // off the side?
     if (xr < 0)
     {
-        Z_ChangeTagToCache(patch);
         return;
     }
 
     //Too small.
     if (xr <= (xl + (FRACUNIT >> 2)))
     {
-        Z_ChangeTagToCache(patch);
         return;
     }
 
@@ -1681,7 +1672,6 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
     //No more vissprites.
     if(!vis)
     {
-        Z_ChangeTagToCache(patch);
         return;
     }
 
@@ -1710,8 +1700,6 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
         vis->startfrac = 0;
         vis->xiscale = iscale;
     }
-
-    Z_ChangeTagToCache(patch);
 
     if (vis->x1 > x1)
         vis->startfrac += vis->xiscale*(vis->x1-x1);
@@ -1861,7 +1849,6 @@ static const byte __far* R_ComposeColumn(const int16_t texture, const texture_t 
 
                 R_DrawColumnInCache (patchcol, tmpCache, patch->originy, tex->height);
             }
-            Z_ChangeTagToCache(realpatch);
         } while(++i < patchcount);
 
         //Block copy will drop low 2 bits of len.
@@ -1887,7 +1874,6 @@ static void R_DrawSegTextureColumn(const texture_t __far* tex, int16_t texture, 
 
         dcvars->source = (const byte __far*)column + 3;
         R_DrawColumnWall(dcvars);
-        Z_ChangeTagToCache(patch);
     }
     else
     {

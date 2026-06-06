@@ -387,10 +387,6 @@ static void M_DrawSaveLoad(const char* name)
 
 		M_WriteText(LoadDef.x, y - 7, _g_savegamestrings[i]);
 	}
-
-	Z_ChangeTagToCache(lpatch);
-	Z_ChangeTagToCache(mpatch);
-	Z_ChangeTagToCache(rpatch);
 }
 
 static void M_DrawLoad(void)
@@ -1177,7 +1173,6 @@ static int16_t M_StringWidth(const char __far* string)
 		{
 			const patch_t __far* patch = W_GetLumpByNum(c + font_lump_offset);
 			w += patch->width;
-			Z_ChangeTagToCache(patch);
 		} else
 			w += HU_FONT_SPACE_WIDTH;
 	}
@@ -1224,7 +1219,6 @@ static void M_WriteText (int16_t x, int16_t y, const char __far* string)
 			const patch_t __far* patch = W_GetLumpByNum(c + font_lump_offset);
 			V_DrawPatchNotScaled(cx, cy, patch);
 			cx += patch->width;
-			Z_ChangeTagToCache(patch);
 		} else {
 			cx += HU_FONT_SPACE_WIDTH;
 		}
