@@ -83,12 +83,6 @@ static void __far*__far* lumpcache;
 // LUMP BASED ROUTINES.
 //
 
-static void W_ReadDataFromFile(void __far* dest, uint32_t src, uint16_t length)
-{
-	memcpy(dest, &doom_iwad[src], length);
-}
-
-
 typedef struct
 {
   char identification[4]; // Should be "IWAD" or "PWAD".
@@ -170,7 +164,7 @@ int16_t PUREFUNC W_GetNumForName(const char *name)
 void W_ReadLumpByNum(int16_t num, void __far* ptr)
 {
 	const filelump_t __far* lump = &fileinfo[num];
-	W_ReadDataFromFile(ptr, lump->filepos, lump->size);
+	memcpy(ptr, &doom_iwad[lump->filepos], lump->size);
 }
 
 
@@ -180,7 +174,7 @@ const void __far* PUREFUNC W_GetLumpByNumAutoFree(int16_t num)
 
 	void __far* ptr = Z_MallocLevel(lump->size, NULL);
 
-	W_ReadDataFromFile(ptr, lump->filepos, lump->size);
+	memcpy(ptr, &doom_iwad[lump->filepos], lump->size);
 	return ptr;
 }
 
@@ -191,7 +185,7 @@ static void __far* PUREFUNC W_GetLumpByNumWithUser(int16_t num, void __far*__far
 
 	void __far* ptr = Z_MallocStaticWithUser(lump->size, user);
 
-	W_ReadDataFromFile(ptr, lump->filepos, lump->size);
+	memcpy(ptr, &doom_iwad[lump->filepos], lump->size);
 	return ptr;
 }
 
@@ -202,7 +196,7 @@ int16_t W_GetFirstInt16(int16_t num)
 
 	int16_t firstInt16;
 
-	W_ReadDataFromFile(&firstInt16, lump->filepos, sizeof(int16_t));
+	memcpy(&firstInt16, &doom_iwad[lump->filepos], sizeof(int16_t));
 	return firstInt16;
 }
 
