@@ -171,11 +171,7 @@ void W_ReadLumpByNum(int16_t num, void __far* ptr)
 const void __far* PUREFUNC W_GetLumpByNumAutoFree(int16_t num)
 {
 	const filelump_t __far* lump = &fileinfo[num];
-
-	void __far* ptr = Z_MallocLevel(lump->size, NULL);
-
-	memcpy(ptr, &doom_iwad[lump->filepos], lump->size);
-	return ptr;
+	return &doom_iwad[lump->filepos];
 }
 
 
