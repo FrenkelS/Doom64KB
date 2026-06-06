@@ -58,15 +58,6 @@ int16_t V_NumPatchWidth(int16_t num)
 }
 
 
-static int16_t V_NumPatchWidthDontCache(int16_t num)
-{
-	if (W_IsLumpCached(num))
-		return V_NumPatchWidth(num);
-	else
-		return W_GetFirstInt16(num);
-}
-
-
 //
 // Graphics.
 // DOOM graphics for walls and sprites
@@ -148,7 +139,7 @@ static void R_LoadTexture(int16_t texture_num)
         _fmemcpy(pname, &pnames[mpatch->patch * 8], sizeof(pname));
 
         patch->patch_num   = W_GetNumForName(pname);
-        patch->patch_width = V_NumPatchWidthDontCache(patch->patch_num);
+        patch->patch_width = V_NumPatchWidth(patch->patch_num);
     }
 
     pnames -= 4;

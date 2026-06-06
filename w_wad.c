@@ -186,17 +186,6 @@ static void __far* PUREFUNC W_GetLumpByNumWithUser(int16_t num, void __far*__far
 }
 
 
-int16_t W_GetFirstInt16(int16_t num)
-{
-	const filelump_t __far* lump = &fileinfo[num];
-
-	int16_t firstInt16;
-
-	memcpy(&firstInt16, &doom_iwad[lump->filepos], sizeof(int16_t));
-	return firstInt16;
-}
-
-
 const void __far* PUREFUNC W_GetLumpByNum(int16_t num)
 {
 	if (lumpcache[num])
@@ -205,10 +194,4 @@ const void __far* PUREFUNC W_GetLumpByNum(int16_t num)
 		lumpcache[num] = W_GetLumpByNumWithUser(num, &lumpcache[num]);
 
 	return lumpcache[num];
-}
-
-
-boolean PUREFUNC W_IsLumpCached(int16_t num)
-{
-	return lumpcache[num] != NULL;
 }
