@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -263,8 +263,15 @@ typedef char assertSegSize[sizeof(seg_t) == 18 ? 1 : -1];
 typedef struct subsector_s
 {
   sector_t __far* sector;
-  uint16_t numlines, firstline;
 } subsector_t;
+
+typedef struct {
+	int16_t		numsegs;
+	int16_t		firstseg;
+} mapsubsector_t;
+
+typedef char assertMapsubsectorSize[sizeof(mapsubsector_t) == 4 ? 1 : -1];
+
 
 //
 // OTHER TYPES

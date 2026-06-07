@@ -2644,8 +2644,8 @@ static void R_Subsector(int16_t num)
 
     sub = &_g_subsectors[num];
     frontsector = sub->sector;
-    count = sub->numlines;
-    line = &_g_segs[sub->firstline];
+    count = _g_mapsubsectors[num].numsegs;
+    line = &_g_segs[_g_mapsubsectors[num].firstseg];
 
 #if defined FLAT_SPAN
     if (frontsector->floorheight < viewz)

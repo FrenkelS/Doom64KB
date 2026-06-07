@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023-2025 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -102,13 +102,13 @@ static uint16_t PUREFUNC P_InterceptVector2(const divline_t *v2, const divline_t
 
 static boolean P_CrossSubsector(int16_t num)
 {
-    const seg_t __far* seg = _g_segs + _g_subsectors[num].firstline;
+    const seg_t __far* seg = _g_segs + _g_mapsubsectors[num].firstseg;
     int16_t count;
     fixed_t opentop = 0, openbottom = 0;
     const sector_t __far* front = NULL;
     const sector_t __far* back  = NULL;
 
-    for (count = _g_subsectors[num].numlines; --count >= 0; seg++)
+    for (count = _g_mapsubsectors[num].numsegs; --count >= 0; seg++)
     { // check lines
         int16_t linenum = seg->linenum;
 
