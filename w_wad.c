@@ -71,7 +71,7 @@ typedef struct
 // GLOBALS
 //
 
-static unsigned char doom_iwad[1535426]; // 1357504
+static unsigned char doom_iwad[2 * 1014 * 1024];
 
 static int16_t numlumps;
 

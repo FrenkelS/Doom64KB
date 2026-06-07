@@ -31,6 +31,9 @@
 #include "i_system.h"
 
 
+#define INSTRUMENTED
+
+
 //
 // ZONE MEMORY
 // PU - purge tags.
