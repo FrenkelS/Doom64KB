@@ -89,7 +89,7 @@ void I_InitGraphicsHardwareSpecificCode(void)
 	I_UploadNewPalette(0);
 
 	__djgpp_nearptr_enable();
-	vgascreen = D_MK_FP(0xa000, ((SCREENWIDTH_VGA - SCREENWIDTH) / 2) + (((SCREENHEIGHT_VGA - SCREENHEIGHT) / 2) * SCREENWIDTH_VGA) + __djgpp_conventional_base);
+	vgascreen = D_MK_FP(0xa000, (SCREENWIDTH_VGA - SCREENWIDTH) + __djgpp_conventional_base);
 
 	_s_screen = Z_MallocStatic(SCREENWIDTH * SCREENHEIGHT);
 	_fmemset(_s_screen, 0, SCREENWIDTH * SCREENHEIGHT);
