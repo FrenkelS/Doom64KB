@@ -44,8 +44,7 @@
 
 extern const int16_t CENTERY;
 
-// The screen is [SCREENWIDTH * SCREENHEIGHT];
-static uint8_t __far* _s_screen;
+static uint8_t __far _s_screen[SCREENWIDTH * SCREENHEIGHT];
 static uint8_t __far* vgascreen;
 
 
@@ -90,9 +89,6 @@ void I_InitGraphicsHardwareSpecificCode(void)
 
 	__djgpp_nearptr_enable();
 	vgascreen = D_MK_FP(0xa000, (SCREENWIDTH_VGA - SCREENWIDTH) + __djgpp_conventional_base);
-
-	_s_screen = Z_MallocStatic(SCREENWIDTH * SCREENHEIGHT);
-	_fmemset(_s_screen, 0, SCREENWIDTH * SCREENHEIGHT);
 }
 
 
