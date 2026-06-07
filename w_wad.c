@@ -73,8 +73,6 @@ typedef struct
 
 static unsigned char doom_iwad[2 * 1014 * 1024];
 
-static int16_t numlumps;
-
 static filelump_t __far* fileinfo;
 
 
@@ -108,8 +106,6 @@ void W_Init(void)
 
 	wadinfo_t *header = (wadinfo_t*)&doom_iwad[0];
 	fileinfo = (filelump_t __far*)&doom_iwad[header->infotableofs];
-
-	numlumps = header->numlumps;
 }
 
 
@@ -144,7 +140,9 @@ int16_t PUREFUNC W_GetNumForName(const char *name)
 	char name8[8];
 	strncpy(name8, name, sizeof(name8));
 
-	for (int16_t i = 0; i < numlumps; i++)
+	wadinfo_t *header = (wadinfo_t*)&doom_iwad[0];
+
+	for (int16_t i = 0; i < header->numlumps; i++)
 	{
 		if (Z_EqualNames(fileinfo[i].name, name8))
 		{
