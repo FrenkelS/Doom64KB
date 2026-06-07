@@ -61,7 +61,7 @@ void I_ReloadPalette(void)
 		lumpName[7] = '0' + _g_gamma;
 	}
 
-	W_ReadLumpByNum(W_GetNumForName(lumpName), (void __far*)fullcolormap);
+	fullcolormap = W_GetLumpByName(lumpName);
 }
 
 

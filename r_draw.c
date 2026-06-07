@@ -478,7 +478,7 @@ static fixed_t  rw_midtexturemid;
 static fixed_t  rw_toptexturemid;
 static fixed_t  rw_bottomtexturemid;
 
-const uint8_t fullcolormap[256 * 34];
+const uint8_t *fullcolormap;
 const uint8_t* fixedcolormap;
 
 static int16_t extralight;                           // bumped light from gun blasts
@@ -1044,7 +1044,7 @@ static void R_DrawMaskedColumn(R_DrawColumn_f colfunc, draw_column_vars_t *dcvar
 //
 void R_InitColormaps(void)
 {
-	W_ReadLumpByNum(W_GetNumForName("COLORMAP"), (uint8_t __far*)fullcolormap);
+	fullcolormap = W_GetLumpByName("COLORMAP");
 }
 
 
