@@ -437,7 +437,6 @@ static angle16_t viewangle16;
 static byte solidcol[VIEWWINDOWWIDTH];
 
 static const seg_t     __far* curline;
-static side_t    __far* sidedef;
 static line_t    __far* linedef;
 static sector_t  __far* frontsector;
 static sector_t  __far* backsector;
@@ -1195,7 +1194,7 @@ static void R_RenderMaskedSegRange(const drawseg_t *ds, int16_t x1, int16_t x2)
 		dcvars.texturemid = dcvars.texturemid - viewz;
 	}
 
-	dcvars.texturemid += (((int32_t)_g_sides[curline->sidenum].rowoffset) << FRACBITS);
+	dcvars.texturemid += (((int32_t)_g_mapsides[curline->sidenum].rowoffset) << FRACBITS);
 
 	dcvars.colormap = R_LoadColorMap(rw_lightlevel);
 
@@ -2123,7 +2122,7 @@ static void R_ClearOpenings(void)
  * (notice that the C standard for % does not guarantee this)
  */
 
-inline static int16_t CONSTFUNC Mod(int16_t a, int16_t b)
+inline static int16_t CONSTFUNC Mod(uint8_t a, int16_t b)
 {
     if(!a)
         return 0;
@@ -2155,7 +2154,8 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
     }
 
 
-    sidedef = &_g_sides[curline->sidenum];
+    side_t    __far* sidedef = &_g_sides[curline->sidenum];
+    const mapsidedef_t *mapsidedef = &_g_mapsides[curline->sidenum];	
     linedef = &_g_lines[curline->linenum];
 
     // mark the segment as visible for auto map
@@ -2226,7 +2226,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
         else        // top of texture at top
             rw_midtexturemid = worldtop;
 
-        rw_midtexturemid += ((int32_t)Mod(sidedef->rowoffset, textureheight[midtexture])) << FRACBITS;
+        rw_midtexturemid += ((int32_t)Mod(mapsidedef->rowoffset, textureheight[midtexture])) << FRACBITS;
 
         ds_p->silhouette = SIL_BOTH;
         ds_p->sprtopclip = screenheightarray;
@@ -2310,7 +2310,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
             textoptexture = R_GetTexture(toptexture);
             rw_toptexturemid = linedef->flags & ML_DONTPEGTOP ? worldtop :
                                                                         backsector->ceilingheight + ((int32_t)textureheight[sidedef->toptexture] << FRACBITS) - viewz;
-            rw_toptexturemid += ((int32_t)Mod(sidedef->rowoffset, textureheight[toptexture])) << FRACBITS;
+            rw_toptexturemid += ((int32_t)Mod(mapsidedef->rowoffset, textureheight[toptexture])) << FRACBITS;
         }
 
         if (worldlow > worldbottom) // bottom texture
@@ -2319,7 +2319,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
             texbottomtexture = R_GetTexture(bottomtexture);
             rw_bottomtexturemid = linedef->flags & ML_DONTPEGBOTTOM ? worldtop : worldlow;
 
-            rw_bottomtexturemid += ((int32_t)Mod(sidedef->rowoffset, textureheight[bottomtexture])) << FRACBITS;
+            rw_bottomtexturemid += ((int32_t)Mod(mapsidedef->rowoffset, textureheight[bottomtexture])) << FRACBITS;
         }
 
         // allocate space for masked texture tables

@@ -131,7 +131,8 @@ typedef char assertMapsectorSize[sizeof(mapsector_t) == 12 ? 1 : -1];
 
 
 //
-// The SideDef.
+// The SideDef, defining the visual appearance of a wall,
+// by setting textures and offsets.
 //
 
 typedef struct
@@ -139,12 +140,23 @@ typedef struct
     sector_t __far* sector;      // Sector the SideDef is facing.
 
     int16_t textureoffset; // add this to the calculated texture column
-    int16_t rowoffset;     // add this to the calculated texture top
 
-    int16_t toptexture;
-    int16_t bottomtexture;
-    int16_t midtexture;
+    int8_t toptexture;
+    int8_t bottomtexture;
+    int8_t midtexture;
 } side_t;
+
+typedef PACKEDATTR_PRE struct {
+  int16_t textureoffset;
+  uint8_t rowoffset;
+   int8_t toptexture;
+   int8_t bottomtexture;
+   int8_t midtexture;
+  uint8_t sector;  // Front sector, towards viewer.
+} PACKEDATTR_POST mapsidedef_t;
+
+typedef char assertMapsidedefSize[sizeof(mapsidedef_t) == 7 ? 1 : -1];
+
 
 //
 // Move clipping aid for LineDefs.

@@ -78,6 +78,8 @@ line_t   __far* _g_lines;
 
 static int16_t      numsides;
 side_t   __far* _g_sides;
+const mapsidedef_t *_g_mapsides;
+
 
 // BLOCKMAP
 // Created from axis aligned bounding box
@@ -312,20 +314,6 @@ static void P_LoadLineDefs (int16_t lump)
 }
 
 
-// A SideDef, defining the visual appearance of a wall,
-// by setting textures and offsets.
-typedef PACKEDATTR_PRE struct {
-  int16_t textureoffset;
-  uint8_t rowoffset;
-   int8_t toptexture;
-   int8_t bottomtexture;
-   int8_t midtexture;
-  uint8_t sector;  // Front sector, towards viewer.
-} PACKEDATTR_POST mapsidedef_t;
-
-typedef char assertMapsidedefSize[sizeof(mapsidedef_t) == 7 ? 1 : -1];
-
-
 //
 // P_LoadSideDefs
 //
@@ -333,17 +321,15 @@ typedef char assertMapsidedefSize[sizeof(mapsidedef_t) == 7 ? 1 : -1];
 static void P_LoadSideDefs (int16_t lump)
 {
   numsides = W_LumpLength(lump) / sizeof(mapsidedef_t);
+  _g_mapsides = W_GetLumpByNum(lump);
   _g_sides = Z_CallocLevel(numsides * sizeof(side_t));
-
-    const mapsidedef_t __far* data = W_GetLumpByNum(lump);
 
     for (int16_t i = 0; i < numsides; i++)
     {
-        const mapsidedef_t __far* msd = data + i;
+        const mapsidedef_t __far* msd = _g_mapsides + i;
         side_t __far* sd = _g_sides + i;
 
         sd->textureoffset = msd->textureoffset;
-        sd->rowoffset     = msd->rowoffset;
         sd->sector        = &_g_sectors[msd->sector];
         sd->midtexture    = msd->midtexture;
         sd->toptexture    = msd->toptexture;

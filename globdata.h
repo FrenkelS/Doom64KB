@@ -154,6 +154,8 @@ extern line_t   __far* _g_lines;
 
 
 extern side_t   __far* _g_sides;
+extern const mapsidedef_t *_g_mapsides;
+
 
 // BLOCKMAP
 // Created from axis aligned bounding box
