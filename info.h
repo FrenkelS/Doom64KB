@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -46,7 +46,7 @@
 /********************************************************************
  * Sprite name enumeration - must match info.c                      *
  ********************************************************************/
-typedef enum
+enum
 {
   SPR_TROO,
   SPR_SHTG,
@@ -104,7 +104,10 @@ typedef enum
   SPR_ELEC,
   SPR_TRED,
   NUMSPRITES  /* counter of how many there are */
-} spritenum_t;
+};
+
+typedef int8_t spritenum_t;
+
 
 /********************************************************************
  * States (frames) enumeration -- must match info.c                 *
@@ -452,7 +455,7 @@ extern const char* const sprnames[]; /* 1/17/98 killough - CPhipps - const */
  * Note that many of these are generically named for the ornamentals
  */
 
-typedef enum {
+enum {
   MT_PLAYER,
   MT_POSSESSED,
   MT_SHOTGUY,
@@ -504,7 +507,10 @@ typedef enum {
   MT_MISC71,
   MT_NOTHING,
   NUMMOBJTYPES  // Counter of how many there are
-} mobjtype_t;
+};
+
+typedef int8_t mobjtype_t;
+
 
 /********************************************************************
  * Definition of the Thing structure
