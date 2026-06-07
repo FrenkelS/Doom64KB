@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -478,7 +478,7 @@ boolean EV_DoFloor(const line_t __far* line, floor_e floortype)
   secnum = -1;
   rtn = false;
   // move all floors with the same tag as the linedef
-  while ((secnum = P_FindSectorFromLineTag(line,secnum)) >= 0)
+  while ((secnum = P_FindSectorFromLineTag(line->tag,secnum)) >= 0)
   {
     sec = &_g_sectors[secnum];
 
@@ -572,7 +572,7 @@ static inline int16_t P_FindSectorFromLineTagWithLowerBound(const line_t __far* 
   /* Emulate original Doom's linear lower-bounded P_FindSectorFromLineTag
    * as needed */
   do {
-    start = P_FindSectorFromLineTag(l,start);
+    start = P_FindSectorFromLineTag(l->tag,start);
   } while (0 <= start && start <= min);
   return start;
 }
@@ -701,7 +701,7 @@ boolean EV_DoDonut(const line_t __far* line)
   secnum = -1;
   rtn = false;
   // do function on all sectors with same tag as linedef
-  while ((secnum = P_FindSectorFromLineTag(line,secnum)) >= 0)
+  while ((secnum = P_FindSectorFromLineTag(line->tag,secnum)) >= 0)
   {
     s1 = &_g_sectors[secnum];                // s1 is pillar's sector
 

@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -322,7 +322,7 @@ void EV_LightTurnOn(const line_t __far* line, int16_t bright)
 
 	// search all sectors for ones with same tag as activating line
 
-	for (i = -1; (i = P_FindSectorFromLineTag(line,i)) >= 0;)
+	for (i = -1; (i = P_FindSectorFromLineTag(line->tag,i)) >= 0;)
 	{
 		sector_t __far* temp;
 		sector_t __far* sector = _g_sectors+i;

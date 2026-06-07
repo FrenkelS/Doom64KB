@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -199,13 +199,13 @@ fixed_t P_FindLowestCeilingSurrounding(sector_t __far* sec)
 //
 // RETURN NEXT SECTOR # THAT LINE TAG REFERS TO
 //
-int16_t P_FindSectorFromLineTag(const line_t __far* line, int16_t start)
+int16_t P_FindSectorFromLineTag(int16_t line_tag, int16_t start)
 {
     int16_t	i;
 
     for (i=start+1; i<_g_numsectors; i++)
     {
-        if (_g_mapsectors[i].tag == line->tag)
+        if (_g_mapsectors[i].tag == line_tag)
             return i;
     }
 

@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023-2025 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -49,7 +49,7 @@
 static mobj_t __far* P_TeleportDestination(const line_t __far* line)
 {
   int16_t i;
-  for (i = -1; (i = P_FindSectorFromLineTag(line, i)) >= 0;) {
+  for (i = -1; (i = P_FindSectorFromLineTag(line->tag, i)) >= 0;) {
     thinker_t __far* th = NULL;
     while ((th = P_NextThinker(th)) != NULL)
       if (th->function == P_MobjThinker) {

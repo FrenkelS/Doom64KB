@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -180,7 +180,7 @@ boolean EV_DoPlat(const line_t __far* line, plattype_e type)
   rtn = false;
 
   // act on all sectors tagged the same as the activating linedef
-  while ((secnum = P_FindSectorFromLineTag(line,secnum)) >= 0)
+  while ((secnum = P_FindSectorFromLineTag(line->tag,secnum)) >= 0)
   {
     sec = &_g_sectors[secnum];
 

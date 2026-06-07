@@ -230,7 +230,7 @@ fixed_t P_FindNextHighestFloor(sector_t __far* sec);
 
 fixed_t P_FindLowestCeilingSurrounding(sector_t __far* sec);
 
-int16_t P_FindSectorFromLineTag(const line_t __far* line, int16_t start);
+int16_t P_FindSectorFromLineTag(int16_t line_tag, int16_t start);
 
 sector_t __far* getNextSector(const line_t __far* line, sector_t __far* sec);
 
