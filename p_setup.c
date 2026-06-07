@@ -63,6 +63,7 @@ const seg_t    __far* _g_segs;
 
 int16_t      _g_numsectors;
 sector_t __far* _g_sectors;
+const mapsector_t *_g_mapsectors;
 
 
 static int16_t      numsubsectors;
@@ -158,20 +159,7 @@ static void P_LoadSubsectors (int16_t lump)
 
 // Sector definition, from editing.
 #if defined FLAT_SPAN
-typedef struct {
-  int16_t floorheight;
-  int16_t ceilingheight;
-  int16_t floorpic;
-  int16_t ceilingpic;
-  uint8_t lightlevel;
-  int8_t special;
-  int16_t tag;
-} mapsector_t;
-
-typedef char assertMapsectorSize[sizeof(mapsector_t) == 12 ? 1 : -1];
-
 #define R_FlatNumForFarName(p) (p)
-
 #else
 typedef struct {
   int16_t floorheight;
@@ -196,17 +184,16 @@ static int16_t R_FlatNumForFarName(const char __far* far_name)
 
 static void P_LoadSectors (int16_t lump)
 {
-  const mapsector_t __far* data;
   int16_t  i;
 
   _g_numsectors = W_LumpLength (lump) / sizeof(mapsector_t);
+  _g_mapsectors = W_GetLumpByNum(lump);
   _g_sectors = Z_CallocLevel(_g_numsectors * sizeof(sector_t));
-  data = W_GetLumpByNum(lump);
 
   for (i=0; i<_g_numsectors; i++)
     {
       sector_t __far* ss = _g_sectors + i;
-      const mapsector_t __far* ms = data + i;
+      const mapsector_t __far* ms = _g_mapsectors + i;
 
       ss->floorheight = ((int32_t)SHORT(ms->floorheight))<<FRACBITS;
       ss->ceilingheight = ((int32_t)SHORT(ms->ceilingheight))<<FRACBITS;
@@ -216,7 +203,6 @@ static void P_LoadSectors (int16_t lump)
       ss->lightlevel = ms->lightlevel;
       ss->special    = ms->special;
       ss->oldspecial = ms->special;
-      ss->tag = SHORT(ms->tag);
 
       ss->thinglist = NULL;
       ss->touching_thinglist = NULL;

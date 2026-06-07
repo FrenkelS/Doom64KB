@@ -90,7 +90,6 @@ typedef struct
 
   mobj_t __far* soundtarget;   // thing that made a sound (or null)
   degenmobj_t soundorg;  // origin for any sounds played by the sector
-  uint16_t validcount;        // if == validcount, already checked
   mobj_t __far* thinglist;     // list of mobjs in sector
 
 
@@ -104,6 +103,7 @@ typedef struct
 
   const struct line_s __far*__far*lines;
 
+  uint16_t validcount;        // if == validcount, already checked
   int16_t linecount;
 
   int16_t floorpic;
@@ -112,11 +112,23 @@ typedef struct
   int16_t lightlevel;
   int16_t special;
   int16_t oldspecial;      //jff 2/16/98 remembers if sector WAS secret (automap)
-  int16_t tag;
 
   int16_t soundtraversed;    // 0 = untraversed, 1,2 = sndlines-1
 
 } sector_t;
+
+typedef struct {
+  int16_t floorheight;
+  int16_t ceilingheight;
+  int16_t floorpic;
+  int16_t ceilingpic;
+  uint8_t lightlevel;
+  int8_t special;
+  int16_t tag;
+} mapsector_t;
+
+typedef char assertMapsectorSize[sizeof(mapsector_t) == 12 ? 1 : -1];
+
 
 //
 // The SideDef.

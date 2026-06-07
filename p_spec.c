@@ -205,7 +205,7 @@ int16_t P_FindSectorFromLineTag(const line_t __far* line, int16_t start)
 
     for (i=start+1; i<_g_numsectors; i++)
     {
-        if (_g_sectors[i].tag == line->tag)
+        if (_g_mapsectors[i].tag == line->tag)
             return i;
     }
 

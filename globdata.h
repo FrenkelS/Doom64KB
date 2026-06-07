@@ -142,6 +142,7 @@ extern const seg_t    __far* _g_segs;
 
 extern int16_t      _g_numsectors;
 extern sector_t __far* _g_sectors;
+extern const mapsector_t *_g_mapsectors;
 
 
 extern subsector_t __far* _g_subsectors;
