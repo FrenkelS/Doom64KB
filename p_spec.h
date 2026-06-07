@@ -273,7 +273,7 @@ boolean EV_Teleport(const line_t __far* line, int16_t side, mobj_t __far* thing)
 
 boolean EV_BuildStairs(const line_t __far* line);
 
-boolean EV_DoFloor(const line_t __far* line, floor_e floortype);
+boolean EV_DoFloor(int16_t line_tag, floor_e floortype);
 
 // p_doors
 

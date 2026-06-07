@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023-2025 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -476,7 +476,6 @@ void A_Explode(mobj_t __far* thingy)
 void A_BossDeath(mobj_t __far* mo)
 {
     thinker_t __far* th;
-    line_t    junk;
 
     if (_g_gamemap != 8)
         return;
@@ -498,8 +497,7 @@ void A_BossDeath(mobj_t __far* mo)
         }
 
     // victory!
-    junk.tag = 666;
-    EV_DoFloor(&junk, lowerFloorToLowest);
+    EV_DoFloor(666, lowerFloorToLowest);
 }
 
 

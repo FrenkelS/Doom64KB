@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -485,7 +485,7 @@ boolean P_UseSpecialLine(mobj_t __far* thing, line_t __far* line)
 
     case 18:
       // Raise Floor to next highest floor
-      if (EV_DoFloor(line, raiseFloorToNearest))
+      if (EV_DoFloor(line->tag, raiseFloorToNearest))
         P_ChangeSwitchTexture(line,false);
       break;
 
@@ -497,7 +497,7 @@ boolean P_UseSpecialLine(mobj_t __far* thing, line_t __far* line)
 
     case 23:
       // Lower Floor to Lowest
-      if (EV_DoFloor(line,lowerFloorToLowest))
+      if (EV_DoFloor(line->tag,lowerFloorToLowest))
         P_ChangeSwitchTexture(line,false);
       break;
 
@@ -537,7 +537,7 @@ boolean P_UseSpecialLine(mobj_t __far* thing, line_t __far* line)
 
     case 70:
       // Turbo Lower Floor
-      if (EV_DoFloor(line,turboLower))
+      if (EV_DoFloor(line->tag,turboLower))
         P_ChangeSwitchTexture(line,true);
       break;
   }

@@ -468,7 +468,7 @@ fixed_t P_FindNextHighestFloor(sector_t __far* sec)
 // Passed the line that activated the floor and the type of floor motion
 // Returns true if a thinker was created.
 //
-boolean EV_DoFloor(const line_t __far* line, floor_e floortype)
+boolean EV_DoFloor(int16_t line_tag, floor_e floortype)
 {
   int16_t           secnum;
   boolean           rtn;
@@ -478,7 +478,7 @@ boolean EV_DoFloor(const line_t __far* line, floor_e floortype)
   secnum = -1;
   rtn = false;
   // move all floors with the same tag as the linedef
-  while ((secnum = P_FindSectorFromLineTag(line->tag,secnum)) >= 0)
+  while ((secnum = P_FindSectorFromLineTag(line_tag,secnum)) >= 0)
   {
     sec = &_g_sectors[secnum];
 

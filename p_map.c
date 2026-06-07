@@ -569,7 +569,7 @@ static void P_CrossSpecialLine(line_t __far* line, int16_t side, mobj_t __far* t
 
     case 5:
       // Raise Floor
-      if (EV_DoFloor(line,raiseFloor))
+      if (EV_DoFloor(line->tag,raiseFloor))
         LN_SPECIAL(line) = 0;
       break;
 
@@ -599,7 +599,7 @@ static void P_CrossSpecialLine(line_t __far* line, int16_t side, mobj_t __far* t
 
     case 36:
       // Lower Floor (TURBO)
-      if (EV_DoFloor(line,turboLower))
+      if (EV_DoFloor(line->tag,turboLower))
         LN_SPECIAL(line) = 0;
       break;
 
@@ -612,7 +612,7 @@ static void P_CrossSpecialLine(line_t __far* line, int16_t side, mobj_t __far* t
 
     case 82:
       // Lower Floor To Lowest
-      EV_DoFloor( line, lowerFloorToLowest );
+      EV_DoFloor( line->tag, lowerFloorToLowest );
       break;
 
     case 86:
@@ -632,7 +632,7 @@ static void P_CrossSpecialLine(line_t __far* line, int16_t side, mobj_t __far* t
 
     case 91:
       // Raise Floor
-      EV_DoFloor(line,raiseFloor);
+      EV_DoFloor(line->tag,raiseFloor);
       break;
 
     case 97:
@@ -642,7 +642,7 @@ static void P_CrossSpecialLine(line_t __far* line, int16_t side, mobj_t __far* t
 
     case 98:
       // Lower Floor (TURBO)
-      EV_DoFloor(line,turboLower);
+      EV_DoFloor(line->tag,turboLower);
       break;
   }
 }
