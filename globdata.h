@@ -151,6 +151,7 @@ extern const mapsubsector_t *_g_mapsubsectors;
 
 extern int16_t      _g_numlines;
 extern line_t   __far* _g_lines;
+extern const packed_line_t *_g_maplines;
 
 
 extern side_t   __far* _g_sides;

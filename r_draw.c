@@ -1183,7 +1183,7 @@ static void R_RenderMaskedSegRange(const drawseg_t *ds, int16_t x1, int16_t x2)
 	mceilingclip     = ds->sprtopclip;
 
 	// find positioning
-	if (_g_lines[curline->linenum].flags & ML_DONTPEGBOTTOM)
+	if (_g_maplines[curline->linenum].flags & ML_DONTPEGBOTTOM)
 	{
 		dcvars.texturemid = frontsector->floorheight > backsector->floorheight ? frontsector->floorheight : backsector->floorheight;
 		dcvars.texturemid = dcvars.texturemid + ((int32_t)textureheight[texnum] << FRACBITS) - viewz;

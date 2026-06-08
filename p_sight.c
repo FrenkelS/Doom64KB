@@ -113,6 +113,7 @@ static boolean P_CrossSubsector(int16_t num)
         int16_t linenum = seg->linenum;
 
         line_t __far* line = &_g_lines[linenum];
+        const packed_line_t *mapline = &_g_maplines[linenum];
         divline_t divl;
 
         // allready checked other side?
@@ -121,14 +122,14 @@ static boolean P_CrossSubsector(int16_t num)
 
         line->validcount = validcount;
 
-        if ((fixed_t)line->bbox[BOXLEFT  ]<<FRACBITS > los.bbox[BOXRIGHT ] ||
-            (fixed_t)line->bbox[BOXRIGHT ]<<FRACBITS < los.bbox[BOXLEFT  ] ||
-            (fixed_t)line->bbox[BOXBOTTOM]<<FRACBITS > los.bbox[BOXTOP   ] ||
-            (fixed_t)line->bbox[BOXTOP   ]<<FRACBITS < los.bbox[BOXBOTTOM])
+        if ((fixed_t)mapline->bbox[BOXLEFT  ]<<FRACBITS > los.bbox[BOXRIGHT ] ||
+            (fixed_t)mapline->bbox[BOXRIGHT ]<<FRACBITS < los.bbox[BOXLEFT  ] ||
+            (fixed_t)mapline->bbox[BOXBOTTOM]<<FRACBITS > los.bbox[BOXTOP   ] ||
+            (fixed_t)mapline->bbox[BOXTOP   ]<<FRACBITS < los.bbox[BOXBOTTOM])
             continue;
 
         // cph - do what we can before forced to check intersection
-        if (line->flags & ML_TWOSIDED)
+        if (mapline->flags & ML_TWOSIDED)
         {
 
             // no wall to block sight with?
@@ -152,10 +153,10 @@ static boolean P_CrossSubsector(int16_t num)
         }
 
         // Forget this line if it doesn't cross the line of sight
-        fixed_t v1x = (fixed_t)line->v1.x<<FRACBITS;
-        fixed_t v1y = (fixed_t)line->v1.y<<FRACBITS;
-        fixed_t v2x = (fixed_t)line->v2.x<<FRACBITS;
-        fixed_t v2y = (fixed_t)line->v2.y<<FRACBITS;
+        fixed_t v1x = (fixed_t)mapline->v1.x<<FRACBITS;
+        fixed_t v1y = (fixed_t)mapline->v1.y<<FRACBITS;
+        fixed_t v2x = (fixed_t)mapline->v2.x<<FRACBITS;
+        fixed_t v2y = (fixed_t)mapline->v2.y<<FRACBITS;
 
         if (P_DivlineSide(v1x, v1y, &los.strace) == P_DivlineSide(v2x, v2y, &los.strace))
             continue;
@@ -172,7 +173,7 @@ static boolean P_CrossSubsector(int16_t num)
 
         // cph - if bottom >= top or top < minz or bottom > maxz then it must be
         // solid wrt this LOS
-        if (!(line->flags & ML_TWOSIDED) || (openbottom >= opentop) ||
+        if (!(mapline->flags & ML_TWOSIDED) || (openbottom >= opentop) ||
                 (opentop < los.minz) || (openbottom > los.maxz))
             return false;
 

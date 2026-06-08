@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023-2025 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -285,25 +285,25 @@ static void AM_findMinMaxBoundaries(void)
 
     for (i=0;i<_g_numlines;i++)
     {
-        if (_g_lines[i].v1.x < min16_x)
-            min16_x = _g_lines[i].v1.x;
-        else if (_g_lines[i].v1.x > max16_x)
-            max16_x = _g_lines[i].v1.x;
+        if (_g_maplines[i].v1.x < min16_x)
+            min16_x = _g_maplines[i].v1.x;
+        else if (_g_maplines[i].v1.x > max16_x)
+            max16_x = _g_maplines[i].v1.x;
 
-        if (_g_lines[i].v2.x < min16_x)
-            min16_x = _g_lines[i].v2.x;
-        else if (_g_lines[i].v2.x > max16_x)
-            max16_x = _g_lines[i].v2.x;
+        if (_g_maplines[i].v2.x < min16_x)
+            min16_x = _g_maplines[i].v2.x;
+        else if (_g_maplines[i].v2.x > max16_x)
+            max16_x = _g_maplines[i].v2.x;
 
-        if (_g_lines[i].v1.y < min16_y)
-            min16_y = _g_lines[i].v1.y;
-        else if (_g_lines[i].v1.y > max16_y)
-            max16_y = _g_lines[i].v1.y;
+        if (_g_maplines[i].v1.y < min16_y)
+            min16_y = _g_maplines[i].v1.y;
+        else if (_g_maplines[i].v1.y > max16_y)
+            max16_y = _g_maplines[i].v1.y;
 
-        if (_g_lines[i].v2.y < min16_y)
-            min16_y = _g_lines[i].v2.y;
-        else if (_g_lines[i].v2.y > max16_y)
-            max16_y = _g_lines[i].v2.y;
+        if (_g_maplines[i].v2.y < min16_y)
+            min16_y = _g_maplines[i].v2.y;
+        else if (_g_maplines[i].v2.y > max16_y)
+            max16_y = _g_maplines[i].v2.y;
     }
 
     min_x = (fixed_t)min16_x << MAPBITS;
@@ -896,14 +896,14 @@ static void AM_drawWalls(void)
     // draw the unclipped visible portions of all lines
     for (i=0;i<_g_numlines;i++)
     {
-        l.a.x = (fixed_t)_g_lines[i].v1.x << MAPBITS;
-        l.a.y = (fixed_t)_g_lines[i].v1.y << MAPBITS;
-        l.b.x = (fixed_t)_g_lines[i].v2.x << MAPBITS;
-        l.b.y = (fixed_t)_g_lines[i].v2.y << MAPBITS;
+        l.a.x = (fixed_t)_g_maplines[i].v1.x << MAPBITS;
+        l.a.y = (fixed_t)_g_maplines[i].v1.y << MAPBITS;
+        l.b.x = (fixed_t)_g_maplines[i].v2.x << MAPBITS;
+        l.b.y = (fixed_t)_g_maplines[i].v2.y << MAPBITS;
 
 
-        const sector_t __far* backsector = LN_BACKSECTOR(&_g_lines[i]);
-        const sector_t __far* frontsector = LN_FRONTSECTOR(&_g_lines[i]);
+        const sector_t __far* backsector = LN_BACKSECTOR(&_g_maplines[i]);
+        const sector_t __far* frontsector = LN_FRONTSECTOR(&_g_maplines[i]);
 
         const int16_t line_special =  LN_SPECIAL(&_g_lines[i]);
 
@@ -916,12 +916,12 @@ static void AM_drawWalls(void)
         // if line has been seen or IDDT has been used
         if (_g_lines[i].r_flags & ML_MAPPED)
         {
-            if (_g_lines[i].flags & ML_DONTDRAW)
+            if (_g_maplines[i].flags & ML_DONTDRAW)
                 continue;
             {
                 /* cph - show keyed doors and lines */
                 int16_t amd;
-                if (!(_g_lines[i].flags & ML_SECRET) && (amd = AM_DoorColor(line_special)) != -1)
+                if (!(_g_maplines[i].flags & ML_SECRET) && (amd = AM_DoorColor(line_special)) != -1)
                 {
                     {
                         switch (amd) /* closed keyed door */
@@ -954,17 +954,17 @@ static void AM_drawWalls(void)
             else /* now for 2S lines */
             {
                 // jff 1/10/98 add color change for all teleporter types
-                if (!(_g_lines[i].flags & ML_SECRET) && (line_special == 97))
+                if (!(_g_maplines[i].flags & ML_SECRET) && (line_special == 97))
                 { // teleporters
                     AM_drawMline(&l, mapcolor_tele);
                 }
-                else if (_g_lines[i].flags & ML_SECRET)    // secret door
+                else if (_g_maplines[i].flags & ML_SECRET)    // secret door
                 {
                     AM_drawMline(&l, mapcolor_wall);      // wall color
                 }
                 else if
                         (
-                         !(_g_lines[i].flags & ML_SECRET) &&    // non-secret closed door
+                         !(_g_maplines[i].flags & ML_SECRET) &&    // non-secret closed door
                          ((backsector->floorheight==backsector->ceilingheight) ||
                           (frontsector->floorheight==frontsector->ceilingheight))
                          )
@@ -989,7 +989,7 @@ static void AM_drawWalls(void)
         } // now draw the lines only visible because the player has computermap
         else if (_g_player.powers[pw_allmap]) // computermap visible lines
         {
-            if (!(_g_lines[i].flags & ML_DONTDRAW)) // invisible flag lines do not show
+            if (!(_g_maplines[i].flags & ML_DONTDRAW)) // invisible flag lines do not show
             {
                 AM_drawMline(&l, mapcolor_unsn);
             }
