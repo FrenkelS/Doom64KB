@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -62,7 +62,7 @@ typedef struct {
   union
   {
     mobj_t __far* thing;
-    line_t __far* line;
+    const line_t __far* line;
   } d;
 } intercept_t;
 
@@ -76,7 +76,7 @@ int16_t     P_BoxOnLineSide (const fixed_t *tmbox, const line_t __far* ld);
 void    P_LineOpening(const line_t __far* linedef);
 void    P_UnsetThingPosition(mobj_t __far* thing);
 void    P_SetThingPosition(mobj_t __far* thing);
-boolean P_BlockLinesIterator (int16_t x, int16_t y, boolean func(line_t __far*));
+boolean P_BlockLinesIterator (int16_t x, int16_t y, boolean func(const line_t __far*));
 boolean P_BlockThingsIterator(int16_t x, int16_t y, boolean func(mobj_t __far*));
 boolean P_PathTraverse(fixed_t x1, fixed_t y1, fixed_t x2, fixed_t y2,
                        int16_t flags, boolean trav(intercept_t *));

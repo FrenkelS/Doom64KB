@@ -73,8 +73,8 @@ const mapsubsector_t *_g_mapsubsectors;
 
 
 int16_t      _g_numlines;
-line_t   __far* _g_lines;
-const packed_line_t *_g_maplines;
+linedata_t   __far* _g_lines;
+const line_t *_g_maplines;
 
 
 static int16_t      numsides;
@@ -262,26 +262,12 @@ static void P_LoadThings2(int16_t lump)
 
 static void P_LoadLineDefs (int16_t lump)
 {
-	_g_numlines = W_LumpLength(lump) / sizeof(packed_line_t);
+	_g_numlines = W_LumpLength(lump) / sizeof(line_t);
 	_g_maplines = W_GetLumpByNum(lump);
-	_g_lines    = Z_MallocLevel(_g_numlines * sizeof(line_t), NULL);
+	_g_lines    = Z_MallocLevel(_g_numlines * sizeof(linedata_t), NULL);
 
 	for (int16_t i = 0; i < _g_numlines; i++)
 	{
-		_g_lines[i].v1              = _g_maplines[i].v1;
-		_g_lines[i].v2              = _g_maplines[i].v2;
-		_g_lines[i].dx              = _g_maplines[i].dx;
-		_g_lines[i].dy              = _g_maplines[i].dy;
-		_g_lines[i].sidenum[0]      = _g_maplines[i].sidenum[0];
-		_g_lines[i].sidenum[1]      = _g_maplines[i].sidenum[1];
-		_g_lines[i].bbox[BOXTOP]    = _g_maplines[i].bbox[BOXTOP];
-		_g_lines[i].bbox[BOXBOTTOM] = _g_maplines[i].bbox[BOXBOTTOM];
-		_g_lines[i].bbox[BOXLEFT]   = _g_maplines[i].bbox[BOXLEFT];
-		_g_lines[i].bbox[BOXRIGHT]  = _g_maplines[i].bbox[BOXRIGHT];
-		_g_lines[i].tag             = _g_maplines[i].tag;
-		_g_lines[i].flags           = _g_maplines[i].flags;
-		_g_lines[i].slopetype       = _g_maplines[i].slopetype;
-
 		_g_lines[i].validcount   = 0;
 		_g_lines[i].r_validcount = 0;
 		_g_lines[i].r_flags      = 0;
@@ -412,7 +398,7 @@ static void P_GroupLines (void)
     }
 
     // count number of lines in each sector
-    for (i=0,li=_g_lines; i<_g_numlines; i++, li++)
+    for (i=0,li=_g_maplines; i<_g_numlines; i++, li++)
     {
         LN_FRONTSECTOR(li)->linecount++;
         if (LN_BACKSECTOR(li) && LN_BACKSECTOR(li) != LN_FRONTSECTOR(li))
@@ -434,7 +420,7 @@ static void P_GroupLines (void)
     }
 
     // Enter those lines
-    for (i=0,li=_g_lines; i<_g_numlines; i++, li++)
+    for (i=0,li=_g_maplines; i<_g_numlines; i++, li++)
     {
         P_AddLineToSector(li, LN_FRONTSECTOR(li));
         if (LN_BACKSECTOR(li) && LN_BACKSECTOR(li) != LN_FRONTSECTOR(li))

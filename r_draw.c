@@ -437,7 +437,8 @@ static angle16_t viewangle16;
 static byte solidcol[VIEWWINDOWWIDTH];
 
 static const seg_t     __far* curline;
-static line_t    __far* linedef;
+static linedata_t    __far* linedef;
+static const line_t *maplinedef;
 static sector_t  __far* frontsector;
 static sector_t  __far* backsector;
 static drawseg_t *ds_p;
@@ -2157,6 +2158,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
     side_t    __far* sidedef = &_g_sides[curline->sidenum];
     const mapsidedef_t *mapsidedef = &_g_mapsides[curline->sidenum];	
     linedef = &_g_lines[curline->linenum];
+    maplinedef = &_g_maplines[curline->linenum];
 
     // mark the segment as visible for auto map
     linedef->r_flags |= ML_MAPPED;
@@ -2218,7 +2220,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
         // a single sided line is terminal, so it must mark ends
         markfloor = markceiling = true;
 
-        if (linedef->flags & ML_DONTPEGBOTTOM)
+        if (maplinedef->flags & ML_DONTPEGBOTTOM)
         {         // bottom of texture at bottom
             fixed_t vtop = frontsector->floorheight + ((int32_t)textureheight[sidedef->midtexture] << FRACBITS);
             rw_midtexturemid = vtop - viewz;
@@ -2308,7 +2310,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
         {
             toptexture = texturetranslation[sidedef->toptexture];
             textoptexture = R_GetTexture(toptexture);
-            rw_toptexturemid = linedef->flags & ML_DONTPEGTOP ? worldtop :
+            rw_toptexturemid = maplinedef->flags & ML_DONTPEGTOP ? worldtop :
                                                                         backsector->ceilingheight + ((int32_t)textureheight[sidedef->toptexture] << FRACBITS) - viewz;
             rw_toptexturemid += ((int32_t)Mod(mapsidedef->rowoffset, textureheight[toptexture])) << FRACBITS;
         }
@@ -2317,7 +2319,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
         {
             bottomtexture = texturetranslation[sidedef->bottomtexture];
             texbottomtexture = R_GetTexture(bottomtexture);
-            rw_bottomtexturemid = linedef->flags & ML_DONTPEGBOTTOM ? worldtop : worldlow;
+            rw_bottomtexturemid = maplinedef->flags & ML_DONTPEGBOTTOM ? worldtop : worldlow;
 
             rw_bottomtexturemid += ((int32_t)Mod(mapsidedef->rowoffset, textureheight[bottomtexture])) << FRACBITS;
         }
@@ -2472,7 +2474,7 @@ static void R_RecalcLineFlags(void)
     linedef->r_validcount = _g_gametic;
 
     /* First decide if the line is closed, normal, or invisible */
-    if (!(linedef->flags & ML_TWOSIDED)
+    if (!(maplinedef->flags & ML_TWOSIDED)
             || backsector->ceilingheight <= frontsector->floorheight
             || backsector->floorheight >= frontsector->ceilingheight
             || (
@@ -2619,6 +2621,7 @@ static void R_AddLine(const seg_t __far* line)
 
     /* cph - roll up linedef properties in flags */
     linedef = &_g_lines[curline->linenum];
+    maplinedef = &_g_maplines[curline->linenum];
 
     if (linedef->r_validcount != (uint16_t)_g_gametic)
         R_RecalcLineFlags();

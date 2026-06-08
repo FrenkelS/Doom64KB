@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023-2025 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -413,7 +413,7 @@ void P_SetThingPosition(mobj_t __far* thing)
 //
 // killough 5/3/98: reformatted, cleaned up
 
-boolean P_BlockLinesIterator(int16_t x, int16_t y, boolean func(line_t __far*))
+boolean P_BlockLinesIterator(int16_t x, int16_t y, boolean func(const line_t __far*))
 {
 
     if (!(0 <= x && x < _g_bmapwidth && 0 <= y && y <_g_bmapheight))
@@ -437,14 +437,15 @@ boolean P_BlockLinesIterator(int16_t x, int16_t y, boolean func(line_t __far*))
     {
         const int16_t lineno = *list;
 
-        line_t __far* ld = &_g_lines[lineno];
+        linedata_t __far* ld = &_g_lines[lineno];
+        const line_t *mld = &_g_maplines[lineno];
 
         if (ld->validcount == vcount)
             continue;       // line has already been checked
 
         ld->validcount = vcount;
 
-        if (!func(ld))
+        if (!func(mld))
             return false;
     }
 
@@ -488,7 +489,7 @@ static boolean check_intercept(void)
 //
 // killough 5/3/98: reformatted, cleaned up
 
-static boolean PIT_AddLineIntercepts(line_t __far* ld)
+static boolean PIT_AddLineIntercepts(const line_t __far* ld)
 {
   int16_t       s1;
   int16_t       s2;

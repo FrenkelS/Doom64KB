@@ -905,7 +905,7 @@ static void AM_drawWalls(void)
         const sector_t __far* backsector = LN_BACKSECTOR(&_g_maplines[i]);
         const sector_t __far* frontsector = LN_FRONTSECTOR(&_g_maplines[i]);
 
-        const int16_t line_special =  LN_SPECIAL(&_g_lines[i]);
+        const int16_t line_special =  LN_SPECIAL(&_g_maplines[i]);
 
         if (automapmode & am_rotate)
         {

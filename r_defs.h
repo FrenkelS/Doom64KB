@@ -174,28 +174,16 @@ typedef enum
 } flags_e;
 
 
-typedef struct line_s
+typedef struct linedata_s
 {
-    vertex16_t v1; // TODO
-    vertex16_t v2; // TODO     // Vertices, from v1 to v2.
-
-    int16_t dx, dy; // TODO        // Precalculated v2 - v1 for side checking.
-
-    uint16_t sidenum[2]; // TODO        // Visual appearance: SideDefs.
-    int16_t bbox[4]; // TODO        //Line bounding box.
-
-    int16_t tag; // TODO
-    uint8_t flags; // TODO           // Animation related.
-    int8_t slopetype; // TODO // To aid move clipping.
-
     uint16_t validcount;        // if == validcount, already checked
     uint16_t r_validcount;      // cph: if == gametic, r_flags already done
 
     int16_t r_flags;
     int16_t special;
-} line_t;
+} linedata_t;
 
-typedef PACKEDATTR_PRE struct
+typedef PACKEDATTR_PRE struct line_s
 {
 	vertex16_t v1;
 	vertex16_t v2;			// Vertices, from v1 to v2.
@@ -209,15 +197,15 @@ typedef PACKEDATTR_PRE struct
 	uint8_t flags;			// Animation related.
 	int8_t slopetype;		// To aid move clipping.
 	int8_t const_special;
-} PACKEDATTR_POST packed_line_t;
+} PACKEDATTR_POST line_t;
 
-typedef char assertLineSize[sizeof(packed_line_t) == 31 ? 1 : -1];
+typedef char assertLineSize[sizeof(line_t) == 31 ? 1 : -1];
 
 
 #define LN_FRONTSECTOR(l) (_g_sides[(l)->sidenum[0]].sector)
 #define LN_BACKSECTOR(l) ((l)->sidenum[1] != NO_INDEX ? _g_sides[(l)->sidenum[1]].sector : NULL)
 
-#define LN_SPECIAL(l) ((l)->special)
+#define LN_SPECIAL(l) (_g_lines[(l)->lineno].special)
 
 
 // phares 3/14/98

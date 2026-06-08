@@ -452,7 +452,7 @@ static void Add_Scroller(int16_t affectee)
 // Initialize the scrollers
 static void P_SpawnScrollers(void)
 {
-	const line_t __far* line = _g_lines;
+	const line_t __far* line = _g_maplines;
 
 	for (int16_t i = 0; i < _g_numlines; i++)
 	{

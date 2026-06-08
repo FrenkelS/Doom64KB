@@ -112,8 +112,8 @@ static boolean P_CrossSubsector(int16_t num)
     { // check lines
         int16_t linenum = seg->linenum;
 
-        line_t __far* line = &_g_lines[linenum];
-        const packed_line_t *mapline = &_g_maplines[linenum];
+        linedata_t __far* line = &_g_lines[linenum];
+        const line_t *mapline = &_g_maplines[linenum];
         divline_t divl;
 
         // allready checked other side?
