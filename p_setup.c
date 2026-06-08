@@ -259,21 +259,6 @@ static void P_LoadThings2(int16_t lump)
 // Does this mean secrets used to be linedef-based, rather than sector-based?
 //
 
-typedef PACKEDATTR_PRE struct
-{
-	vertex16_t v1;
-	vertex16_t v2;			// Vertices, from v1 to v2.
-
-	int16_t frontsidenum;	// Visual appearance: SideDefs.
-	int16_t backsidenum;
-
-	uint8_t flags;			// Animation related.
-	int8_t const_special;
-	int8_t tag;
-} PACKEDATTR_POST packed_line_t;
-
-typedef char assertLineSize[sizeof(packed_line_t) == 15 ? 1 : -1];
-
 static void P_LoadLineDefs (int16_t lump)
 {
 	_g_numlines = W_LumpLength(lump) / sizeof(packed_line_t);
@@ -285,26 +270,17 @@ static void P_LoadLineDefs (int16_t lump)
 	{
 		_g_lines[i].v1              = lines[i].v1;
 		_g_lines[i].v2              = lines[i].v2;
-		_g_lines[i].dx              = lines[i].v2.x - lines[i].v1.x; // for side checking.
-		_g_lines[i].dy              = lines[i].v2.y - lines[i].v1.y; // for side checking.
-		_g_lines[i].sidenum[0]      = lines[i].frontsidenum;
-		_g_lines[i].sidenum[1]      = lines[i].backsidenum;
-		_g_lines[i].bbox[BOXTOP]    = lines[i].v1.y < lines[i].v2.y ? lines[i].v2.y : lines[i].v1.y; // Line bounding box.
-		_g_lines[i].bbox[BOXBOTTOM] = lines[i].v1.y < lines[i].v2.y ? lines[i].v1.y : lines[i].v2.y; // Line bounding box.
-		_g_lines[i].bbox[BOXLEFT]   = lines[i].v1.x < lines[i].v2.x ? lines[i].v1.x : lines[i].v2.x; // Line bounding box.
-		_g_lines[i].bbox[BOXRIGHT]  = lines[i].v1.x < lines[i].v2.x ? lines[i].v2.x : lines[i].v1.x; // Line bounding box.
+		_g_lines[i].dx              = lines[i].dx;
+		_g_lines[i].dy              = lines[i].dy;
+		_g_lines[i].sidenum[0]      = lines[i].sidenum[0];
+		_g_lines[i].sidenum[1]      = lines[i].sidenum[1];
+		_g_lines[i].bbox[BOXTOP]    = lines[i].bbox[BOXTOP];
+		_g_lines[i].bbox[BOXBOTTOM] = lines[i].bbox[BOXBOTTOM];
+		_g_lines[i].bbox[BOXLEFT]   = lines[i].bbox[BOXLEFT];
+		_g_lines[i].bbox[BOXRIGHT]  = lines[i].bbox[BOXRIGHT];
 		_g_lines[i].tag             = lines[i].tag;
 		_g_lines[i].flags           = lines[i].flags;
-
-		// To aid move clipping.
-		if (_g_lines[i].dx == 0)
-			_g_lines[i].slopetype = ST_VERTICAL;
-		else if (_g_lines[i].dy == 0)
-			_g_lines[i].slopetype = ST_HORIZONTAL;
-		else if ((_g_lines[i].dy ^ _g_lines[i].dx) >= 0)
-			_g_lines[i].slopetype = ST_POSITIVE;
-		else
-			_g_lines[i].slopetype = ST_NEGATIVE;
+		_g_lines[i].slopetype       = lines[i].slopetype;
 
 		_g_lines[i].validcount   = 0;
 		_g_lines[i].r_validcount = 0;

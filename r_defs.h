@@ -168,29 +168,25 @@ typedef char assertMapsidedefSize[sizeof(mapsidedef_t) == 7 ? 1 : -1];
 #define ST_NEGATIVE		3
 
 typedef enum
-{                 // cph:
-    RF_TOP_TILE  = 1,     // Upper texture needs tiling
-    RF_MID_TILE = 2,     // Mid texture needs tiling
-    RF_BOT_TILE = 4,     // Lower texture needs tiling
+{
     RF_IGNORE   = 8,     // Renderer can skip this line
-    RF_CLOSED   =16,     // Line blocks view
-    RF_MAPPED   =32      // Seen so show on automap.
-} r_flags;
+    RF_CLOSED   =16      // Line blocks view
+} flags_e;
 
 
 typedef struct line_s
 {
-    vertex16_t v1;
-    vertex16_t v2;     // Vertices, from v1 to v2.
+    vertex16_t v1; // TODO
+    vertex16_t v2; // TODO     // Vertices, from v1 to v2.
 
-    int16_t dx, dy;        // Precalculated v2 - v1 for side checking.
+    int16_t dx, dy; // TODO        // Precalculated v2 - v1 for side checking.
 
-    uint16_t sidenum[2];        // Visual appearance: SideDefs.
-    int16_t bbox[4];        //Line bounding box.
+    uint16_t sidenum[2]; // TODO        // Visual appearance: SideDefs.
+    int16_t bbox[4]; // TODO        //Line bounding box.
 
-    int16_t tag;
-    uint8_t flags;           // Animation related.
-    int8_t slopetype; // To aid move clipping.
+    int16_t tag; // TODO
+    uint8_t flags; // TODO           // Animation related.
+    int8_t slopetype; // TODO // To aid move clipping.
 
     uint16_t validcount;        // if == validcount, already checked
     uint16_t r_validcount;      // cph: if == gametic, r_flags already done
@@ -198,6 +194,24 @@ typedef struct line_s
     int16_t r_flags;
     int16_t special;
 } line_t;
+
+typedef PACKEDATTR_PRE struct
+{
+	vertex16_t v1;
+	vertex16_t v2;			// Vertices, from v1 to v2.
+	uint16_t lineno;		// line number.
+	int16_t dx, dy;			// Precalculated v2 - v1 for side checking.
+
+	uint16_t sidenum[2];	// Visual appearance: SideDefs. front and back.
+	int16_t bbox[4];		// Line bounding box.
+
+	int16_t tag;
+	uint8_t flags;			// Animation related.
+	int8_t slopetype;		// To aid move clipping.
+	int8_t const_special;
+} PACKEDATTR_POST packed_line_t;
+
+typedef char assertLineSize[sizeof(packed_line_t) == 31 ? 1 : -1];
 
 
 #define LN_FRONTSECTOR(l) (_g_sides[(l)->sidenum[0]].sector)
