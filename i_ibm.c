@@ -282,6 +282,10 @@ typedef struct
 } task_t;
 
 
+#define LOBYTE(w)	(((uint8_t *)&w)[0])
+#define HIBYTE(w)	(((uint8_t *)&w)[1])
+
+
 #define MAX_TASKS 2
 #define MAX_SERVICE_RATE 0x10000L
 
@@ -555,7 +559,7 @@ typedef struct {
 } pcspkmuse_t;
 
 
-void PCFX_Play(int16_t lumpnum)
+void DMX_Play(int16_t lumpnum)
 {
 	PCFX_Stop();
 
@@ -571,7 +575,7 @@ void PCFX_Play(int16_t lumpnum)
 }
 
 
-void PCFX_Init(void)
+void DMX_Init(void)
 {
 	if (PCFX_Installed)
 		return;
@@ -583,7 +587,7 @@ void PCFX_Init(void)
 }
 
 
-void PCFX_Shutdown(void)
+void DMX_Shutdown(void)
 {
 	if (PCFX_Installed)
 	{

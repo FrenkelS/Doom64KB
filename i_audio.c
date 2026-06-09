@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023-2025 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -88,7 +88,7 @@ int16_t I_StartSound(sfxenum_t id, int16_t channel, int16_t vol, int16_t sep)
 //		return -1;
 
 	int16_t lumpnum = firstsfx + id;
-	PCFX_Play(lumpnum);
+	DMX_Play(lumpnum);
 
 	return channel;
 }
@@ -102,7 +102,7 @@ void I_InitSound(void)
 	if (nomusicparm && nosfxparm)
 		return;
 
-	PCFX_Init();
+	DMX_Init();
 
 	// Finished initialization.
 	printf("I_InitSound: sound ready\n");
@@ -120,7 +120,7 @@ void I_ShutdownSound(void)
 	if (nosfxparm)
 		return;
 
-	PCFX_Shutdown();
+	DMX_Shutdown();
 }
 
 
