@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023-2025 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -36,7 +36,15 @@
 #ifndef __I_SYSTEM__
 #define __I_SYSTEM__
 
+#include "compiler.h"
 #include "config.h"
+
+
+uint8_t __far* I_ZoneBase(uint32_t *heapSize);
+
+
+#define PARAGRAPH_SIZE 16
+
 
 void I_InitTimer(void);
 int32_t I_GetTime(void);
