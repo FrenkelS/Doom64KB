@@ -109,12 +109,6 @@ void W_Init(void)
 }
 
 
-void W_Shutdown(void)
-{
-	// Do nothing
-}
-
-
 const char __far* PUREFUNC W_GetNameForNum(int16_t num)
 {
 	return fileinfo[num].name;

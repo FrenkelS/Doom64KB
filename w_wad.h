@@ -41,7 +41,6 @@
 
 
 void W_Init(void);
-void W_Shutdown(void);
 
 int16_t           PUREFUNC W_GetNumForName(const char *name);
 const char __far* PUREFUNC W_GetNameForNum(int16_t num);

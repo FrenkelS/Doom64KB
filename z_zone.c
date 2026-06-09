@@ -110,12 +110,6 @@ boolean Z_EqualNames(const char __far* farName, const char* nearName)
 }
 
 
-void Z_Shutdown(void)
-{
-	// Do nothing
-}
-
-
 #if defined __DJGPP__ || defined _M_I386
 static unsigned int _dos_allocmem(unsigned int __size, unsigned int *__seg)
 {
