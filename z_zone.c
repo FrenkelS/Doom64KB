@@ -22,7 +22,6 @@
 //
 //-----------------------------------------------------------------------------
 
-#include <dos.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include "compiler.h"
