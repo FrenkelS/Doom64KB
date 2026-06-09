@@ -10,7 +10,6 @@ set CFLAGS=%CFLAGS% -Ofast -flto -fwhole-program -fomit-frame-pointer -funroll-l
 set CFLAGS=%CFLAGS% -DFLAT_SPAN -DWAD_FILE=\"DOOM64KL.WAD\" -DVIEWWINDOWWIDTH=240 -DC_ONLY
 
 @set GLOBOBJS=
-@set GLOBOBJS=%GLOBOBJS% a_pcfx.c
 @set GLOBOBJS=%GLOBOBJS% am_map.c
 @set GLOBOBJS=%GLOBOBJS% d_items.c
 @set GLOBOBJS=%GLOBOBJS% d_main.c
