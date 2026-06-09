@@ -72,6 +72,9 @@
 #define PEL_DATA        0x3c9
 
 
+void I_SetScreenMode(uint16_t mode);
+
+
 extern const int16_t CENTERY;
 
 

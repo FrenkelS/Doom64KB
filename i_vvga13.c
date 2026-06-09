@@ -42,6 +42,9 @@
 #include "globdata.h"
 
 
+void I_SetScreenMode(uint16_t mode);
+
+
 extern const int16_t CENTERY;
 
 static uint8_t __far _s_screen[SCREENWIDTH * SCREENHEIGHT];
