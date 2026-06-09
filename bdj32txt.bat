@@ -20,8 +20,8 @@ set CFLAGS=%CFLAGS% -DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=32 -DFLAT_SKY_COLOR=7 -DWAD
 @set GLOBOBJS=%GLOBOBJS% g_game.c
 @set GLOBOBJS=%GLOBOBJS% hu_text.c
 @set GLOBOBJS=%GLOBOBJS% i_audio.c
+@set GLOBOBJS=%GLOBOBJS% i_ibm.c
 @set GLOBOBJS=%GLOBOBJS% i_main.c
-@set GLOBOBJS=%GLOBOBJS% i_system.c
 @set GLOBOBJS=%GLOBOBJS% i_vtext.c
 @set GLOBOBJS=%GLOBOBJS% info.c
 @set GLOBOBJS=%GLOBOBJS% m_cheat.c

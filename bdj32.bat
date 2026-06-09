@@ -20,8 +20,8 @@ set CFLAGS=%CFLAGS% -DFLAT_SPAN -DWAD_FILE=\"DOOM64KL.WAD\" -DVIEWWINDOWWIDTH=24
 @set GLOBOBJS=%GLOBOBJS% g_game.c
 @set GLOBOBJS=%GLOBOBJS% hu_stuff.c
 @set GLOBOBJS=%GLOBOBJS% i_audio.c
+@set GLOBOBJS=%GLOBOBJS% i_ibm.c
 @set GLOBOBJS=%GLOBOBJS% i_main.c
-@set GLOBOBJS=%GLOBOBJS% i_system.c
 @set GLOBOBJS=%GLOBOBJS% i_vmodey.c
 @set GLOBOBJS=%GLOBOBJS% info.c
 @set GLOBOBJS=%GLOBOBJS% m_cheat.c
