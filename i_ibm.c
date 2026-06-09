@@ -26,13 +26,13 @@
 #include <conio.h>
 #include <dos.h>
 #include <stdarg.h>
-#include <time.h>
 
 #include "doomdef.h"
 #include "doomtype.h"
 #include "compiler.h"
 #include "d_main.h"
 #include "i_system.h"
+
 #include "globdata.h"
 
 
@@ -282,8 +282,8 @@ typedef struct
 } task_t;
 
 
-#define LOBYTE(w)	(((uint8_t *)&w)[0])
-#define HIBYTE(w)	(((uint8_t *)&w)[1])
+#define LOBYTE(w)	(((uint8_t *)&(w))[0])
+#define HIBYTE(w)	(((uint8_t *)&(w))[1])
 
 
 #define MAX_TASKS 2
@@ -497,6 +497,7 @@ static void TS_Terminate(int16_t priority)
 #define SND_TICRATE     140     // tic rate for updating sound
 
 
+static int16_t firstsfx;
 static uint16_t	data[146];
 static int16_t	PCFX_LengthLeft;
 static const uint16_t *PCFX_Sound = NULL;
@@ -559,11 +560,11 @@ typedef struct {
 } pcspkmuse_t;
 
 
-void DMX_Play(int16_t lumpnum)
+void DMX_Play(sfxenum_t id)
 {
 	PCFX_Stop();
 
-	const pcspkmuse_t __far* pcspkmuse = W_GetLumpByNum(lumpnum);
+	const pcspkmuse_t __far* pcspkmuse = W_GetLumpByNum(firstsfx + id);
 	PCFX_LengthLeft = pcspkmuse->length;
 	_fmemcpy(data, pcspkmuse->data, pcspkmuse->length * sizeof(uint16_t));
 
@@ -584,6 +585,12 @@ void DMX_Init(void)
 	TS_ScheduleTask(&PCFX_Service, SND_TICRATE, PCFX_PRIORITY);
 
 	PCFX_Installed = true;
+}
+
+
+void DMX_Init2(void)
+{
+	firstsfx = W_GetNumForName("DPPISTOL") - 1;
 }
 
 

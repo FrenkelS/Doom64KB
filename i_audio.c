@@ -34,24 +34,19 @@
  *-----------------------------------------------------------------------------
  */
 
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
-#include <stdint.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-
-#include "z_zone.h"
 
 #include "m_swap.h"
 #include "i_sound.h"
 #include "w_wad.h"
 #include "s_sound.h"
 
-#include "doomdef.h"
 #include "d_player.h"
 #include "doomtype.h"
 
@@ -59,15 +54,12 @@
 
 #include "m_fixed.h"
 
-#include "a_pcfx.h"
+#include "i_system.h"
 
 #include "globdata.h"
 
 
 #define MAX_CHANNELS    1
-
-
-static int16_t firstsfx;
 
 
 int16_t I_StartSound(sfxenum_t id, int16_t channel, int16_t vol, int16_t sep)
@@ -87,8 +79,7 @@ int16_t I_StartSound(sfxenum_t id, int16_t channel, int16_t vol, int16_t sep)
 //	 || id == sfx_sawidl)
 //		return -1;
 
-	int16_t lumpnum = firstsfx + id;
-	DMX_Play(lumpnum);
+	DMX_Play(id);
 
 	return channel;
 }
@@ -111,7 +102,10 @@ void I_InitSound(void)
 
 void I_InitSound2(void)
 {
-	firstsfx = W_GetNumForName("DPPISTOL") - 1;
+	if (nosfxparm)
+		return;
+
+	DMX_Init2();
 }
 
 
@@ -135,6 +129,7 @@ void I_StopSong(musicenum_t handle)
 {
 	UNUSED(handle);
 }
+
 
 void I_SetMusicVolume(int16_t volume)
 {
