@@ -537,7 +537,22 @@ static const uint16_t PSPRITEYFRACSTEP = (FRACUNIT * SCREENHEIGHT_VGA / (VIEWWIN
 static const angle16_t clipangle = 0x2008; // = xtoviewangleTable[0]
 
 
-#if defined C_ONLY
+// Emits a mulu.w instruction. It's quite difficult to get gcc to do that :-)
+static uint32_t mulu(uint16_t a, uint16_t b) {
+#if C_ONLY
+	return (uint32_t)a * b;
+#else
+	uint32_t result = a;
+	__asm__ (
+		"mulu.w %1, %0"
+		: "+d" (result)
+		: "d" (b)
+	);
+	return result;
+#endif
+}
+
+
 #if defined __WATCOMC__
 //
 #else
@@ -545,44 +560,71 @@ inline
 #endif
 fixed_t CONSTFUNC FixedMul(fixed_t a, fixed_t b)
 {
-	uint16_t alw = a;
-	 int16_t ahw = a >> FRACBITS;
-	uint16_t blw = b;
-	 int16_t bhw = b >> FRACBITS;
+	// Is the result a negative number?
+	uint32_t neg = (a ^ b) < 0 ? 0xffff : 0;
+
+	uint16_t alw, ahw, blw, bhw;
+	int32_t result;
+
+	// Only work with unsigned numbers.
+	a = D_abs(a);
+	b = D_abs(b);
+	alw = a;
+	ahw = a >> FRACBITS;
+	blw = b;
+	bhw = b >> FRACBITS;
 
 	if (bhw == 0) {
-		uint32_t ll = (uint32_t) alw * blw;
-		 int32_t hl = ( int32_t) ahw * blw;
-		return (ll >> FRACBITS) + hl;
-	} else if (alw == 0) {
-		//return ahw * b;
-		 int32_t hl = ( int32_t) ahw * blw;
-		 int32_t hh = ( int32_t) ahw * bhw;
-		return hl + (hh << FRACBITS);
+		uint32_t hl = mulu(ahw, blw);
+
+		// Make sure we round towards -inf
+		uint32_t ll = (mulu(alw, blw) + neg) >> FRACBITS;
+
+		result = hl + ll;
 	} else {
-		uint32_t ll = (uint32_t) alw * blw;
-		 int32_t hl = ( int32_t) ahw * blw;
-		return (a * bhw) + (ll >> FRACBITS) + hl;
+		uint32_t hh = mulu(ahw, bhw) << FRACBITS;
+		uint32_t hl = mulu(ahw, blw);
+		uint32_t lh = mulu(alw, bhw);
+
+		// Make sure we round towards -inf
+		uint32_t ll = (mulu(alw, blw) + neg) >> FRACBITS;
+
+		result = hh + hl + lh + ll;
 	}
+
+	if (neg) result = -result;
+	return result;
 }
-#endif
 
 
-#if defined C_ONLY
 inline static fixed_t CONSTFUNC FixedMul3232(fixed_t a, fixed_t b)
 {
-	uint16_t alw = a;
-	 int16_t ahw = a >> FRACBITS;
-	uint16_t blw = b;
-	 int16_t bhw = b >> FRACBITS;
+	// Is the result a negative number?
+	uint32_t neg = (a ^ b) < 0 ? 0xffff : 0;
 
-	uint32_t ll = (uint32_t) alw * blw;
-	 int32_t hl = ( int32_t) ahw * blw;
-	return (a * bhw) + (ll >> FRACBITS) + hl;
+	uint16_t alw, ahw, blw, bhw;
+	uint32_t hh, hl, lh, ll;
+	int32_t result;
+
+	// Only work with unsigned numbers.
+	a = D_abs(a);
+	b = D_abs(b);
+	alw = a;
+	ahw = a >> FRACBITS;
+	blw = b;
+	bhw = b >> FRACBITS;
+
+	hh = mulu(ahw, bhw) << FRACBITS;
+	hl = mulu(ahw, blw);
+	lh = mulu(alw, bhw);
+
+	// Make sure we round towards -inf
+	ll = (mulu(alw, blw) + neg) >> FRACBITS;
+
+	result = hh + hl + lh + ll;
+	if (neg) result = -result;
+	return result;
 }
-#else
-fixed_t FixedMul3232(fixed_t a, fixed_t b);
-#endif
 
 
 //
@@ -596,13 +638,29 @@ inline
 #endif
 fixed_t CONSTFUNC FixedMulAngle(fixed_t a, fixed_t b)
 {
-	uint16_t blw = b;
-	fixed_t r = FixedMul3216(a, blw);
+	// Is the result a negative number?
+	uint32_t neg = (a ^ b) < 0 ? 0xffff : 0;
 
-	if (b < 0)
-		r -= a;
+	uint16_t alw, ahw, blw;
+	uint32_t hl, ll;
+	int32_t result;
 
-	return r;
+	// Only work with unsigned numbers.
+	a = D_abs(a);
+	b = D_abs(b);
+	alw = a;
+	ahw = a >> FRACBITS;
+	blw = b;
+
+	hl = mulu(ahw, blw);
+
+	// Make sure we round towards -inf
+	ll = (mulu(alw, blw) + neg) >> FRACBITS;
+
+	result = hl + ll;
+
+	if (neg) result = -result;
+	return result;
 }
 
 
@@ -613,34 +671,22 @@ inline
 #endif
 fixed_t CONSTFUNC FixedMul3216(fixed_t a, uint16_t blw)
 {
-	uint16_t alw = a;
-	 int16_t ahw = a >> FRACBITS;
+	boolean neg = a < 0;
 
-#if defined C_ONLY
-	uint32_t ll = (uint32_t) alw * blw;
-	 int32_t hl = ( int32_t) ahw * blw;
-	return (ll >> FRACBITS) + hl;
-#else
-	fixed_t result;
-	asm
-	(
-		"mov %%dx, %%si\n"
-		"mul %%cx\n"
-		"mov %%dx, %%bx\n"
-		"mov %%si, %%ax\n"
-		"cwd\n"
-		"and %%cx, %%dx\n"
-		"xor %%si, %%si\n"
-		"sub %%dx, %%si\n"
-		"mul %%cx\n"
-		"add %%bx, %%ax\n"
-		"adc %%si, %%dx"
-		: "=A" (result)
-		: "a" (alw), "d" (ahw), "c" (blw)
-		: "bx", "si"
-	);
-	return result;
-#endif
+	uint16_t alw, ahw;
+	uint32_t ll, hl;
+	fixed_t r;
+
+	a = D_abs(a);
+
+	alw = a;
+	ahw = a >> FRACBITS;
+
+	ll = mulu(alw, blw);
+	hl = mulu(ahw, blw);
+	r = (ll >> FRACBITS) + hl;
+	if (neg) r = -r;
+	return r;
 }
 
 
@@ -2804,7 +2850,7 @@ static boolean R_RenderBspSubsector(int16_t bspnum)
 //  traversing subtree recursively.
 // Just call with BSP root.
 
-#if defined PROFILING
+#if 1
 //Non recursive version.
 //constant stack space used and easier to
 //performance profile.

@@ -66,11 +66,6 @@ void I_FinishUpdate(void)
 }
 
 
-void I_FinishViewWindow(void)
-{
-}
-
-
 void R_DrawColumnSprite(const draw_column_vars_t *dcvars)
 {
 	I_Error("Implement me: R_DrawColumnSprite");
