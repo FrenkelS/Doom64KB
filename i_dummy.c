@@ -181,7 +181,7 @@ void I_Error(const char *error, ...)
 
 int main(int argc, const char * const * argv)
 {
-	printf("Doom8088: Dummy Edition\n");
+	printf("Doom64KB: Dummy Edition\n");
 
 	D_DoomMain(argc, argv);
 	return 0;
