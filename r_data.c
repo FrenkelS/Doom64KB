@@ -141,8 +141,6 @@ static void R_LoadTexture(int16_t texture_num)
         patch->patch_width = V_NumPatchWidth(patch->patch_num);
     }
 
-    pnames -= 4;
-
     for (uint8_t j = 0; j < texture->patchcount; j++)
     {
         const texpatch_t __far* patch = &texture->patches[j];
