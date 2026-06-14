@@ -39,8 +39,8 @@
 #include "globdata.h"
 
 
-//#define DITHER_CHARACTER 0xb1
-#define DITHER_CHARACTER 0xdb
+#define DITHER_CHARACTER 0xb1
+//#define DITHER_CHARACTER 0xdb
 
 
 extern const int16_t CENTERY;
@@ -50,6 +50,21 @@ extern const int16_t CENTERY;
 
 void I_ReloadPalette(void)
 {
+}
+
+
+static const uint16_t colors[14] =
+{
+	0x000,													// normal
+	0x100, 0x300, 0x500, 0x700, 0x800, 0xa00, 0xc00, 0xe00,	// red
+	0x110, 0x321, 0x541, 0x652,								// yellow
+	0x020													// green
+};
+
+
+static void I_UploadNewPalette(int8_t pal)
+{
+	MMAP_PALBANK1[0xfff] = colors[pal];
 }
 
 
@@ -64,19 +79,31 @@ void I_ShutdownGraphics(void)
 }
 
 
+static int8_t newpal;
+
+
 void I_SetPalette(int8_t p)
 {
+	newpal = p;
 }
 
 
 void V_SetSTPalette(void)
 {
+	// Do nothing
 }
+
+
+#define NO_PALETTE_CHANGE 100
 
 
 void I_FinishUpdate(void)
 {
-	// Do nothing
+	if (newpal != NO_PALETTE_CHANGE)
+	{
+		I_UploadNewPalette(newpal);
+		newpal = NO_PALETTE_CHANGE;
+	}
 }
 
 
