@@ -102,7 +102,7 @@ romtool.py -b hash -f gngeo -p neogeo/rom/doom64kb-p1.p1 -c neogeo/rom/doom64kb-
 cp /usr/share/ngdevkit/aes.zip    neogeo/rom/aes.zip
 cp /usr/share/ngdevkit/neogeo.zip neogeo/rom/neogeo.zip
 
-ngdevkit-gngeo -b glsl --shaderpath="/mnt/c/Projects/ngdevkit-examples/shaders" --shader="qcrt-flat.glslp"  --scale 3 --no-resize --system home -i neogeo/rom -d neogeo/rom/gngeo_data.zip doom64kb
+ngdevkit-gngeo -b glsl --shaderpath="/mnt/c/Projects/ngdevkit-examples/shaders" --shader="qcrt-flat.glslp"  --scale 3 --no-resize --system home -i neogeo/rom -d neogeo/rom/gngeo_data.zip doom64kb --p1control A=K97,B=K115,C=K113,D=K119,START=K49,COIN=K51,UP=K82,DOWN=K81,LEFT=K80,RIGHT=K79
 
 rm i_neogev.o
 rm p_enemy2.o

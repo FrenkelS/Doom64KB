@@ -71,8 +71,43 @@ void I_InitKeyboard(void)
 }
 
 
+static void I_PostEvent(boolean keyup, int16_t data1)
+{
+	event_t ev;
+	ev.type  = keyup ? ev_keyup : ev_keydown;
+	ev.data1 = data1;
+	D_PostEvent(&ev);
+}
+
+
+#define KB_MATRIX_SIZE 2
+
 void I_StartTic(void)
 {
+	static uint8_t kb_matrix[KB_MATRIX_SIZE * 2];
+	static uint8_t *kb_matrix_cur = &kb_matrix[0];
+	static uint8_t *kb_matrix_prv = &kb_matrix[KB_MATRIX_SIZE];
+
+	uint8_t *tmp = kb_matrix_cur;
+	kb_matrix_cur = kb_matrix_prv;
+	kb_matrix_prv = tmp;
+
+	kb_matrix_cur[0] = *REG_P1CNT;
+	kb_matrix_cur[1] = *REG_STATUS_B;
+	
+	uint8_t diff;
+	diff = kb_matrix_prv[0] ^ kb_matrix_cur[0];
+	if (diff & (1 << 0)) I_PostEvent(kb_matrix_cur[0] & (1 << 0), KEYD_UP);		// Up
+	if (diff & (1 << 1)) I_PostEvent(kb_matrix_cur[0] & (1 << 1), KEYD_DOWN);	// Down
+	if (diff & (1 << 2)) I_PostEvent(kb_matrix_cur[0] & (1 << 2), KEYD_LEFT);	// Left
+	if (diff & (1 << 3)) I_PostEvent(kb_matrix_cur[0] & (1 << 3), KEYD_RIGHT);	// Right
+	if (diff & (1 << 4)) I_PostEvent(kb_matrix_cur[0] & (1 << 4), KEYD_A);		// A
+	if (diff & (1 << 5)) I_PostEvent(kb_matrix_cur[0] & (1 << 5), KEYD_B);		// S
+	if (diff & (1 << 6)) I_PostEvent(kb_matrix_cur[0] & (1 << 6), KEYD_L);		// Q
+	if (diff & (1 << 7)) I_PostEvent(kb_matrix_cur[0] & (1 << 7), KEYD_R);		// W
+
+	diff = kb_matrix_prv[1] ^ kb_matrix_cur[1];
+	if (diff & (1 << 0)) I_PostEvent(kb_matrix_cur[1] & (1 << 0), KEYD_START);	// 1
 }
 
 

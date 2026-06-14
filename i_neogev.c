@@ -45,7 +45,7 @@
 
 extern const int16_t CENTERY;
 
-//static uint16_t _s_screen[64];//[VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT];
+//static uint16_t _s_screen[VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT];
 
 
 void I_ReloadPalette(void)
@@ -239,14 +239,14 @@ void V_DrawRawFullScreen(int16_t num)
 
 void V_DrawCharacter(int16_t x, int16_t y, uint8_t color, char c)
 {
-	I_Error("Implement me: V_DrawCharacter");
+	*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
+	*REG_VRAMRW = (color << 12) | c;
 }
 
 
 void V_DrawSTCharacter(int16_t x, int16_t y, uint8_t color, char c)
 {
-	*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
-	*REG_VRAMRW = (color << 12) | c;
+	V_DrawCharacter(x, y, color, c);
 }
 
 
@@ -282,13 +282,11 @@ void V_ClearString(int16_t y, size_t len)
 
 void I_InitScreenPage(void)
 {
-	I_Error("Implement me: I_InitScreenPage");
 }
 
 
 void I_InitScreenPages(void)
 {
-	I_Error("Implement me: I_InitScreenPages");
 }
 
 
