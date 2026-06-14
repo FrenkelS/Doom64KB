@@ -299,7 +299,6 @@ int main(void)
 		MMAP_PALBANK1[palette * 16 + 0] = 0x8000;
 		MMAP_PALBANK1[palette * 16 + 1] = colors[palette];
 	}
-	MMAP_PALBANK1[0xfff] = 0x000;
 
 	ng_printf("Doom64KB: Neo Geo Edition");
 
