@@ -1,0 +1,276 @@
+/*-----------------------------------------------------------------------------
+ *
+ *
+ *  Copyright (C) 2026 Frenkel Smeijers
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ *  02111-1307, USA.
+ *
+ * DESCRIPTION:
+ *      Neo Geo implementation of i_system.h
+ *
+ *-----------------------------------------------------------------------------*/
+
+#include <stdarg.h>
+#include <ngdevkit/registers.h>
+
+#include "doomdef.h"
+#include "doomtype.h"
+#include "compiler.h"
+#include "d_main.h"
+#include "i_system.h"
+
+#include "globdata.h"
+
+
+#define TIMEDEMO
+
+
+void I_InitGraphicsHardwareSpecificCode(void);
+void I_ShutdownGraphics(void);
+
+
+static boolean isGraphicsModeSet = false;
+
+
+//**************************************************************************************
+//
+// Screen code
+//
+
+void I_InitGraphics(void)
+{
+	I_InitGraphicsHardwareSpecificCode();
+	isGraphicsModeSet = true;
+}
+
+
+//**************************************************************************************
+//
+// Keyboard code
+//
+
+static boolean isKeyboardIsrSet = false;
+
+
+void I_InitKeyboard(void)
+{
+	isKeyboardIsrSet = true;
+}
+
+
+void I_StartTic(void)
+{
+}
+
+
+//**************************************************************************************
+//
+// Audio
+//
+
+void DMX_Play(sfxenum_t id)
+{
+}
+
+
+void DMX_Init(void)
+{
+}
+
+
+void DMX_Init2(void)
+{
+}
+
+
+void DMX_Shutdown(void)
+{
+}
+
+
+//**************************************************************************************
+//
+// Returns time in 1/35th second tics.
+//
+
+static boolean isTimerSet;
+
+
+int32_t I_GetTime(void)
+{
+	// TODO implement timer
+	static int32_t ticcount = 0;
+    return ticcount++;
+}
+
+
+void I_InitTimer(void)
+{
+	isTimerSet = true;
+}
+
+
+static void I_ShutdownTimer(void)
+{
+}
+
+
+//**************************************************************************************
+//
+// Memory
+//
+
+uint8_t __far* I_ZoneBase(uint32_t *heapSize)
+{
+	uint32_t availableMemory = 64 * 1024L;
+	uint32_t paragraphs = availableMemory / PARAGRAPH_SIZE;
+	uint8_t *ptr = malloc(paragraphs * PARAGRAPH_SIZE);
+	while (!ptr)
+	{
+		paragraphs--;
+		ptr = malloc(paragraphs * PARAGRAPH_SIZE);
+	}
+
+	// align ptr
+	uint32_t m = (uint32_t) ptr;
+	if ((m & (PARAGRAPH_SIZE - 1)) != 0)
+	{
+		paragraphs--;
+		while ((m & (PARAGRAPH_SIZE - 1)) != 0)
+			m = (uint32_t) ++ptr;
+	}
+
+	*heapSize = paragraphs * PARAGRAPH_SIZE;
+	return ptr;
+}
+
+
+//**************************************************************************************
+//
+// Exit code
+//
+
+static void I_Shutdown(void)
+{
+	if (isGraphicsModeSet)
+		I_ShutdownGraphics();
+
+	I_ShutdownSound();
+
+	if (isTimerSet)
+		I_ShutdownTimer();
+
+	if (isKeyboardIsrSet)
+	{
+	}
+}
+
+
+void I_Quit(void)
+{
+	I_Shutdown();
+
+	for (;;) {}
+	exit(0);
+}
+
+
+void ng_printf(const char *text) {
+	int x = 0;
+	int y = 0;
+	*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
+	*REG_VRAMMOD = 32;
+	while (*text)
+	{
+		if (*text == '\n')
+		{
+			text++;
+			x = 0;
+			y++;
+			*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
+		}
+		else
+		{
+			*REG_VRAMRW = 0xf000 | (*text++);
+			x++;
+			if (x == 38)
+			{
+				x = 0;
+				y++;
+				*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
+			}
+		}
+	}
+}
+
+
+void I_Error(const char *error, ...)
+{
+	va_list argptr;
+
+	I_Shutdown();
+
+	va_start(argptr, error);
+	char buffer[80];
+	vsprintf(buffer, error, argptr);
+	ng_printf(buffer);
+	va_end(argptr);
+
+	for (;;) {}
+	exit(1);
+}
+
+
+int main(void)
+{
+	const uint16_t colors[16] = {
+		0x000,
+		0x00A,
+		0x0A0,
+		0x0AA,
+		0xA00,
+		0xA0A,
+		0xA50,
+		0xAAA,
+		0x555,
+		0x55F,
+		0x5F5,
+		0x5FF,
+		0xF55,
+		0xF5F,
+		0xFF5,
+		0xFFF
+	};
+	for (int palette = 0; palette < 16; palette++)
+	{
+		MMAP_PALBANK1[palette * 16 + 0] = 0x8000;
+		MMAP_PALBANK1[palette * 16 + 1] = colors[palette];
+	}
+    MMAP_PALBANK1[0xfff] = 0x000;
+
+	ng_printf("Doom64KB: Neo Geo Edition");
+
+#if defined TIMEDEMO
+	int argc = 3;
+	const char * const argv[] = {"Doom64KB", "-timedemo", "demo3"};
+#else
+	int argc = 1;
+	const char * const argv[] = {"Doom64KB"};
+#endif
+	D_DoomMain(argc, argv);
+
+	return 0;
+}

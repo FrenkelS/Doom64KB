@@ -71,10 +71,12 @@ typedef struct
 // GLOBALS
 //
 
-#if defined __DJGPP__ || __WATCOMC__
+#if defined __WATCOMC__
 static unsigned char doom_iwad[2 * 1014 * 1024];
+#elif defined __DJGPP__
+#include "doom64kl.h"
 #else
-static const unsigned char doom_iwad[64 * 1024];
+#include "doom64tb.h"
 #endif
 
 static filelump_t __far* fileinfo;
@@ -101,7 +103,7 @@ void W_Init(void)
 	printf("\tadding " WAD_FILE "\n");
 	printf("\tshareware version.\n");
 
-#if defined __DJGPP__ || __WATCOMC__
+#if defined __WATCOMC__
 	FILE *fileWAD = fopen(WAD_FILE, "rb");
 	if (fileWAD == NULL)
 		I_Error("Can't open " WAD_FILE ".");
