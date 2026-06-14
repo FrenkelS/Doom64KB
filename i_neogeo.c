@@ -35,7 +35,7 @@
 #include "globdata.h"
 
 
-#define TIMEDEMO
+//#define TIMEDEMO
 
 
 void I_InitGraphicsHardwareSpecificCode(void);

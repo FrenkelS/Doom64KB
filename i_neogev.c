@@ -39,6 +39,10 @@
 #include "globdata.h"
 
 
+//#define DITHER_CHARACTER 0xb1
+#define DITHER_CHARACTER 0xdb
+
+
 extern const int16_t CENTERY;
 
 //static uint16_t _s_screen[64];//[VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT];
@@ -72,18 +76,7 @@ void V_SetSTPalette(void)
 
 void I_FinishUpdate(void)
 {
-//	*REG_VRAMMOD = 32;
-//
-//	uint16_t *src = _s_screen;
-//
-//	for (int y = 0; y < VIEWWINDOWHEIGHT; y++)
-//	{
-//		*REG_VRAMADDR = ADDR_FIXMAP + (1 * 32) + 3 + y;
-//		for (int x = 0; x < VIEWWINDOWWIDTH; x++)
-//		{
-//			*REG_VRAMRW = *src++;
-//		}
-//	}
+	// Do nothing
 }
 
 
@@ -109,34 +102,34 @@ void R_DrawColumnSprite(const draw_column_vars_t *dcvars)
 
 	switch (count)
 	{
-		case 28: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 27: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 26: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 25: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 24: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 23: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 22: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 21: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 20: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 19: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 18: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 17: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 16: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 15: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 14: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 13: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 12: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 11: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case 10: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case  9: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case  8: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case  7: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case  6: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case  5: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case  4: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case  3: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case  2: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1; frac += fracstep;
-		case  1: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | 0xb1;
+		case 28: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 27: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 26: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 25: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 24: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 23: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 22: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 21: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 20: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 19: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 18: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 17: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 16: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 15: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 14: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 13: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 12: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 11: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case 10: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case  9: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case  8: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case  7: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case  6: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case  5: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case  4: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case  3: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case  2: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER; frac += fracstep;
+		case  1: *REG_VRAMRW = (colormap[source[frac >> COLBITS]] << 12) | DITHER_CHARACTER;
 	}
 }
 
@@ -156,7 +149,7 @@ void R_DrawColumnFlat(uint8_t color, const draw_column_vars_t *dcvars)
 
 	*REG_VRAMADDR = ADDR_FIXMAP + ((dcvars->x + 1) * 32) + dcvars->yl + 2;
 
-	uint16_t c = (color << 12) | 0xb1;
+	uint16_t c = (color << 12) | DITHER_CHARACTER;
 
 	switch (count)
 	{
@@ -224,23 +217,23 @@ void V_DrawBackground(int16_t backgroundnum)
 
 void V_DrawRawFullScreen(int16_t num)
 {
-	I_Error("Implement me: V_DrawRawFullScreen");
-//	const uint8_t *lump = W_GetLumpByNum(num);
-//
-//	static const int16_t DXI = SCREENWIDTH / VIEWWINDOWWIDTH;
-//	static const fixed_t DYI = ((fixed_t)SCREENHEIGHT << FRACBITS) / VIEWWINDOWHEIGHT;
-//	fixed_t y = 0;
-//	uint16_t *dst = _s_screen;
-//	for (int h = 0; h < VIEWWINDOWHEIGHT; h++)
-//	{
-//		int x = 0;
-//		for (int w = 0; w < VIEWWINDOWWIDTH; w++)
-//		{
-//			*dst++ = (lump[(y >> FRACBITS) * SCREENWIDTH + x] << 12) | 0xb1;
-//			x += DXI;
-//		}
-//		y += DYI;
-//	}
+	const uint8_t *lump = W_GetLumpByNum(num);
+
+	static const int16_t DXI = SCREENWIDTH / VIEWWINDOWWIDTH;
+	static const fixed_t DYI = ((fixed_t)SCREENHEIGHT << FRACBITS) / VIEWWINDOWHEIGHT;
+
+	int x = 0;
+	for (int w = 0; w < VIEWWINDOWWIDTH; w++)
+	{
+		fixed_t y = 0;
+		*REG_VRAMADDR = ADDR_FIXMAP + ((w + 1) * 32) + 0 + 2;
+		for (int h = 0; h < VIEWWINDOWHEIGHT; h++)
+		{
+			*REG_VRAMRW = (lump[(y >> FRACBITS) * SCREENWIDTH + x] << 12) | DITHER_CHARACTER;
+			y += DYI;
+		}
+		x += DXI;
+	}
 }
 
 
