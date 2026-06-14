@@ -1,4 +1,5 @@
 mkdir neogeo
+mkdir neogeo/rom
 
 unset CFLAGS
 
