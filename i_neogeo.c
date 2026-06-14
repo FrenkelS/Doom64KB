@@ -141,14 +141,19 @@ void DMX_Shutdown(void)
 // Returns time in 1/35th second tics.
 //
 
+static volatile int32_t ticcount;
+
 static boolean isTimerSet;
+
+
+void rom_callback_VBlank() {
+	ticcount++;
+}
 
 
 int32_t I_GetTime(void)
 {
-	// TODO implement timer
-	static int32_t ticcount = 0;
-    return ticcount++;
+	return ticcount * TICRATE / 60;
 }
 
 
