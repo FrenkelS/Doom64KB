@@ -279,7 +279,7 @@ void V_DrawSTCharacter(int16_t x, int16_t y, uint8_t color, char c)
 
 void V_DrawCharacterForeground(int16_t x, int16_t y, uint8_t color, char c)
 {
-	I_Error("Implement me: V_DrawCharacterForeground");
+	V_DrawCharacter(x, y, color, c);
 }
 
 

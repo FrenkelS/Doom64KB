@@ -94,7 +94,7 @@ void I_StartTic(void)
 
 	kb_matrix_cur[0] = *REG_P1CNT;
 	kb_matrix_cur[1] = *REG_STATUS_B;
-	
+
 	uint8_t diff;
 	diff = kb_matrix_prv[0] ^ kb_matrix_cur[0];
 	if (diff & (1 << 0)) I_PostEvent(kb_matrix_cur[0] & (1 << 0), KEYD_UP);		// Up
@@ -173,16 +173,17 @@ static void I_ShutdownTimer(void)
 // Memory
 //
 
+// The Neo Geo has 64 KB of RAM.
+// 51264 is the maximum value with which this program can still be compiled.
+// Leave 128 * PARAGRAPH_SIZE for the stack.
+#define HEAP_SIZE (51264-128*PARAGRAPH_SIZE)
+
+
 uint8_t __far* I_ZoneBase(uint32_t *heapSize)
 {
-	uint32_t availableMemory = 64 * 1024L;
-	uint32_t paragraphs = availableMemory / PARAGRAPH_SIZE;
-	uint8_t *ptr = malloc(paragraphs * PARAGRAPH_SIZE);
-	while (!ptr)
-	{
-		paragraphs--;
-		ptr = malloc(paragraphs * PARAGRAPH_SIZE);
-	}
+	static uint8_t heap[HEAP_SIZE];
+	uint32_t paragraphs = HEAP_SIZE / PARAGRAPH_SIZE;
+	uint8_t *ptr = heap;
 
 	// align ptr
 	uint32_t m = (uint32_t) ptr;
