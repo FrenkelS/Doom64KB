@@ -109,7 +109,7 @@ void I_FinishUpdate(void)
 		newpal = NO_PALETTE_CHANGE;
 	}
 
-	uint16_t *src = _s_screen;
+	uint16_t *src = &_s_screen[0];
 	for (int y = 0; y < VIEWWINDOWHEIGHT; y++)
 	{
 		*REG_VRAMADDR = ADDR_FIXMAP + ((0 + 1) * 32) + y + 2;
