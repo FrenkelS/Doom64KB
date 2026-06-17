@@ -169,7 +169,6 @@ typedef enum {
 
 
 //GBA Keys
-#define KEYD_SPEED          0
 #define KEYD_A              1
 #define KEYD_B              2
 #define KEYD_L              3
@@ -182,8 +181,6 @@ typedef enum {
 #define KEYD_SELECT        10
 #define KEYD_MINUS         11
 #define KEYD_PLUS          12
-#define KEYD_BRACKET_LEFT  13
-#define KEYD_BRACKET_RIGHT 14
 #define KEYD_STRAFE        15
 
 #define NUMKEYS   16

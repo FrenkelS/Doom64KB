@@ -107,8 +107,6 @@ void I_InitKeyboard(void)
 #define SC_MINUS			0x0c
 #define SC_PLUS				0x0d
 #define SC_TAB				0x0f
-#define SC_BRACKET_LEFT		0x1a
-#define SC_BRACKET_RIGHT	0x1b
 #define SC_ENTER			0x1c
 #define SC_CTRL				0x1d
 #define SC_LSHIFT			0x2a
@@ -187,9 +185,6 @@ void I_StartTic(void)
 			case SC_SPACE:
 				ev.data1 = KEYD_A;
 				break;
-			case SC_RSHIFT:
-				ev.data1 = KEYD_SPEED;
-				break;
 			case SC_UPARROW:
 				ev.data1 = KEYD_UP;
 				break;
@@ -222,12 +217,6 @@ void I_StartTic(void)
 				break;
 			case SC_PLUS:
 				ev.data1 = KEYD_PLUS;
-				break;
-			case SC_BRACKET_LEFT:
-				ev.data1 = KEYD_BRACKET_LEFT;
-				break;
-			case SC_BRACKET_RIGHT:
-				ev.data1 = KEYD_BRACKET_RIGHT;
 				break;
 
 #if defined VIDEO_MODE_CGA

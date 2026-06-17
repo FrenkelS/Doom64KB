@@ -131,7 +131,6 @@ static const int16_t key_down        = KEYD_DOWN;
 static const int16_t key_strafeleft  = KEYD_L;
 static const int16_t key_straferight = KEYD_R;
        const int16_t key_fire        = KEYD_B; 
-static const int16_t key_speed       = KEYD_SPEED;
 static const int16_t key_strafe      = KEYD_STRAFE;
 static const int16_t key_use         = KEYD_A;
        const int16_t key_escape      = KEYD_START;
@@ -143,8 +142,6 @@ static const int16_t key_use         = KEYD_A;
        const int16_t key_map_follow  = 'f';
        const int16_t key_map_zoomin  = KEYD_PLUS;
        const int16_t key_map_zoomout = KEYD_MINUS;
-static const int16_t key_weapon_up   = KEYD_BRACKET_RIGHT;
-static const int16_t key_weapon_down = KEYD_BRACKET_LEFT;
 
 
 #define MAXPLMOVE   (forwardmove[1])
@@ -225,7 +222,7 @@ void G_BuildTiccmd(void)
     strafe = gamekeydown[key_strafe];
 
     //Use button negates the always run setting.
-    speed = (gamekeydown[key_speed] ^ _g_alwaysRun);
+    speed = (gamekeydown[key_use] ^ _g_alwaysRun);
 
     forward = side = 0;
 
@@ -277,11 +274,13 @@ void G_BuildTiccmd(void)
         netcmd.buttons |= BT_USE;
     }
 
-    if(gamekeydown[key_weapon_up])
+    if (gamekeydown[key_use] && gamekeydown[key_straferight]) {
         newweapon = P_WeaponCycleUp(&_g_player);
-    else if(gamekeydown[key_weapon_down])
+        side -= sidemove[speed]; //Hack cancel strafe.
+    } else if (gamekeydown[key_use] && gamekeydown[key_strafeleft]) {
         newweapon = P_WeaponCycleDown(&_g_player);
-    else if ((_g_player.attackdown && !P_CheckAmmo(&_g_player)))
+        side += sidemove[speed]; //Hack cancel strafe.
+    } else if ((_g_player.attackdown && !P_CheckAmmo(&_g_player)))
         newweapon = P_SwitchWeapon(&_g_player);
     else
         newweapon = wp_nochange;
