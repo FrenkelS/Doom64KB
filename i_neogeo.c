@@ -229,9 +229,12 @@ void I_Quit(void)
 }
 
 
-void ng_printf(const char *text) {
+static void ng_printf(const char *text)
+{
 	int x = 0;
 	int y = 0;
+	MMAP_PALBANK1[0] = 0x8000;
+	MMAP_PALBANK1[1] = 0x7FFF;
 	*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
 	*REG_VRAMMOD = 32;
 	while (*text)
@@ -245,7 +248,7 @@ void ng_printf(const char *text) {
 		}
 		else
 		{
-			*REG_VRAMRW = 0xf000 | (*text++);
+			*REG_VRAMRW = *text++;
 			x++;
 			if (x == 38)
 			{
@@ -277,32 +280,6 @@ void I_Error(const char *error, ...)
 
 int main(void)
 {
-	const uint16_t colors[16] = {
-		0x8000,
-		0x100A,
-		0x20A0,
-		0x30AA,
-		0xCA00,
-		0xDA0A,
-		0xCA50,
-		0xFAAA,
-		0x0555,
-		0x955F,
-		0xA5F5,
-		0xB5FF,
-		0x4F55,
-		0x5F5F,
-		0x6FF5,
-		0x7FFF
-	};
-	for (int palette = 0; palette < 16; palette++)
-	{
-		MMAP_PALBANK1[palette * 16 + 0] = 0x8000;
-		MMAP_PALBANK1[palette * 16 + 1] = colors[palette];
-	}
-
-	ng_printf("Doom64KB: Neo Geo Edition");
-
 #if defined TIMEDEMO
 	int argc = 3;
 	const char * const argv[] = {"Doom64KB", "-timedemo", "demo3"};
