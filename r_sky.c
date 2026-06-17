@@ -28,11 +28,6 @@
 #include "w_wad.h"
 
 
-#if !defined FLAT_SKY_COLOR
-#define FLAT_SKY_COLOR 99
-#endif
-
-
 #define ANGLETOSKYSHIFT         22
 
 #define COLEXTRABITS (8 - 1)
@@ -85,23 +80,6 @@ void R_DrawSky(draw_column_vars_t *dcvars)
 }
 
 #else
-
-static void R_DrawSkyFlat(visplane_t __far* pl)
-{
-	draw_column_vars_t dcvars;
-
-	for (int16_t x = pl->minx; x <= pl->maxx; x++)
-	{
-		if (pl->top[x] != 0xff &&  pl->top[x] <= pl->bottom[x])
-		{
-			dcvars.x = x;
-			dcvars.yl = pl->top[x];
-			dcvars.yh = pl->bottom[x];
-			R_DrawColumnFlat(FLAT_SKY_COLOR, &dcvars);
-		}
-	}
-}
-
 
 void R_DrawSky(visplane_t __far* pl)
 {

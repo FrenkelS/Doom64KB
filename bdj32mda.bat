@@ -7,7 +7,7 @@ set CFLAGS=-march=i386
 set CFLAGS=%CFLAGS% -Ofast -flto -fwhole-program -fomit-frame-pointer -funroll-loops -fgcse-sm -fgcse-las -fipa-pta -mpreferred-stack-boundary=2 -Wno-attributes -Wpedantic
 @rem set CFLAGS=%CFLAGS% -Wall -Wextra
 @rem set CFLAGS=%CFLAGS% -ffunction-sections -Wl,--gc-sections -Wl,--print-gc-sections
-set CFLAGS=%CFLAGS% -DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=205 -DFLAT_SKY_COLOR=177 -DWAD_FILE=\"DOOM2T.WAD\" -DVIEWWINDOWWIDTH=80 -DVIEWWINDOWHEIGHT=25 -DMAPWIDTH=80 -DNR_OF_COLORS=1 -DVIDEO_MODE_MDA -DC_ONLY
+set CFLAGS=%CFLAGS% -DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=205 -DWAD_FILE=\"DOOM2T.WAD\" -DVIEWWINDOWWIDTH=80 -DVIEWWINDOWHEIGHT=25 -DMAPWIDTH=80 -DNR_OF_COLORS=1 -DVIDEO_MODE_MDA -DC_ONLY
 
 @set GLOBOBJS=
 @set GLOBOBJS=%GLOBOBJS% am_map.c
