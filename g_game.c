@@ -132,7 +132,6 @@ static const int16_t key_strafeleft  = KEYD_L;
 static const int16_t key_straferight = KEYD_R;
        const int16_t key_fire        = KEYD_B; 
 static const int16_t key_use         = KEYD_A;
-       const int16_t key_escape      = KEYD_START;
        const int16_t key_map_right   = KEYD_RIGHT;
        const int16_t key_map_left    = KEYD_LEFT;
        const int16_t key_map_up      = KEYD_UP;

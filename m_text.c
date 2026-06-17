@@ -789,13 +789,13 @@ boolean M_Responder (event_t* ev)
     if (messageToPrint)
     {
         if (messageNeedsInput == true &&
-                !(ch == 'n' || ch == 'y' || ch == key_escape))
+                !(ch == key_fire || ch == key_menu_enter || ch == key_menu_escape))
             return false;
 
         _g_menuactive  = messageLastMenuActive;
         messageToPrint = false;
         if (messageRoutine)
-            messageRoutine(ch == 'y');
+            messageRoutine(ch == key_menu_enter);
 
         I_InitScreenPages();
         _g_menuactive = false;
@@ -807,7 +807,7 @@ boolean M_Responder (event_t* ev)
 
     if (!_g_menuactive)
     {
-        if (ch == key_escape)
+        if (ch == key_menu_escape)
         {
             M_StartControlPanel ();
             S_StartSound(NULL,sfx_swtchn);
