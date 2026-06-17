@@ -181,7 +181,6 @@ typedef enum {
 #define KEYD_SELECT        10
 #define KEYD_MINUS         11
 #define KEYD_PLUS          12
-#define KEYD_STRAFE        15
 
 #define NUMKEYS   16
 
