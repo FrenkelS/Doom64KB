@@ -277,7 +277,7 @@ void V_DrawRawFullScreen(int16_t num)
 #else
 	const uint8_t *lump = W_GetLumpByNum(num);
 
-	static const int16_t DXI = SCREENWIDTH / VIEWWINDOWWIDTH;
+	static const fixed_t DXI = ((fixed_t)SCREENWIDTH << FRACBITS) / VIEWWINDOWWIDTH;
 	static const fixed_t DYI = ((fixed_t)SCREENHEIGHT << FRACBITS) / VIEWWINDOWHEIGHT;
 
 	uint16_t *dst = &_s_screen[0];
@@ -285,10 +285,10 @@ void V_DrawRawFullScreen(int16_t num)
 	fixed_t y = 0;
 	for (int h = 0; h < VIEWWINDOWHEIGHT; h++)
 	{
-		int x = 0;
+		fixed_t x = 0;
 		for (int w = 0; w < VIEWWINDOWWIDTH; w++)
 		{
-			*dst++ = (lump[(y >> FRACBITS) * SCREENWIDTH + x] << 8) | DITHER_CHARACTER;
+			*dst++ = (lump[(y >> FRACBITS) * SCREENWIDTH + (x >> FRACBITS)] << 8) | DITHER_CHARACTER;
 			x += DXI;
 		}
 		y += DYI;
