@@ -76,7 +76,7 @@ static unsigned char doom_iwad[2 * 1014 * 1024];
 #elif defined __DJGPP__
 #include "doom64kl.h"
 #else
-#include "doom64tb.h"
+#include "doom64ng.h"
 #endif
 
 static filelump_t __far* fileinfo;
