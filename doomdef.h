@@ -169,20 +169,20 @@ typedef enum {
 
 
 //GBA Keys
-#define KEYD_A              1
-#define KEYD_B              2
-#define KEYD_L              3
-#define KEYD_R              4
-#define KEYD_UP             5
-#define KEYD_DOWN           6
-#define KEYD_LEFT           7
-#define KEYD_RIGHT          8
-#define KEYD_START          9
-#define KEYD_SELECT        10
-#define KEYD_MINUS         11
-#define KEYD_PLUS          12
+#define KEYD_A              0
+#define KEYD_B              1
+#define KEYD_L              2
+#define KEYD_R              3
+#define KEYD_UP             4
+#define KEYD_DOWN           5
+#define KEYD_LEFT           6
+#define KEYD_RIGHT          7
+#define KEYD_START          8
+#define KEYD_SELECT         9
+#define KEYD_MINUS         10
+#define KEYD_PLUS          11
 
-#define NUMKEYS   16
+#define NUMKEYS            12
 
 //
 // Player friction is variable, based on controlling
