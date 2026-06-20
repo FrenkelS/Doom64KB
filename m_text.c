@@ -53,6 +53,7 @@
 #include "globdata.h"
 
 
+#define DISABLE_QUIT_DOOM
 #define DISABLE_SAVE_GAME
 #define DISABLE_SOUND_OPTIONS
 
@@ -183,11 +184,13 @@ enum
 {
   newgame = 0,
   options,
-  loadgame,
 #if !defined DISABLE_SAVE_GAME
+  loadgame,
   savegame,
 #endif
+#if !defined DISABLE_QUIT_DOOM
   quitdoom,
+#endif
   main_end
 };
 
@@ -202,11 +205,13 @@ static const menuitem_t MainMenu[]=
 {
   {1,"New Game",  M_NewGame},
   {1,"Options",   M_Options},
-  {1,"Load game", M_LoadGame},
 #if !defined DISABLE_SAVE_GAME
+  {1,"Load game", M_LoadGame},
   {1,"Save game", M_SaveGame},
 #endif
+#if !defined DISABLE_QUIT_DOOM
   {1,"Quit Game", M_QuitDOOM}
+#endif
 };
 
 static const menu_t MainDef =
