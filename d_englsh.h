@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -39,7 +39,7 @@
 
 /* m_menu.c */
 #define PRESSKEY    "Press a key."
-#define PRESSYN     "Press Y or N."
+#define PRESSYN     "Press A or B."
 #define SAVEDEAD    "You can't save if\nyou aren't playing!\n\n"PRESSKEY
 
 #define NIGHTMARE \
