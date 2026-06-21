@@ -526,7 +526,7 @@ static int16_t      rw_lightlevel;
 
 static int16_t      *maskedtexturecol; // dropoff overflow
 
-int16_t   __far* textureheight; //needed for texture pegging (and TFE fix - killough)
+const int16_t   __far* textureheight; //needed for texture pegging (and TFE fix - killough)
 
 
 static fixed_t  topfrac;

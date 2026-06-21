@@ -168,8 +168,6 @@ static void R_LoadTexture(int16_t texture_num)
             break;
     }
 
-    textureheight[texture_num] = texture->height;
-
     textures[texture_num] = texture;
 }
 
@@ -257,8 +255,7 @@ static void R_InitTextures()
 	textures = Z_MallocStatic(numtextures*sizeof*textures);
 	_fmemset(textures, 0, numtextures*sizeof*textures);
 
-	textureheight = Z_MallocStatic(numtextures*sizeof*textureheight);
-	_fmemset(textureheight, 0, numtextures*sizeof*textureheight);
+	textureheight = W_GetLumpByName("TEXHEIGH");
 }
 
 
