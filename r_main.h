@@ -70,8 +70,6 @@ extern const uint8_t* fixedcolormap;
 
 extern int16_t   __far* textureheight; //needed for texture pegging (and TFE fix - killough)
 
-extern int16_t       __far* texturetranslation;
-
 
 //
 // Utility functions.
@@ -104,6 +102,8 @@ visplane_t __far* R_CheckPlane(visplane_t __far* pl, int16_t start, int16_t stop
 byte R_GetPlaneColor(int16_t picnum, int16_t lightlevel);
 void R_ResetPlanes(void);
 void R_ClearPlanes(void);
+
+int16_t R_GetTextureTranslation(int16_t texture);
 
 #if defined FLAT_SPAN
 void R_LoadSkyPatch(void);

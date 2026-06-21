@@ -523,8 +523,6 @@ static int16_t      *maskedtexturecol; // dropoff overflow
 
 int16_t   __far* textureheight; //needed for texture pegging (and TFE fix - killough)
 
-int16_t       __far* texturetranslation;
-
 
 static fixed_t  topfrac;
 static fixed_t  topstep;
@@ -1244,7 +1242,7 @@ static void R_RenderMaskedSegRange(const drawseg_t *ds, int16_t x1, int16_t x2)
 	frontsector = &_g_sectors[curline->frontsectornum];
 	backsector  = &_g_sectors[curline->backsectornum];
 
-	int16_t texnum = texturetranslation[_g_sides[curline->sidenum].midtexture];
+	int16_t texnum = R_GetTextureTranslation(_g_sides[curline->sidenum].midtexture);
 
 	// killough 4/13/98: get correct lightlevel for 2s normal textures
 	rw_lightlevel = frontsector->lightlevel;
@@ -2286,7 +2284,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
     if (!backsector)
     {
         // single sided line
-        midtexture = texturetranslation[sidedef->midtexture];
+        midtexture = R_GetTextureTranslation(sidedef->midtexture);
         texmidtexture = R_GetTexture(midtexture);
 
         // a single sided line is terminal, so it must mark ends
@@ -2380,7 +2378,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
 
         if (worldhigh < worldtop)   // top texture
         {
-            toptexture = texturetranslation[sidedef->toptexture];
+            toptexture = R_GetTextureTranslation(sidedef->toptexture);
             textoptexture = R_GetTexture(toptexture);
             rw_toptexturemid = maplinedef->flags & ML_DONTPEGTOP ? worldtop :
                                                                         backsector->ceilingheight + ((int32_t)textureheight[sidedef->toptexture] << FRACBITS) - viewz;
@@ -2389,7 +2387,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
 
         if (worldlow > worldbottom) // bottom texture
         {
-            bottomtexture = texturetranslation[sidedef->bottomtexture];
+            bottomtexture = R_GetTextureTranslation(sidedef->bottomtexture);
             texbottomtexture = R_GetTexture(bottomtexture);
             rw_bottomtexturemid = maplinedef->flags & ML_DONTPEGBOTTOM ? worldtop : worldlow;
 

@@ -269,6 +269,18 @@ boolean P_CheckTag(const line_t __far* line)
 //
 /////////////////////////////////////////////////////////////////////////
 
+
+int16_t R_GetTextureTranslation(int16_t texture)
+{
+	if (animated_texture_basepic <= texture && texture < animated_texture_basepic + 3)
+	{
+		return animated_texture_basepic + ((_g_leveltime >> 3) % 3);
+	}
+	else
+		return texture;
+}
+
+
 //
 // P_UpdateSpecials()
 //
@@ -281,19 +293,10 @@ boolean P_CheckTag(const line_t __far* line)
 //  levelFragLimit, levelFragLimitCount
 //
 
-static void P_UpdateAnimatedTexture(void)
-{
-	int16_t pic = animated_texture_basepic + ((_g_leveltime >> 3) % 3);
-
-	for (int16_t i = animated_texture_basepic; i < animated_texture_basepic + 3; i++)
-		texturetranslation[i] = pic;
-}
-
 void P_UpdateSpecials (void)
 {
     // Animate flats and textures globally
     P_UpdateAnimatedFlat();
-    P_UpdateAnimatedTexture();
 
     // Check buttons (retriggerable switches) and change texture on timeout
     for (int8_t i = 0; i < MAXBUTTONS; i++)
