@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023-2025 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -311,6 +311,7 @@ static const uint16_t finesineTable_part_1[2048] =
 };
 
 
+#if defined DEMO_COMPATIBLE
 #define finesine_part_1(a) finesineTable_part_1[a]
 
 static uint16_t finesine_part_2(int16_t x)
@@ -407,6 +408,7 @@ fixed_t finecosine(int16_t x)
 		return finecosine_part_4(x);
 	}
 }
+#endif
 
 
 fixed_t finesineapprox(int16_t x)

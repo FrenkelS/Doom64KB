@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -68,8 +68,13 @@ typedef uint32_t angle_t;
 typedef uint16_t angle16_t;
 
 
+#if defined DEMO_COMPATIBLE
 fixed_t finesine(int16_t x);
 fixed_t finecosine(int16_t x);
+#else
+#define finesine finesineapprox
+#define finecosine finecosineapprox
+#endif
 
 fixed_t finesineapprox(int16_t x);
 fixed_t finecosineapprox(int16_t x);
