@@ -2876,7 +2876,7 @@ static boolean R_RenderBspSubsector(int16_t bspnum)
 //  traversing subtree recursively.
 // Just call with BSP root.
 
-#if 1
+#if defined PROFILING
 //Non recursive version.
 //constant stack space used and easier to
 //performance profile.
@@ -2885,11 +2885,11 @@ static boolean R_RenderBspSubsector(int16_t bspnum)
 static void R_RenderBSPNode(int16_t bspnum)
 {
     static int16_t stack_bsp[MAX_BSP_DEPTH];
-    static int16_t stack_side[MAX_BSP_DEPTH];
+    static int8_t stack_side[MAX_BSP_DEPTH];
     int16_t sp = 0;
 
     const mapnode_t __far* bsp;
-    int16_t side;
+    int8_t side;
 
     while (true)
     {
