@@ -99,79 +99,9 @@ typedef char assertMaptextureSize[sizeof(maptexture_t) == 20 ? 1 : -1];
 // A maptexture_t describes a rectangular texture, which is composed
 // of one or more mappatch_t structures that arrange graphic patches.
 
-static const texture_t __far*__far* textures;
-
-static void R_LoadTexture(int16_t texture_num)
-{
-    const byte    __far* pnames = W_GetLumpByName("PNAMES");
-    const int32_t __far* maptex = W_GetLumpByName("TEXTURE1");
-    const int32_t __far* directory = maptex+1;
-
-    const maptexture_t __far* mtexture = (const maptexture_t __far*) ((const byte __far*)maptex + directory[texture_num]);
-
-    texture_t __far* texture = Z_MallocLevel(sizeof(const texture_t) + sizeof(const texpatch_t)*(mtexture->patchcount-1), (void __far*__far*)&textures[texture_num]);
-
-    texture->width      = mtexture->width;
-    texture->height     = mtexture->height;
-    texture->patchcount = mtexture->patchcount;
-
-    int16_t w = 1;
-    while (w * 2 <= texture->width)
-        w <<= 1;
-    texture->widthmask  = w - 1;
-
-
-    texpatch_t __far* patch = texture->patches;
-    const mappatch_t __far* mpatch = mtexture->patches;
-
-    texture->overlapped = false;
-
-    //Skip to list of names.
-    pnames += 4;
-
-    for (uint8_t j = 0; j < texture->patchcount; j++, mpatch++, patch++)
-    {
-        patch->originx = mpatch->originx;
-        patch->originy = mpatch->originy;
-
-        char pname[8];
-        _fmemcpy(pname, &pnames[mpatch->patch * 8], sizeof(pname));
-
-        patch->patch_num   = W_GetNumForName(pname);
-        patch->patch_width = V_NumPatchWidth(patch->patch_num);
-    }
-
-    for (uint8_t j = 0; j < texture->patchcount; j++)
-    {
-        const texpatch_t __far* patch = &texture->patches[j];
-
-        //Check for patch overlaps.
-        int16_t l1 = patch->originx;
-        int16_t r1 = l1 + patch->patch_width;
-
-        for (uint8_t k = j + 1; k < texture->patchcount; k++)
-        {
-            const texpatch_t __far* p2 = &texture->patches[k];
-
-            //Check for patch overlaps.
-            int16_t l2 = p2->originx;
-            int16_t r2 = l2 + p2->patch_width;
-
-            if (r1 > l2 && l1 < r2)
-            {
-                texture->overlapped = true;
-                break;
-            }
-        }
-
-        if (texture->overlapped)
-            break;
-    }
-
-    textures[texture_num] = texture;
-}
-
+static const uint16_t *texturep;
 static int16_t numtextures;
+
 
 const texture_t __far* R_GetTexture(int16_t texture)
 {
@@ -184,10 +114,7 @@ const texture_t __far* R_GetTexture(int16_t texture)
     texture = 46;
 #endif
 
-    if (!textures[texture])
-        R_LoadTexture(texture);
-
-    return textures[texture];
+    return (texture_t*)((const byte*)texturep + texturep[texture]);
 }
 
 static int16_t R_GetTextureNumForName(const char* tex_name)
@@ -252,8 +179,7 @@ static void R_InitTextures()
 	const int32_t __far* mtex1 = W_GetLumpByName("TEXTURE1");
 	numtextures = *mtex1;
 
-	textures = Z_MallocStatic(numtextures*sizeof*textures);
-	_fmemset(textures, 0, numtextures*sizeof*textures);
+	texturep = W_GetLumpByName("TEXTUREP");
 
 	textureheight = W_GetLumpByName("TEXHEIGH");
 }

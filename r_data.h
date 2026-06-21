@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -51,6 +51,9 @@ typedef struct
   int16_t patch_width;
 } texpatch_t;
 
+typedef char assertTexpatchSize[sizeof(texpatch_t) == 8 ? 1 : -1];
+
+
 //
 // Texture definition.
 // A DOOM wall texture is a list of patches
@@ -71,6 +74,7 @@ typedef struct
   texpatch_t patches[1]; // back-to-front into the cached texture.
 } texture_t;
 
+typedef char assertTextureSize[sizeof(texture_t) == 16 ? 1 : -1];
 
 
 // I/O, setting up the stuff.
