@@ -1851,7 +1851,7 @@ static void R_DrawColumnInCache(const column_t __far* patch, byte* cache, int16_
  * straight from const patch_t*.
 */
 
-#define MAX_CACHE_ENTRIES 128
+#define MAX_CACHE_ENTRIES 4
 #define MAX_CACHE_TRIES 4
 
 static uint16_t CACHE_ENTRY(int16_t column, int16_t texture)

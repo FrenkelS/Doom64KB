@@ -10,15 +10,14 @@ Doom64KB is a port for computers with only 64 KB of RAM and lots of room for ROM
 It's based on [Doom8088](https://github.com/FrenkelS/Doom8088), a port of Doom for 16-bit DOS computers.
 
 **What's special?:**
- - Supports only Doom 1 E1M1
+ - Supports only Doom 1 E1M1 and E1M8
  - No audio
- - No texture mapped walls, floors and ceilings
+ - No texture mapped floors and ceilings
  - No light diminishing
  - No saving and loading
  - No multiplayer
  - No PWADs
  - No screen resizing
- - No mouse and joystick support
 
 ## Building:
 |Platform|Platform specific code    |Compiler                                        |Build script|
