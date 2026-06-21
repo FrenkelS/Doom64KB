@@ -6,12 +6,7 @@ unset CFLAGS
 
 export RENDER_OPTIONS="-DFLAT_SPAN -DFLAT_WALL -DFLAT_NUKAGE1_COLOR=118 -DWAD_FILE=\"DOOM64TB.WAD\" -DVIEWWINDOWWIDTH=38 -DVIEWWINDOWHEIGHT=28 -DMAPWIDTH=38"
 
-export CPU=$1
-
-if [ -z "$CPU" ]
-then
-  export CPU=68000
-fi
+export CPU=68000
 
 m68k-neogeo-elf-gcc -c i_neogev.c $RENDER_OPTIONS -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
 m68k-neogeo-elf-gcc -c p_enemy2.c $RENDER_OPTIONS -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
@@ -29,6 +24,11 @@ m68k-neogeo-elf-gcc -c z_zone.c   $RENDER_OPTIONS -march=$CPU -Ofast -fomit-fram
 export CFLAGS="-march=$CPU -Os -fomit-frame-pointer -flto -fwhole-program -funroll-loops -fira-loop-pressure -funsafe-loop-optimizations -freorder-blocks-algorithm=stc -fno-tree-pre"
 #export CFLAGS="$CFLAGS -Ofast -flto -fwhole-program -fomit-frame-pointer -funroll-loops -fgcse-sm -fgcse-las -fipa-pta -Wno-attributes -Wpedantic"
 #export CFLAGS="$CFLAGS -Wall -Wextra"
+
+if [ "$1" == "-timedemo" ]
+then
+  export CFLAGS="$CFLAGS -DTIMEDEMO"
+fi
 
 export GLOBOBJS="  am_map.c"
 export GLOBOBJS+=" d_items.c"
