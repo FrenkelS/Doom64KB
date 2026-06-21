@@ -78,7 +78,12 @@ typedef struct drawseg_s
   int16_t *maskedtexturecol; // dropoff overflow
 } drawseg_t;
 
+
+#if VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT <= 38 * 28
+#define MAXDRAWSEGS    64
+#else
 #define MAXDRAWSEGS   128
+#endif
 
 static drawseg_t _s_drawsegs[MAXDRAWSEGS];
 
