@@ -266,7 +266,7 @@ static void P_AddActivePlat(plat_t __far* plat)
     if ((list->next = old_head))
         list->next->prev = &list->next;
 
-    list->prev = old_head;
+    list->prev = (platlist_t __far* __far*)old_head; // FIXME this is suspicious
 }
 
 //
