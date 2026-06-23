@@ -24,6 +24,7 @@
  *-----------------------------------------------------------------------------*/
 
 #include <stdarg.h>
+#include <stdio.h>
 #include <ngdevkit/registers.h>
 
 #include "doomdef.h"
@@ -173,10 +174,18 @@ static void I_ShutdownTimer(void)
 // Memory
 //
 
-// The Neo Geo has 64 KB of RAM.
-// 51440 is the maximum value with which this program can still be compiled.
+// The Neo Geo has 64 KB of RAM.  The sprite framebuffer backend needs a
+// smaller static/heap split than the original FIX framebuffer build.
+#if !defined NEOGEO_HEAP_SIZE
+#if defined NEOGEO_SPRITE_MICROFB
+#define NEOGEO_HEAP_SIZE 44000
+#else
 // Leave 2 KB for the stack.
-#define HEAP_SIZE (51440-2*1024)
+#define NEOGEO_HEAP_SIZE (51440-2*1024)
+#endif
+#endif
+
+#define HEAP_SIZE NEOGEO_HEAP_SIZE
 
 
 uint8_t __far* I_ZoneBase(uint32_t *heapSize)
@@ -235,26 +244,48 @@ static void ng_printf(const char *text)
 	int y = 0;
 	MMAP_PALBANK1[0] = 0x8000;
 	MMAP_PALBANK1[1] = 0x7FFF;
+
+	*REG_VRAMMOD = 0x200;
+	for (int i = 0; i < 381; i++)
+	{
+		*REG_VRAMADDR = ADDR_SCB2 + i;
+		*REG_VRAMRW = 0x0000;
+		*REG_VRAMRW = 0x0000;
+		*REG_VRAMRW = 0x0000;
+	}
+
+	*REG_VRAMMOD = 32;
+	for (int cy = 0; cy < 28; cy++)
+	{
+		*REG_VRAMADDR = ADDR_FIXMAP + ((0 + 1) * 32) + cy + 2;
+		for (int cx = 0; cx < 38; cx++)
+			*REG_VRAMRW = 0x3000 | ' ';
+	}
+
 	*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
 	*REG_VRAMMOD = 32;
 	while (*text)
 	{
+		if (y >= 28)
+			break;
 		if (*text == '\n')
 		{
 			text++;
 			x = 0;
 			y++;
-			*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
+			if (y < 28)
+				*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
 		}
 		else
 		{
-			*REG_VRAMRW = *text++;
+			*REG_VRAMRW = 0x3000 | *text++;
 			x++;
 			if (x == 38)
 			{
 				x = 0;
 				y++;
-				*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
+				if (y < 28)
+					*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
 			}
 		}
 	}
@@ -268,8 +299,9 @@ void I_Error(const char *error, ...)
 	I_Shutdown();
 
 	va_start(argptr, error);
-	char buffer[80];
-	vsprintf(buffer, error, argptr);
+	char buffer[160];
+	vsnprintf(buffer, sizeof(buffer), error, argptr);
+	buffer[sizeof(buffer) - 1] = '\0';
 	ng_printf(buffer);
 	va_end(argptr);
 

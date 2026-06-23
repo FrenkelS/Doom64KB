@@ -3,13 +3,16 @@ mkdir neogeo/rom
 
 set -e
 
+mkdir -p neogeo/assets/generated
+
 unset CFLAGS
 
 
-export RENDER_OPTIONS="-DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=118 -DWAD_FILE=\"DOOM64TB.WAD\" -DVIEWWINDOWWIDTH=38 -DVIEWWINDOWHEIGHT=28 -DMAPWIDTH=38 -DLOW_MEMORY"
+CROM_FILE_BYTES="${CROM_FILE_BYTES:-4194304}"
+
+export RENDER_OPTIONS="-DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=118 -DWAD_FILE=\"DOOM64TB.WAD\" -DVIEWWINDOWWIDTH=80 -DVIEWWINDOWHEIGHT=56 -DMAPWIDTH=80 -DLOW_MEMORY -DNEOGEO_SPRITE_MICROFB -DNEOGEO_HEAP_SIZE=44000"
 
 export CPU=68000
-
 m68k-neogeo-elf-gcc -c i_neogev.c $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
 m68k-neogeo-elf-gcc -c p_enemy2.c $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
 m68k-neogeo-elf-gcc -c p_map.c    $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
@@ -17,7 +20,7 @@ m68k-neogeo-elf-gcc -c p_maputl.c $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -
 m68k-neogeo-elf-gcc -c p_mobj.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
 m68k-neogeo-elf-gcc -c p_sight.c  $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
 m68k-neogeo-elf-gcc -c r_data.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
-m68k-neogeo-elf-gcc -c r_draw.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
+m68k-neogeo-elf-gcc -c r_draw.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Oz -fomit-frame-pointer -flto -fwhole-program -funroll-loops -fira-loop-pressure -funsafe-loop-optimizations -freorder-blocks-algorithm=stc -fno-tree-pre
 m68k-neogeo-elf-gcc -c r_plane.c  $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
 m68k-neogeo-elf-gcc -c tables.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
 m68k-neogeo-elf-gcc -c w_wad.c    $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
@@ -113,8 +116,14 @@ rm z_zone.o
 
 m68k-neogeo-elf-objcopy -O binary -S -R .text2 --gap-fill 0xff --pad-to 1048576 neogeo/DOOM64KB.elf neogeo/rom/doom64kb-p1.p1 && dd if=neogeo/rom/doom64kb-p1.p1 of=neogeo/rom/doom64kb-p1.p1 conv=notrunc,swab status=none
 z80-neogeo-ihx-sdobjcopy -I ihex -O binary neogeo/assets/base-sound-driver.ihx neogeo/rom/doom64kb-m1.m1 --pad-to 131072
-echo neogeo/assets/base-crom-logo.c1 | xargs -r cat > neogeo/rom/doom64kb-c1.c1 && truncate -s 2097152 neogeo/rom/doom64kb-c1.c1
-echo neogeo/assets/base-crom-logo.c2 | xargs -r cat > neogeo/rom/doom64kb-c2.c2 && truncate -s 2097152 neogeo/rom/doom64kb-c2.c2
+python3 tools/gen_neogeo_color_tiles.py \
+  --base-c1 neogeo/assets/base-crom-logo.c1 \
+  --base-c2 neogeo/assets/base-crom-logo.c2 \
+  --out-c1 neogeo/assets/generated/doom_color_microfb.c1 \
+  --out-c2 neogeo/assets/generated/doom_color_microfb.c2 \
+  --crom-size "$CROM_FILE_BYTES"
+cp neogeo/assets/generated/doom_color_microfb.c1 neogeo/rom/doom64kb-c1.c1 && truncate -s "$CROM_FILE_BYTES" neogeo/rom/doom64kb-c1.c1
+cp neogeo/assets/generated/doom_color_microfb.c2 neogeo/rom/doom64kb-c2.c2 && truncate -s "$CROM_FILE_BYTES" neogeo/rom/doom64kb-c2.c2
 echo neogeo/assets/ibmfont.fix | xargs -r cat > neogeo/rom/doom64kb-s1.s1 && truncate -s 131072 neogeo/rom/doom64kb-s1.s1
 echo | xargs -r cat > neogeo/rom/doom64kb-v1.v1 && truncate -s 524288 neogeo/rom/doom64kb-v1.v1
 romtool.py -b cartridge -f zip -p neogeo/rom/doom64kb-p1.p1 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -x "zip.comment=" -o neogeo/rom/doom64kb.zip

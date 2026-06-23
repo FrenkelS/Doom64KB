@@ -190,9 +190,11 @@ static void D_Display (void)
             AM_Drawer();
 
         ST_doPaletteStuff();  // Do red-/gold-shifts from damage/items
-        ST_Drawer();
-
-        HU_Drawer();
+        if (!_g_menuactive)
+        {
+            ST_Drawer();
+            HU_Drawer();
+        }
     }
 
     oldgamestate = wipegamestate = _g_gamestate;
