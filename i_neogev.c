@@ -22,10 +22,12 @@
  *      Neo Geo video code.
  *
  *      This backend no longer uses the FIX layer as the game framebuffer.
- *      The Doom renderer writes an 80x56 8-bit logical framebuffer.  Each
- *      logical pixel is displayed by a 4x4 hardware-sprite microcell:
+ *      The Doom renderer writes an 80x56 8-bit logical framebuffer.  The
+ *      sprite output can downsample that buffer at runtime and display it as
+ *      4x4 through 8x8 hardware-sprite microcells:
  *
- *          160 sprite strips, 80 active per scanline = 320x224 visible pixels
+ *          4x4: 160 sprite strips, 80 active per scanline = 320x224 pixels
+ *          8x8:  80 sprite strips, 40 active per scanline = 320x224 pixels
  *
  *      The full-color path uses one shrunk 16x16 C-ROM tile per logical
  *      pixel.  The hardware shrinker reduces each tile to a 4x4 cell.
@@ -71,12 +73,11 @@ extern const int16_t CENTERY;
 #define MICROFB_SPRITE_PALETTE_BASE 16u
 #define MICROFB_SPRITE_PALETTES ((256u + MICROFB_VISIBLE_COLOR_SLOTS - 1u) / MICROFB_VISIBLE_COLOR_SLOTS)
 
-#define MICROFB_PHYSICAL_CELL_W 4u
-#define MICROFB_PHYSICAL_CELL_H 4u
+#define MICROFB_DISPLAY_W 320u
+#define MICROFB_DISPLAY_H 224u
 #define MICROFB_COLUMN_CHUNKS 2u
 #define MICROFB_FRAMEBUFFER_SETS 2u
 #define MICROFB_SPRITE_BASE 1u
-#define MICROFB_SPRITE_SHRINK_4PX_CELL 0x033fu
 #define MICROFB_X_WORD(x) (((uint16_t)(x)) << 7)
 #define MICROFB_PALETTE_ATTR(pal) ((uint16_t)(pal) << 8)
 
@@ -92,13 +93,11 @@ extern const int16_t CENTERY;
 #error Neo Geo sprite microframebuffer cannot exceed 96 logical columns because of the per-scanline sprite limit
 #endif
 
-#define MICROFB_CHUNK_CELLS (VIEWWINDOWHEIGHT / MICROFB_COLUMN_CHUNKS)
-#define MICROFB_CHUNK_PIXELS (MICROFB_CHUNK_CELLS * MICROFB_PHYSICAL_CELL_H)
-
-#if (MICROFB_CHUNK_PIXELS % 16) != 0
-#error Neo Geo sprite microframebuffer chunk height must be a whole number of display tiles
+#if (VIEWWINDOWWIDTH * 4) != MICROFB_DISPLAY_W || (VIEWWINDOWHEIGHT * 4) != MICROFB_DISPLAY_H
+#error Neo Geo sprite microframebuffer runtime modes assume an 80x56 source framebuffer
 #endif
 
+#define MICROFB_CHUNK_CELLS (VIEWWINDOWHEIGHT / MICROFB_COLUMN_CHUNKS)
 #define MICROFB_SPRITES_PER_SET (VIEWWINDOWWIDTH * MICROFB_COLUMN_CHUNKS)
 #define MICROFB_SPRITE_COUNT (MICROFB_SPRITES_PER_SET * MICROFB_FRAMEBUFFER_SETS)
 
@@ -114,11 +113,109 @@ extern const int16_t CENTERY;
 #error Neo Geo sprite microframebuffer exceeds sprite palette budget
 #endif
 
+static const uint8_t microfb_src_x_4px[80] =
+{
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+	16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+	32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+	48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+	64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79
+};
+
+static const uint8_t microfb_src_y_4px[56] =
+{
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+	16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+	32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+	48, 49, 50, 51, 52, 53, 54, 55
+};
+
+static const uint8_t microfb_src_x_5px[64] =
+{
+	0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12, 13, 15, 16, 17, 18,
+	20, 21, 22, 23, 25, 26, 27, 28, 30, 31, 32, 33, 35, 36, 37, 38,
+	40, 41, 42, 43, 45, 46, 47, 48, 50, 51, 52, 53, 55, 56, 57, 58,
+	60, 61, 62, 63, 65, 66, 67, 68, 70, 71, 72, 73, 75, 76, 77, 78
+};
+
+static const uint8_t microfb_src_y_5px[44] =
+{
+	0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12, 14, 15, 16, 17, 19,
+	20, 21, 22, 24, 25, 26, 28, 29, 30, 31, 33, 34, 35, 36, 38, 39,
+	40, 42, 43, 44, 45, 47, 48, 49, 50, 52, 53, 54
+};
+
+static const uint8_t microfb_src_x_6px[53] =
+{
+	0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18, 19, 21, 22,
+	24, 25, 27, 28, 30, 31, 33, 34, 36, 37, 39, 40, 42, 43, 45, 46,
+	48, 49, 51, 52, 54, 55, 57, 58, 60, 61, 63, 64, 66, 67, 69, 70,
+	72, 73, 75, 76, 78
+};
+
+static const uint8_t microfb_src_y_6px[37] =
+{
+	0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18, 19, 21, 22,
+	24, 25, 27, 28, 30, 31, 33, 34, 36, 37, 39, 40, 42, 43, 45, 46,
+	48, 49, 51, 52, 54
+};
+
+static const uint8_t microfb_src_x_7px[45] =
+{
+	0, 1, 3, 5, 7, 8, 10, 12, 14, 16, 17, 19, 21, 23, 24, 26,
+	28, 30, 32, 33, 35, 37, 39, 40, 42, 44, 46, 48, 49, 51, 53, 55,
+	56, 58, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 78
+};
+
+static const uint8_t microfb_src_y_7px[32] =
+{
+	0, 1, 3, 5, 7, 8, 10, 12, 14, 15, 17, 19, 21, 22, 24, 26,
+	28, 29, 31, 33, 35, 36, 38, 40, 42, 43, 45, 47, 49, 50, 52, 54
+};
+
+static const uint8_t microfb_src_x_8px[40] =
+{
+	0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30,
+	32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62,
+	64, 66, 68, 70, 72, 74, 76, 78
+};
+
+static const uint8_t microfb_src_y_8px[28] =
+{
+	0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30,
+	32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54
+};
+
+typedef struct
+{
+	const char *name;
+	const uint8_t *src_x;
+	const uint8_t *src_y;
+	uint8_t cell_px;
+	uint8_t cols;
+	uint8_t rows;
+	uint16_t shrink_word;
+	uint16_t x_offset;
+	uint16_t y_offset;
+} microfb_mode_t;
+
+static const microfb_mode_t microfb_modes[] =
+{
+	{ "4x4", microfb_src_x_4px, microfb_src_y_4px, 4, 80, 56, 0x033fu, 0, 0 },
+	{ "5x5", microfb_src_x_5px, microfb_src_y_5px, 5, 64, 44, 0x044fu, 0, 2 },
+	{ "6x6", microfb_src_x_6px, microfb_src_y_6px, 6, 53, 37, 0x055fu, 1, 1 },
+	{ "7x7", microfb_src_x_7px, microfb_src_y_7px, 7, 45, 32, 0x066fu, 2, 0 },
+	{ "8x8", microfb_src_x_8px, microfb_src_y_8px, 8, 40, 28, 0x077fu, 0, 0 }
+};
+
+#define MICROFB_MODE_COUNT (sizeof(microfb_modes) / sizeof(microfb_modes[0]))
+
 
 static uint8_t _s_screen[VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT];
 static uint8_t _s_color_to_tile_slot[256];
 static uint8_t _s_color_to_palette[256];
 static uint8_t _s_visible_sprite_set;
+static uint8_t _s_microfb_mode_index;
 
 static int16_t palettelumpnum;
 static int8_t newpal = 100;
@@ -152,6 +249,24 @@ static uint8_t NG_WaitVBlankStart(void)
 static uint16_t NG_MicroSpriteIndex(uint16_t set, uint16_t chunk, uint16_t x)
 {
 	return MICROFB_SPRITE_BASE + set * MICROFB_SPRITES_PER_SET + chunk * VIEWWINDOWWIDTH + x;
+}
+
+
+static const microfb_mode_t *NG_MicroFramebufferMode(void)
+{
+	return &microfb_modes[_s_microfb_mode_index];
+}
+
+
+static uint16_t NG_MicroFramebufferChunkRows(const microfb_mode_t *mode, uint16_t chunk)
+{
+	const uint16_t row_base = chunk * MICROFB_CHUNK_CELLS;
+
+	if (row_base >= mode->rows)
+		return 0;
+
+	const uint16_t rows_left = mode->rows - row_base;
+	return rows_left > MICROFB_CHUNK_CELLS ? MICROFB_CHUNK_CELLS : rows_left;
 }
 
 
@@ -243,37 +358,25 @@ static void NG_ClearSpriteState(void)
 
 static void NG_SetMicroSpriteSetVisible(uint16_t set, uint8_t visible)
 {
-	*REG_VRAMMOD = 1;
+	const microfb_mode_t *mode = NG_MicroFramebufferMode();
+
+	*REG_VRAMMOD = 0x200;
 	for (uint16_t chunk = 0; chunk < MICROFB_COLUMN_CHUNKS; chunk++)
 	{
-		const uint16_t y = chunk * MICROFB_CHUNK_PIXELS;
-		const uint16_t height_word = visible ? NG_SpriteYWord(y, MICROFB_CHUNK_CELLS) : 0u;
+		const uint16_t row_base = chunk * MICROFB_CHUNK_CELLS;
+		const uint16_t chunk_rows = NG_MicroFramebufferChunkRows(mode, chunk);
+		const uint16_t y = mode->y_offset + row_base * mode->cell_px;
+		const uint16_t height_word = visible && chunk_rows ? NG_SpriteYWord(y, chunk_rows) : 0u;
 
-		*REG_VRAMADDR = ADDR_SCB3 + NG_MicroSpriteIndex(set, chunk, 0);
 		for (uint16_t x = 0; x < VIEWWINDOWWIDTH; x++)
-			*REG_VRAMRW = height_word;
-	}
-}
-
-
-static void NG_InitMicroSpriteControls(void)
-{
-	*REG_VRAMMOD = 0x200;
-	for (uint16_t set = 0; set < MICROFB_FRAMEBUFFER_SETS; set++)
-	{
-		for (uint16_t chunk = 0; chunk < MICROFB_COLUMN_CHUNKS; chunk++)
 		{
-			const uint16_t y = chunk * MICROFB_CHUNK_PIXELS;
-			const uint16_t height_word = set == 0 ? NG_SpriteYWord(y, MICROFB_CHUNK_CELLS) : 0u;
+			const uint16_t sprite = NG_MicroSpriteIndex(set, chunk, x);
+			const uint8_t active = x < mode->cols && height_word != 0u;
 
-			for (uint16_t x = 0; x < VIEWWINDOWWIDTH; x++)
-			{
-				const uint16_t sprite = NG_MicroSpriteIndex(set, chunk, x);
-				*REG_VRAMADDR = ADDR_SCB2 + sprite;
-				*REG_VRAMRW = MICROFB_SPRITE_SHRINK_4PX_CELL;
-				*REG_VRAMRW = height_word;
-				*REG_VRAMRW = MICROFB_X_WORD(x * MICROFB_PHYSICAL_CELL_W);
-			}
+			*REG_VRAMADDR = ADDR_SCB2 + sprite;
+			*REG_VRAMRW = mode->shrink_word;
+			*REG_VRAMRW = active ? height_word : 0u;
+			*REG_VRAMRW = active ? MICROFB_X_WORD(mode->x_offset + x * mode->cell_px) : 0u;
 		}
 	}
 }
@@ -299,7 +402,8 @@ static void NG_InitMicroSprites(void)
 	}
 
 	_s_visible_sprite_set = 0;
-	NG_InitMicroSpriteControls();
+	NG_SetMicroSpriteSetVisible(0, true);
+	NG_SetMicroSpriteSetVisible(1, false);
 }
 
 
@@ -308,6 +412,7 @@ void I_InitGraphicsHardwareSpecificCode(void)
 	I_ReloadPalette();
 	I_UploadNewPalette(0);
 
+	_s_microfb_mode_index = 0;
 	memset(_s_screen, 0, sizeof(_s_screen));
 	NG_ClearFixOverlay();
 	NG_InitMicroSprites();
@@ -337,26 +442,58 @@ void V_SetSTPalette(void)
 
 static void NG_UploadMicroFramebuffer(uint8_t set)
 {
+	const microfb_mode_t *mode = NG_MicroFramebufferMode();
+
 	*REG_VRAMMOD = 1;
 	for (uint16_t chunk = 0; chunk < MICROFB_COLUMN_CHUNKS; chunk++)
 	{
 		const uint16_t row_base = chunk * MICROFB_CHUNK_CELLS;
+		const uint16_t chunk_rows = NG_MicroFramebufferChunkRows(mode, chunk);
 
-		for (uint16_t x = 0; x < VIEWWINDOWWIDTH; x++)
+		if (!chunk_rows)
+			continue;
+
+		for (uint16_t x = 0; x < mode->cols; x++)
 		{
 			const uint16_t sprite = NG_MicroSpriteIndex(set, chunk, x);
-			const uint8_t *src = &_s_screen[row_base * VIEWWINDOWWIDTH + x];
+			const uint8_t src_x = mode->src_x[x];
 
 			*REG_VRAMADDR = ADDR_SCB1 + (sprite * 64u);
-			for (uint16_t row = 0; row < MICROFB_CHUNK_CELLS; row++)
+			for (uint16_t row = 0; row < chunk_rows; row++)
 			{
-				const uint8_t color = *src;
+				const uint8_t src_y = mode->src_y[row_base + row];
+				const uint8_t color = _s_screen[src_y * VIEWWINDOWWIDTH + src_x];
 				*REG_VRAMRW = MICROFB_TILE_BASE + _s_color_to_tile_slot[color];
 				*REG_VRAMRW = MICROFB_PALETTE_ATTR(_s_color_to_palette[color]);
-				src += VIEWWINDOWWIDTH;
 			}
 		}
 	}
+}
+
+
+void I_NeoGeoChangeSpriteQuality(int16_t direction)
+{
+	if (direction < 0)
+	{
+		if (_s_microfb_mode_index)
+			_s_microfb_mode_index--;
+	}
+	else if (_s_microfb_mode_index + 1u < MICROFB_MODE_COUNT)
+	{
+		_s_microfb_mode_index++;
+	}
+}
+
+
+const char *I_NeoGeoSpriteQualityName(void)
+{
+	return NG_MicroFramebufferMode()->name;
+}
+
+
+uint16_t I_NeoGeoSpriteQualityLevel(void)
+{
+	return _s_microfb_mode_index;
 }
 
 

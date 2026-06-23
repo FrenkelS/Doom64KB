@@ -35,6 +35,12 @@ void I_ReloadPalette(void);
 void I_SetPalette(int8_t pal);
 void I_FinishUpdate(void);
 
+#if defined NEOGEO_SPRITE_MICROFB
+void I_NeoGeoChangeSpriteQuality(int16_t direction);
+const char *I_NeoGeoSpriteQualityName(void);
+uint16_t I_NeoGeoSpriteQualityLevel(void);
+#endif
+
 
 void R_DrawColumnSprite(const draw_column_vars_t *dcvars);
 void R_DrawColumnWall(const draw_column_vars_t *dcvars);

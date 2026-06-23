@@ -142,6 +142,9 @@ static void M_QuitDOOM(int16_t choice);
 
 static void M_ChangeMessages(int16_t choice);
 static void M_ChangeAlwaysRun(int16_t choice);
+#if defined NEOGEO_SPRITE_MICROFB
+static void M_ChangeSpriteQuality(int16_t choice);
+#endif
 static void M_ChangeGamma(int16_t choice);
 static void M_SfxVol(int16_t choice);
 static void M_MusicVol(int16_t choice);
@@ -512,6 +515,9 @@ enum
   endgame,
   messages,
   alwaysrun,
+#if defined NEOGEO_SPRITE_MICROFB
+  spritesize,
+#endif
   gamma,
 #if !defined DISABLE_SOUND_OPTIONS
   soundvol,
@@ -527,6 +533,9 @@ static const menuitem_t OptionsMenu[]=
   {1,"End Game",     M_EndGame},
   {1,"Messages:",    M_ChangeMessages},
   {1,"Always Run:",  M_ChangeAlwaysRun},
+#if defined NEOGEO_SPRITE_MICROFB
+  {2,"Sprite Size:", M_ChangeSpriteQuality},
+#endif
   {2,"Gamma Boost:", M_ChangeGamma},
 #if !defined DISABLE_SOUND_OPTIONS
   {1,"Sound Volume", M_Sound}
@@ -555,6 +564,11 @@ static void M_DrawOptions(void)
 	V_DrawString(OptionsDef.x + 13, OptionsDef.y + LINEHEIGHT * messages,  12, msgNames[showMessages]);
 
 	V_DrawString(OptionsDef.x + 13, OptionsDef.y + LINEHEIGHT * alwaysrun, 12, msgNames[_g_alwaysRun]);
+
+#if defined NEOGEO_SPRITE_MICROFB
+	M_DrawThermo(OptionsDef.x + 13, OptionsDef.y + LINEHEIGHT * spritesize, 5, I_NeoGeoSpriteQualityLevel());
+	V_DrawString(OptionsDef.x + 19, OptionsDef.y + LINEHEIGHT * spritesize, 12, I_NeoGeoSpriteQualityName());
+#endif
 
 	M_DrawThermo(OptionsDef.x + 13, OptionsDef.y + LINEHEIGHT * gamma, 6, _g_gamma);
 }
@@ -717,6 +731,13 @@ static void M_ChangeAlwaysRun(int16_t choice)
 
     G_SaveSettings();
 }
+
+#if defined NEOGEO_SPRITE_MICROFB
+static void M_ChangeSpriteQuality(int16_t choice)
+{
+	I_NeoGeoChangeSpriteQuality(choice ? 1 : -1);
+}
+#endif
 
 static void M_ChangeGamma(int16_t choice)
 {
