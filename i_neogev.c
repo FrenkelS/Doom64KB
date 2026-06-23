@@ -192,6 +192,35 @@ static const microfb_mode_t *NG_MicroFramebufferMode(void)
 }
 
 
+static void NG_RescaleMicroFramebuffer(const microfb_mode_t *old_mode, const microfb_mode_t *new_mode)
+{
+	if (new_mode->cols >= old_mode->cols)
+	{
+		for (int16_t y = new_mode->rows - 1; y >= 0; y--)
+		{
+			const uint16_t src_y = ((uint16_t)y * old_mode->rows) / new_mode->rows;
+			for (int16_t x = new_mode->cols - 1; x >= 0; x--)
+			{
+				const uint16_t src_x = ((uint16_t)x * old_mode->cols) / new_mode->cols;
+				_s_screen[y * VIEWWINDOWWIDTH + x] = _s_screen[src_y * VIEWWINDOWWIDTH + src_x];
+			}
+		}
+	}
+	else
+	{
+		for (uint16_t y = 0; y < new_mode->rows; y++)
+		{
+			const uint16_t src_y = (y * old_mode->rows) / new_mode->rows;
+			for (uint16_t x = 0; x < new_mode->cols; x++)
+			{
+				const uint16_t src_x = (x * old_mode->cols) / new_mode->cols;
+				_s_screen[y * VIEWWINDOWWIDTH + x] = _s_screen[src_y * VIEWWINDOWWIDTH + src_x];
+			}
+		}
+	}
+}
+
+
 static uint16_t NG_MicroFramebufferChunkRows(const microfb_mode_t *mode, uint16_t chunk)
 {
 	const uint16_t row_base = chunk * MICROFB_CHUNK_CELLS;
@@ -422,9 +451,10 @@ void I_NeoGeoChangeSpriteQuality(int16_t direction)
 
 	if (_s_microfb_mode_index != old_mode)
 	{
+		const microfb_mode_t *previous_mode = &microfb_modes[old_mode];
 		const microfb_mode_t *mode = NG_MicroFramebufferMode();
+		NG_RescaleMicroFramebuffer(previous_mode, mode);
 		R_SetRenderSize(mode->cols, mode->rows);
-		memset(_s_screen, 0, sizeof(_s_screen));
 	}
 }
 
@@ -574,29 +604,32 @@ void V_DrawBackground(int16_t backgroundnum)
 
 void V_DrawRawFullScreen(int16_t num)
 {
+	const microfb_mode_t *mode = NG_MicroFramebufferMode();
+	memset(_s_screen, 0, sizeof(_s_screen));
+
 #if defined SHOW_PALETTE
 	int i = 0;
 	for (int y = 0; y < 16; y++)
 		for (int x = 0; x < 16; x++)
-			_s_screen[y * VIEWWINDOWWIDTH + x] = i++;
+			if ((uint16_t)x < mode->cols && (uint16_t)y < mode->rows)
+				_s_screen[y * VIEWWINDOWWIDTH + x] = i++;
 #else
 	const uint8_t *lump = W_GetLumpByNum(num);
 
-	static const fixed_t DXI = ((fixed_t)SCREENWIDTH << FRACBITS) / VIEWWINDOWWIDTH;
-	static const fixed_t DYI = ((fixed_t)SCREENHEIGHT << FRACBITS) / VIEWWINDOWHEIGHT;
-
-	uint8_t *dst = &_s_screen[0];
+	const fixed_t dxi = ((fixed_t)SCREENWIDTH << FRACBITS) / mode->cols;
+	const fixed_t dyi = ((fixed_t)SCREENHEIGHT << FRACBITS) / mode->rows;
 
 	fixed_t y = 0;
-	for (int h = 0; h < VIEWWINDOWHEIGHT; h++)
+	for (uint16_t h = 0; h < mode->rows; h++)
 	{
 		fixed_t x = 0;
-		for (int w = 0; w < VIEWWINDOWWIDTH; w++)
+		uint8_t *dst = &_s_screen[h * VIEWWINDOWWIDTH];
+		for (uint16_t w = 0; w < mode->cols; w++)
 		{
 			*dst++ = lump[(y >> FRACBITS) * SCREENWIDTH + (x >> FRACBITS)];
-			x += DXI;
+			x += dxi;
 		}
-		y += DYI;
+		y += dyi;
 	}
 #endif
 	NG_ClearFixOverlay();
