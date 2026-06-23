@@ -91,6 +91,10 @@ int16_t V_NumPatchWidth(int16_t num);
 
 void R_RenderPlayerView(player_t *player);   // Called by G_Drawer.
 
+#if defined NEOGEO_SPRITE_MICROFB
+void R_SetRenderSize(uint16_t width, uint16_t height);
+#endif
+
 void R_DrawColumnSprite(const draw_column_vars_t *dcvars);
 void R_DrawColumnWall(const draw_column_vars_t *dcvars);
 void R_DrawColumnFlat(uint8_t color, const draw_column_vars_t *dcvars);

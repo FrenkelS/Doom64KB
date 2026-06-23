@@ -38,7 +38,6 @@ void I_FinishUpdate(void);
 #if defined NEOGEO_SPRITE_MICROFB
 void I_NeoGeoChangeSpriteQuality(int16_t direction);
 const char *I_NeoGeoSpriteQualityName(void);
-uint16_t I_NeoGeoSpriteQualityLevel(void);
 #endif
 
 

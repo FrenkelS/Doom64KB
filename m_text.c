@@ -566,8 +566,7 @@ static void M_DrawOptions(void)
 	V_DrawString(OptionsDef.x + 13, OptionsDef.y + LINEHEIGHT * alwaysrun, 12, msgNames[_g_alwaysRun]);
 
 #if defined NEOGEO_SPRITE_MICROFB
-	M_DrawThermo(OptionsDef.x + 13, OptionsDef.y + LINEHEIGHT * spritesize, 5, I_NeoGeoSpriteQualityLevel());
-	V_DrawString(OptionsDef.x + 19, OptionsDef.y + LINEHEIGHT * spritesize, 12, I_NeoGeoSpriteQualityName());
+	V_DrawString(OptionsDef.x + 13, OptionsDef.y + LINEHEIGHT * spritesize, 12, I_NeoGeoSpriteQualityName());
 #endif
 
 	M_DrawThermo(OptionsDef.x + 13, OptionsDef.y + LINEHEIGHT * gamma, 6, _g_gamma);

@@ -22,15 +22,16 @@
  *      Neo Geo video code.
  *
  *      This backend no longer uses the FIX layer as the game framebuffer.
- *      The Doom renderer writes an 80x56 8-bit logical framebuffer.  The
- *      sprite output can downsample that buffer at runtime and display it as
- *      4x4 through 8x8 hardware-sprite microcells:
+ *      The Doom renderer uses a runtime-selected logical framebuffer size up
+ *      to 80x56.  Sprite output displays that active area as 4x4 through 16x16
+ *      hardware-sprite microcells:
  *
  *          4x4: 160 sprite strips, 80 active per scanline = 320x224 pixels
  *          8x8:  80 sprite strips, 40 active per scanline = 320x224 pixels
+ *         16x16: 28 sprite strips, 20 active per scanline = 320x224 pixels
  *
  *      The full-color path uses one shrunk 16x16 C-ROM tile per logical
- *      pixel.  The hardware shrinker reduces each tile to a 4x4 cell.
+ *      pixel.  The hardware shrinker reduces each tile to the selected cell.
  *      Per-tile sprite attributes select repacked PLAYPAL sprite palettes,
  *      preserving the original 8-bit Doom palette colors.
  *
@@ -53,7 +54,7 @@
 #include "globdata.h"
 
 
-extern const int16_t CENTERY;
+extern int16_t CENTERY;
 
 /*
  * Neo Geo VRAM sprite control blocks.  ngdevkit exposes the VRAM registers;
@@ -113,84 +114,9 @@ extern const int16_t CENTERY;
 #error Neo Geo sprite microframebuffer exceeds sprite palette budget
 #endif
 
-static const uint8_t microfb_src_x_4px[80] =
-{
-	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-	16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-	32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
-	48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
-	64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79
-};
-
-static const uint8_t microfb_src_y_4px[56] =
-{
-	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-	16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-	32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
-	48, 49, 50, 51, 52, 53, 54, 55
-};
-
-static const uint8_t microfb_src_x_5px[64] =
-{
-	0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12, 13, 15, 16, 17, 18,
-	20, 21, 22, 23, 25, 26, 27, 28, 30, 31, 32, 33, 35, 36, 37, 38,
-	40, 41, 42, 43, 45, 46, 47, 48, 50, 51, 52, 53, 55, 56, 57, 58,
-	60, 61, 62, 63, 65, 66, 67, 68, 70, 71, 72, 73, 75, 76, 77, 78
-};
-
-static const uint8_t microfb_src_y_5px[44] =
-{
-	0, 1, 2, 3, 5, 6, 7, 8, 10, 11, 12, 14, 15, 16, 17, 19,
-	20, 21, 22, 24, 25, 26, 28, 29, 30, 31, 33, 34, 35, 36, 38, 39,
-	40, 42, 43, 44, 45, 47, 48, 49, 50, 52, 53, 54
-};
-
-static const uint8_t microfb_src_x_6px[53] =
-{
-	0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18, 19, 21, 22,
-	24, 25, 27, 28, 30, 31, 33, 34, 36, 37, 39, 40, 42, 43, 45, 46,
-	48, 49, 51, 52, 54, 55, 57, 58, 60, 61, 63, 64, 66, 67, 69, 70,
-	72, 73, 75, 76, 78
-};
-
-static const uint8_t microfb_src_y_6px[37] =
-{
-	0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 15, 16, 18, 19, 21, 22,
-	24, 25, 27, 28, 30, 31, 33, 34, 36, 37, 39, 40, 42, 43, 45, 46,
-	48, 49, 51, 52, 54
-};
-
-static const uint8_t microfb_src_x_7px[45] =
-{
-	0, 1, 3, 5, 7, 8, 10, 12, 14, 16, 17, 19, 21, 23, 24, 26,
-	28, 30, 32, 33, 35, 37, 39, 40, 42, 44, 46, 48, 49, 51, 53, 55,
-	56, 58, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 78
-};
-
-static const uint8_t microfb_src_y_7px[32] =
-{
-	0, 1, 3, 5, 7, 8, 10, 12, 14, 15, 17, 19, 21, 22, 24, 26,
-	28, 29, 31, 33, 35, 36, 38, 40, 42, 43, 45, 47, 49, 50, 52, 54
-};
-
-static const uint8_t microfb_src_x_8px[40] =
-{
-	0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30,
-	32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62,
-	64, 66, 68, 70, 72, 74, 76, 78
-};
-
-static const uint8_t microfb_src_y_8px[28] =
-{
-	0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30,
-	32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54
-};
-
 typedef struct
 {
 	const char *name;
-	const uint8_t *src_x;
-	const uint8_t *src_y;
 	uint8_t cell_px;
 	uint8_t cols;
 	uint8_t rows;
@@ -201,11 +127,19 @@ typedef struct
 
 static const microfb_mode_t microfb_modes[] =
 {
-	{ "4x4", microfb_src_x_4px, microfb_src_y_4px, 4, 80, 56, 0x033fu, 0, 0 },
-	{ "5x5", microfb_src_x_5px, microfb_src_y_5px, 5, 64, 44, 0x044fu, 0, 2 },
-	{ "6x6", microfb_src_x_6px, microfb_src_y_6px, 6, 53, 37, 0x055fu, 1, 1 },
-	{ "7x7", microfb_src_x_7px, microfb_src_y_7px, 7, 45, 32, 0x066fu, 2, 0 },
-	{ "8x8", microfb_src_x_8px, microfb_src_y_8px, 8, 40, 28, 0x077fu, 0, 0 }
+	{ "4x4",   4, 80, 56, 0x033fu, 0, 0 },
+	{ "5x5",   5, 64, 44, 0x044fu, 0, 2 },
+	{ "6x6",   6, 53, 37, 0x055fu, 1, 1 },
+	{ "7x7",   7, 45, 32, 0x066fu, 2, 0 },
+	{ "8x8",   8, 40, 28, 0x077fu, 0, 0 },
+	{ "9x9",   9, 35, 24, 0x088fu, 2, 4 },
+	{ "10x10", 10, 32, 22, 0x099fu, 0, 2 },
+	{ "11x11", 11, 29, 20, 0x0aafu, 0, 2 },
+	{ "12x12", 12, 26, 18, 0x0bbfu, 4, 4 },
+	{ "13x13", 13, 24, 17, 0x0ccfu, 4, 1 },
+	{ "14x14", 14, 22, 16, 0x0ddfu, 6, 0 },
+	{ "15x15", 15, 21, 14, 0x0eefu, 2, 7 },
+	{ "16x16", 16, 20, 14, 0x0fffu, 0, 0 }
 };
 
 #define MICROFB_MODE_COUNT (sizeof(microfb_modes) / sizeof(microfb_modes[0]))
@@ -413,6 +347,7 @@ void I_InitGraphicsHardwareSpecificCode(void)
 	I_UploadNewPalette(0);
 
 	_s_microfb_mode_index = 0;
+	R_SetRenderSize(microfb_modes[0].cols, microfb_modes[0].rows);
 	memset(_s_screen, 0, sizeof(_s_screen));
 	NG_ClearFixOverlay();
 	NG_InitMicroSprites();
@@ -473,6 +408,8 @@ static void NG_UploadMicroFramebuffer(uint8_t set)
 
 void I_NeoGeoChangeSpriteQuality(int16_t direction)
 {
+	uint8_t old_mode = _s_microfb_mode_index;
+
 	if (direction < 0)
 	{
 		if (_s_microfb_mode_index)
@@ -482,18 +419,19 @@ void I_NeoGeoChangeSpriteQuality(int16_t direction)
 	{
 		_s_microfb_mode_index++;
 	}
+
+	if (_s_microfb_mode_index != old_mode)
+	{
+		const microfb_mode_t *mode = NG_MicroFramebufferMode();
+		R_SetRenderSize(mode->cols, mode->rows);
+		memset(_s_screen, 0, sizeof(_s_screen));
+	}
 }
 
 
 const char *I_NeoGeoSpriteQualityName(void)
 {
 	return NG_MicroFramebufferMode()->name;
-}
-
-
-uint16_t I_NeoGeoSpriteQualityLevel(void)
-{
-	return _s_microfb_mode_index;
 }
 
 
