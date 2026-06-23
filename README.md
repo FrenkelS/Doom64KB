@@ -19,6 +19,17 @@ It's based on [Doom8088](https://github.com/FrenkelS/Doom8088), a port of Doom f
  - No PWADs
  - No screen resizing
 
+## Controls:
+|Action      |Neo Geo |
+|------------|--------|
+|Walk        |Joystick|
+|Fire        |B       |
+|Use / Sprint|A       |
+|Strafe      |C & D   |
+|Weapon up   |A + D   |
+|Weapon down |A + C   |
+|Menu        |Start   |
+
 ## Building:
 |Platform|Platform specific code    |Compiler                                        |Build script|Additional information                                                                                                   |
 |--------|--------------------------|------------------------------------------------|------------|-------------------------------------------------------------------------------------------------------------------------|
