@@ -20,6 +20,6 @@ It's based on [Doom8088](https://github.com/FrenkelS/Doom8088), a port of Doom f
  - No screen resizing
 
 ## Building:
-|Platform|Platform specific code    |Compiler                                        |Build script|
-|--------|--------------------------|------------------------------------------------|------------|
-|Neo Geo |`i_neogeo.c`, `i_neogev.c`|[ngdevkit](https://github.com/dciabrin/ngdevkit)|`bneogeo.sh`|
+|Platform|Platform specific code    |Compiler                                        |Build script|Additional information                                                                                                   |
+|--------|--------------------------|------------------------------------------------|------------|-------------------------------------------------------------------------------------------------------------------------|
+|Neo Geo |`i_neogeo.c`, `i_neogev.c`|[ngdevkit](https://github.com/dciabrin/ngdevkit)|`bneogeo.sh`|Use command line argument -timedemo to build a version that runs the timedemo benchmark, -run to compile and run the game|

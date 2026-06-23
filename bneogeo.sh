@@ -27,10 +27,14 @@ export CFLAGS="-std=gnu17 -mlra -march=$CPU -Oz -fomit-frame-pointer -flto -fwho
 #export CFLAGS="$CFLAGS -Ofast -flto -fwhole-program -fomit-frame-pointer -funroll-loops -fgcse-sm -fgcse-las -fipa-pta -Wno-attributes -Wpedantic"
 #export CFLAGS="$CFLAGS -Wall -Wextra"
 
-if [ "$1" == "-timedemo" ]
-then
-  export CFLAGS="$CFLAGS -DTIMEDEMO"
-fi
+for arg in "$@"
+do
+  if [ "$arg" = "-timedemo" ]
+  then
+    export CFLAGS="$CFLAGS -DTIMEDEMO"
+    break
+  fi
+done
 
 export GLOBOBJS="  am_map.c"
 export GLOBOBJS+=" d_items.c"
@@ -119,4 +123,11 @@ romtool.py -b hash -f gngeo -p neogeo/rom/doom64kb-p1.p1 -c neogeo/rom/doom64kb-
 cp /usr/share/ngdevkit/aes.zip    neogeo/rom/aes.zip
 cp /usr/share/ngdevkit/neogeo.zip neogeo/rom/neogeo.zip
 
-ngdevkit-gngeo -b glsl --shaderpath="/mnt/c/Projects/ngdevkit-examples/shaders" --shader="qcrt-flat.glslp"  --scale 3 --no-resize --system home -i neogeo/rom -d neogeo/rom/gngeo_data.zip doom64kb --p1control A=K97,B=K115,C=K113,D=K119,START=K49,COIN=K51,UP=K82,DOWN=K81,LEFT=K80,RIGHT=K79
+for arg in "$@"
+do
+  if [ "$arg" = "-run" ]
+  then
+    ngdevkit-gngeo -b glsl --shaderpath="/mnt/c/Projects/ngdevkit-examples/shaders" --shader="qcrt-flat.glslp"  --scale 3 --no-resize --system home -i neogeo/rom -d neogeo/rom/gngeo_data.zip doom64kb --p1control A=K97,B=K115,C=K113,D=K119,START=K49,COIN=K51,UP=K82,DOWN=K81,LEFT=K80,RIGHT=K79
+    break
+  fi
+done
