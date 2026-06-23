@@ -19,7 +19,6 @@ static void cheat_map(void);
 static void cheat_goggles(void);
 static void cheat_exit(void);
 static void cheat_end(void);
-static void cheat_rockets(void);
 static void cheat_fps(void);
 
 
@@ -46,7 +45,6 @@ static cheatseq_t cheat_def[] =
 	{cheat_goggles,       "idbeholdl",  NULL},
 	{cheat_exit,          "idclev",     NULL},
 	{cheat_end,           "idend",      NULL},
-	{cheat_rockets,       "idrocket",   NULL}, // Because Goldeneye!
 	{cheat_fps,           "idrate",     NULL}
 };
 
@@ -234,26 +232,6 @@ static void cheat_end()
 	_g_gameaction = ga_victory;
 }
 
-static void cheat_rockets()
-{
-    _g_player.cheats ^= CF_ENEMY_ROCKETS;
-
-    if(_g_player.cheats & CF_ENEMY_ROCKETS)
-    {
-        _g_player.health = god_health;
-
-        _g_player.weaponowned[wp_missile] = true;
-        _g_player.ammo[am_misl] = _g_player.maxammo[am_misl];
-
-        _g_player.pendingweapon = wp_missile;
-
-        _g_player.message = STSTR_ROCKETON;
-    }
-    else
-    {
-        _g_player.message = STSTR_ROCKETOFF;
-    }
-}
 
 static void cheat_fps()
 {

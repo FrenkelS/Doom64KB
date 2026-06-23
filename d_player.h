@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -78,10 +78,7 @@ typedef enum
   // No clipping, walk through barriers.
   CF_NOCLIP           = 1,
   // No damage, no health loss.
-  CF_GODMODE          = 2,
-  //You played goldeneye right?
-  CF_ENEMY_ROCKETS    = 4
-
+  CF_GODMODE          = 2
 } cheat_t;
 
 

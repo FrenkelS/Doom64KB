@@ -127,9 +127,6 @@
 
 #define STSTR_CHOPPERS  "... doesn't suck - GM"
 
-#define STSTR_ROCKETON    "Enemy Rockets On"
-#define STSTR_ROCKETOFF   "Enemy Rockets Off"
-
 #define STSTR_FPSON    "FPS Counter On"
 #define STSTR_FPSOFF   "FPS Counter Off"
 
