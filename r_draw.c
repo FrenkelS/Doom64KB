@@ -661,6 +661,27 @@ void R_SetRenderSize(uint16_t width, uint16_t height)
 	for (uint16_t x = 0; x < VIEWWINDOWWIDTH; x++)
 		screenheightarray[x] = render_viewheight;
 }
+
+
+uint8_t R_RenderViewWidth(void)
+{
+	return render_viewwidth;
+}
+
+
+uint8_t R_RenderViewHeight(void)
+{
+	return render_viewheight;
+}
+
+
+uint16_t R_RenderXToViewAngle(uint16_t x)
+{
+	if (x > render_viewwidth)
+		x = render_viewwidth;
+
+	return R_XTOVIEWANGLE(x);
+}
 #endif
 
 
