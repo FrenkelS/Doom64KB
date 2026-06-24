@@ -137,6 +137,7 @@ static uint8_t _s_color_to_tile_slot[256];
 static uint8_t _s_color_to_palette[256];
 static uint8_t _s_visible_sprite_set;
 static uint8_t _s_microfb_mode_index;
+static uint8_t _s_pending_microfb_mode_index;
 
 static int16_t palettelumpnum;
 static int8_t newpal = 100;
@@ -204,6 +205,21 @@ static void NG_RescaleMicroFramebuffer(const microfb_mode_t *old_mode, const mic
 				_s_screen[y * VIEWWINDOWWIDTH + x] = _s_screen[src_y * VIEWWINDOWWIDTH + src_x];
 			}
 		}
+	}
+}
+
+
+static void NG_ApplyMicroFramebufferMode(uint8_t mode_index)
+{
+	if (mode_index != _s_microfb_mode_index)
+	{
+		const microfb_mode_t *previous_mode = &microfb_modes[_s_microfb_mode_index];
+
+		_s_microfb_mode_index = mode_index;
+
+		const microfb_mode_t *mode = NG_MicroFramebufferMode();
+		NG_RescaleMicroFramebuffer(previous_mode, mode);
+		R_SetRenderSize(mode->cols, mode->rows);
 	}
 }
 
@@ -363,6 +379,7 @@ void I_InitGraphicsHardwareSpecificCode(void)
 	I_UploadNewPalette(0);
 
 	_s_microfb_mode_index = 0;
+	_s_pending_microfb_mode_index = _s_microfb_mode_index;
 	R_SetRenderSize(microfb_modes[0].cols, microfb_modes[0].rows);
 	memset(_s_screen, 0, sizeof(_s_screen));
 	NG_ClearFixOverlay();
@@ -422,31 +439,21 @@ static void NG_UploadMicroFramebuffer(uint8_t set)
 
 void I_NeoGeoChangeSpriteQuality(int16_t direction)
 {
-	uint8_t old_mode = _s_microfb_mode_index;
-
 	if (direction < 0)
 	{
-		if (_s_microfb_mode_index)
-			_s_microfb_mode_index--;
+		if (_s_pending_microfb_mode_index)
+			_s_pending_microfb_mode_index--;
 	}
-	else if (_s_microfb_mode_index + 1u < MICROFB_MODE_COUNT)
+	else if (_s_pending_microfb_mode_index + 1u < MICROFB_MODE_COUNT)
 	{
-		_s_microfb_mode_index++;
-	}
-
-	if (_s_microfb_mode_index != old_mode)
-	{
-		const microfb_mode_t *previous_mode = &microfb_modes[old_mode];
-		const microfb_mode_t *mode = NG_MicroFramebufferMode();
-		NG_RescaleMicroFramebuffer(previous_mode, mode);
-		R_SetRenderSize(mode->cols, mode->rows);
+		_s_pending_microfb_mode_index++;
 	}
 }
 
 
 const char *I_NeoGeoSpriteQualityName(void)
 {
-	return NG_MicroFramebufferMode()->name;
+	return microfb_modes[_s_pending_microfb_mode_index].name;
 }
 
 
@@ -465,6 +472,8 @@ void I_FinishUpdate(void)
 	NG_SetMicroSpriteSetVisible(next_sprite_set, true);
 	_s_visible_sprite_set = next_sprite_set;
 	NG_UploadFixOverlay();
+
+	NG_ApplyMicroFramebufferMode(_s_pending_microfb_mode_index);
 }
 
 
