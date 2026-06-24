@@ -2237,7 +2237,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
     maplinedef = &_g_maplines[curline->linenum];
 
     // mark the segment as visible for auto map
-    linedef->r_flags |= ML_MAPPED;
+    linedef->r_flags |= RF_MAPPED;
 
     // calculate rw_distance for scale calculation
     rw_normalangle = curline->angle;
@@ -2569,7 +2569,7 @@ static void R_RecalcLineFlags(void)
                     frontsector->ceilingpic!= skyflatnum)
                 )
             )
-        linedef->r_flags = (RF_CLOSED | (linedef->r_flags & ML_MAPPED));
+        linedef->r_flags = (RF_CLOSED | (linedef->r_flags & RF_MAPPED));
     else
     {
         // Reject empty lines used for triggers
@@ -2585,9 +2585,9 @@ static void R_RecalcLineFlags(void)
                 || backsector->floorpic != frontsector->floorpic
                 || backsector->lightlevel != frontsector->lightlevel)
         {
-            linedef->r_flags = (linedef->r_flags & ML_MAPPED);
+            linedef->r_flags = (linedef->r_flags & RF_MAPPED);
         } else
-            linedef->r_flags = (RF_IGNORE | (linedef->r_flags & ML_MAPPED));
+            linedef->r_flags = (RF_IGNORE | (linedef->r_flags & RF_MAPPED));
     }
 }
 

@@ -109,11 +109,11 @@ typedef struct
   int16_t floorpic;
   int16_t ceilingpic;
 
-  int16_t lightlevel;
-  int16_t special;
-  int16_t oldspecial;      //jff 2/16/98 remembers if sector WAS secret (automap)
+  uint8_t lightlevel;
+  int8_t special;
+  int8_t oldspecial;      //jff 2/16/98 remembers if sector WAS secret (automap)
 
-  int16_t soundtraversed;    // 0 = untraversed, 1,2 = sndlines-1
+  int8_t soundtraversed;    // 0 = untraversed, 1,2 = sndlines-1
 
 } sector_t;
 
@@ -169,6 +169,7 @@ typedef char assertMapsidedefSize[sizeof(mapsidedef_t) == 7 ? 1 : -1];
 
 typedef enum
 {
+    RF_MAPPED   = 1,     // Line was already seen by the automap
     RF_IGNORE   = 8,     // Renderer can skip this line
     RF_CLOSED   =16      // Line blocks view
 } flags_e;
@@ -179,9 +180,11 @@ typedef struct linedata_s
     uint16_t validcount;        // if == validcount, already checked
     uint16_t r_validcount;      // cph: if == gametic, r_flags already done
 
-    int16_t r_flags;
-    int16_t special;
+    uint8_t r_flags;
+    int8_t special;
 } linedata_t;
+
+typedef char assertLinedataSize[sizeof(linedata_t) == 6 ? 1 : -1];
 
 typedef PACKEDATTR_PRE struct line_s
 {
