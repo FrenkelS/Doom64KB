@@ -23,13 +23,11 @@
  *
  *      This backend no longer uses the FIX layer as the game framebuffer.
  *      The Doom renderer uses a runtime-selected logical framebuffer size up
- *      to 80x56.  Sprite output displays that active area as 4x4 through 16x16
+ *      to 80x56.  Sprite output displays that active area as 4x4 or 8x8
  *      hardware-sprite microcells:
  *
  *          4x4: 160 sprite strips, 80 active per scanline = 320x224 pixels
  *          8x8:  80 sprite strips, 40 active per scanline = 320x224 pixels
- *         16x16: 28 sprite strips, 20 active per scanline = 320x224 pixels
- *
  *      The full-color path uses one shrunk 16x16 C-ROM tile per logical
  *      pixel.  The hardware shrinker reduces each tile to the selected cell.
  *      Per-tile sprite attributes select repacked PLAYPAL sprite palettes,
@@ -127,19 +125,8 @@ typedef struct
 
 static const microfb_mode_t microfb_modes[] =
 {
-	{ "4x4",   4, 80, 56, 0x033fu, 0, 0 },
-	{ "5x5",   5, 64, 44, 0x044fu, 0, 2 },
-	{ "6x6",   6, 53, 37, 0x055fu, 1, 1 },
-	{ "7x7",   7, 45, 32, 0x066fu, 2, 0 },
-	{ "8x8",   8, 40, 28, 0x077fu, 0, 0 },
-	{ "9x9",   9, 35, 24, 0x088fu, 2, 4 },
-	{ "10x10", 10, 32, 22, 0x099fu, 0, 2 },
-	{ "11x11", 11, 29, 20, 0x0aafu, 0, 2 },
-	{ "12x12", 12, 26, 18, 0x0bbfu, 4, 4 },
-	{ "13x13", 13, 24, 17, 0x0ccfu, 4, 1 },
-	{ "14x14", 14, 22, 16, 0x0ddfu, 6, 0 },
-	{ "15x15", 15, 21, 14, 0x0eefu, 2, 7 },
-	{ "16x16", 16, 20, 14, 0x0fffu, 0, 0 }
+	{ "4x4", 4, 80, 56, 0x033fu, 0, 0 },
+	{ "8x8", 8, 40, 28, 0x077fu, 0, 0 }
 };
 
 #define MICROFB_MODE_COUNT (sizeof(microfb_modes) / sizeof(microfb_modes[0]))
@@ -420,13 +407,11 @@ static void NG_UploadMicroFramebuffer(uint8_t set)
 		for (uint16_t x = 0; x < mode->cols; x++)
 		{
 			const uint16_t sprite = NG_MicroSpriteIndex(set, chunk, x);
-			const uint8_t src_x = mode->src_x[x];
 
 			*REG_VRAMADDR = ADDR_SCB1 + (sprite * 64u);
 			for (uint16_t row = 0; row < chunk_rows; row++)
 			{
-				const uint8_t src_y = mode->src_y[row_base + row];
-				const uint8_t color = _s_screen[src_y * VIEWWINDOWWIDTH + src_x];
+				const uint8_t color = _s_screen[(row_base + row) * VIEWWINDOWWIDTH + x];
 				*REG_VRAMRW = MICROFB_TILE_BASE + _s_color_to_tile_slot[color];
 				*REG_VRAMRW = MICROFB_PALETTE_ATTR(_s_color_to_palette[color]);
 			}
