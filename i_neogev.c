@@ -116,8 +116,8 @@ extern const int16_t CENTERY;
 
 
 static uint8_t _s_screen[VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT];
-static uint16_t _s_color_to_tile[256];
-static uint16_t _s_color_to_attr[256];
+static uint8_t _s_color_to_tile_slot[256];
+static uint8_t _s_color_to_palette[256];
 static uint8_t _s_visible_sprite_set;
 
 static int16_t palettelumpnum;
@@ -176,8 +176,8 @@ static void NG_BuildSpritePalettes(const uint16_t *src)
 		const uint16_t pal = color / MICROFB_VISIBLE_COLOR_SLOTS;
 		const uint16_t slot = (color % MICROFB_VISIBLE_COLOR_SLOTS) + 1u;
 
-		_s_color_to_tile[color] = MICROFB_TILE_BASE + slot;
-		_s_color_to_attr[color] = MICROFB_PALETTE_ATTR(MICROFB_SPRITE_PALETTE_BASE + pal);
+		_s_color_to_tile_slot[color] = slot;
+		_s_color_to_palette[color] = MICROFB_SPRITE_PALETTE_BASE + pal;
 	}
 }
 
@@ -243,19 +243,37 @@ static void NG_ClearSpriteState(void)
 
 static void NG_SetMicroSpriteSetVisible(uint16_t set, uint8_t visible)
 {
-	*REG_VRAMMOD = 0x200;
+	*REG_VRAMMOD = 1;
 	for (uint16_t chunk = 0; chunk < MICROFB_COLUMN_CHUNKS; chunk++)
 	{
 		const uint16_t y = chunk * MICROFB_CHUNK_PIXELS;
 		const uint16_t height_word = visible ? NG_SpriteYWord(y, MICROFB_CHUNK_CELLS) : 0u;
 
+		*REG_VRAMADDR = ADDR_SCB3 + NG_MicroSpriteIndex(set, chunk, 0);
 		for (uint16_t x = 0; x < VIEWWINDOWWIDTH; x++)
-		{
-			const uint16_t sprite = NG_MicroSpriteIndex(set, chunk, x);
-			*REG_VRAMADDR = ADDR_SCB2 + sprite;
-			*REG_VRAMRW = MICROFB_SPRITE_SHRINK_4PX_CELL;
 			*REG_VRAMRW = height_word;
-			*REG_VRAMRW = MICROFB_X_WORD(x * MICROFB_PHYSICAL_CELL_W);
+	}
+}
+
+
+static void NG_InitMicroSpriteControls(void)
+{
+	*REG_VRAMMOD = 0x200;
+	for (uint16_t set = 0; set < MICROFB_FRAMEBUFFER_SETS; set++)
+	{
+		for (uint16_t chunk = 0; chunk < MICROFB_COLUMN_CHUNKS; chunk++)
+		{
+			const uint16_t y = chunk * MICROFB_CHUNK_PIXELS;
+			const uint16_t height_word = set == 0 ? NG_SpriteYWord(y, MICROFB_CHUNK_CELLS) : 0u;
+
+			for (uint16_t x = 0; x < VIEWWINDOWWIDTH; x++)
+			{
+				const uint16_t sprite = NG_MicroSpriteIndex(set, chunk, x);
+				*REG_VRAMADDR = ADDR_SCB2 + sprite;
+				*REG_VRAMRW = MICROFB_SPRITE_SHRINK_4PX_CELL;
+				*REG_VRAMRW = height_word;
+				*REG_VRAMRW = MICROFB_X_WORD(x * MICROFB_PHYSICAL_CELL_W);
+			}
 		}
 	}
 }
@@ -281,8 +299,7 @@ static void NG_InitMicroSprites(void)
 	}
 
 	_s_visible_sprite_set = 0;
-	NG_SetMicroSpriteSetVisible(0, true);
-	NG_SetMicroSpriteSetVisible(1, false);
+	NG_InitMicroSpriteControls();
 }
 
 
@@ -333,9 +350,10 @@ static void NG_UploadMicroFramebuffer(uint8_t set)
 			*REG_VRAMADDR = ADDR_SCB1 + (sprite * 64u);
 			for (uint16_t row = 0; row < MICROFB_CHUNK_CELLS; row++)
 			{
-				const uint8_t color = src[row * VIEWWINDOWWIDTH];
-				*REG_VRAMRW = _s_color_to_tile[color];
-				*REG_VRAMRW = _s_color_to_attr[color];
+				const uint8_t color = *src;
+				*REG_VRAMRW = MICROFB_TILE_BASE + _s_color_to_tile_slot[color];
+				*REG_VRAMRW = MICROFB_PALETTE_ATTR(_s_color_to_palette[color]);
+				src += VIEWWINDOWWIDTH;
 			}
 		}
 	}

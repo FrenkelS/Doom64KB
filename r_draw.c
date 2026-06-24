@@ -1199,40 +1199,35 @@ static void R_DrawVisSprite(const vissprite_t *vis)
 }
 
 
-static boolean R_GetColumn(const texture_t __far* texture, int16_t texcolumn, int16_t* patch_num, int16_t* x_c, int16_t* origin_y)
+static void R_GetColumn(const texture_t __far* texture, int16_t texcolumn, int16_t* patch_num, int16_t* x_c)
 {
 	const uint8_t patchcount = texture->patchcount;
+
 	const int16_t xc = texcolumn & texture->widthmask;
 
 	if (patchcount == 1)
 	{
-		const texpatch_t __far* patch = &texture->patches[0];
-
-		*patch_num = patch->patch_num;
-		*x_c = xc - patch->originx;
-		*origin_y = patch->originy;
-
-		return 0 <= *x_c && *x_c < patch->patch_width;
+		//simple texture.
+		*patch_num = texture->patches[0].patch_num;
+		*x_c = xc;
 	}
-
-	for (uint8_t i = 0; i < patchcount; i++)
+	else
 	{
-		const texpatch_t __far* patch = &texture->patches[i];
-		const int16_t x = xc - patch->originx;
+		uint8_t i = 0;
 
-		if (0 <= x && x < patch->patch_width)
+		do
 		{
-			*patch_num = patch->patch_num;
-			*x_c = x;
-			*origin_y = patch->originy;
-			return true;
-		}
-	}
+			const texpatch_t __far* patch = &texture->patches[i];
 
-	*patch_num = texture->patches[0].patch_num;
-	*x_c = 0;
-	*origin_y = texture->patches[0].originy;
-	return false;
+			int16_t x = xc - patch->originx;
+			if (0 <= x && x < patch->patch_width)
+			{
+				*patch_num = patch->patch_num;
+				*x_c = x;
+				break;
+			}
+		} while (++i < patchcount);
+	}
 }
 
 
@@ -1827,7 +1822,7 @@ static void R_AddSprites(subsector_t __far* subsec, int16_t lightlevel)
 #if defined FLAT_WALL
 #define R_DrawSegTextureColumn(w,x,y,z) R_DrawColumnFlat(x,z)
 #else
-static void R_DrawColumnInCache(const column_t __far* patch, byte* cache, byte* mask, int16_t originy, int16_t cacheheight)
+static void R_DrawColumnInCache(const column_t __far* patch, byte* cache, int16_t originy, int16_t cacheheight)
 {
     while (patch->topdelta != 0xff)
     {
@@ -1837,7 +1832,6 @@ static void R_DrawColumnInCache(const column_t __far* patch, byte* cache, byte* 
 
         if (position < 0)
         {
-            source -= position;
             count += position;
             position = 0;
         }
@@ -1846,65 +1840,10 @@ static void R_DrawColumnInCache(const column_t __far* patch, byte* cache, byte* 
             count = cacheheight - position;
 
         if (count > 0)
-        {
             _fmemcpy(cache + position, source, count);
-            _fmemset(mask + position, 1, count);
-        }
 
         patch = (const column_t __far*)((const byte __far*)patch + patch->length + 4);
     }
-}
-
-
-static void R_MakeColumnCacheOpaque(byte* cache, const byte* mask, int16_t cacheheight)
-{
-    int16_t first = -1;
-
-    for (int16_t y = 0; y < cacheheight; y++)
-    {
-        if (mask[y])
-        {
-            first = y;
-            break;
-        }
-    }
-
-    if (first < 0)
-    {
-        _fmemset(cache, 0, cacheheight);
-        return;
-    }
-
-    for (int16_t y = 0; y < first; y++)
-        cache[y] = cache[first];
-
-    byte fill = cache[first];
-    for (int16_t y = first + 1; y < cacheheight; y++)
-    {
-        if (mask[y])
-            fill = cache[y];
-        else
-            cache[y] = fill;
-    }
-}
-
-
-static void R_RepeatColumnCacheToSamplerHeight(byte* cache, int16_t cacheheight)
-{
-    if (cacheheight <= 0)
-    {
-        _fmemset(cache, 0, 128);
-        return;
-    }
-
-    for (int16_t y = cacheheight; y < 128; y++)
-        cache[y] = cache[y - cacheheight];
-}
-
-
-static boolean R_PatchColumnCanUseRawSampler(const column_t __far* patch, int16_t originy)
-{
-    return originy == 0 && patch->topdelta == 0 && patch->length >= 128;
 }
 
 /*
@@ -1963,15 +1902,11 @@ static const byte __far* R_ComposeColumn(const int16_t texture, const texture_t 
     {
         //misses++;
         static byte tmpCache[128];
-        static byte tmpMask[128];
 
-        int16_t cacheheight = tex->height;
-        if (cacheheight > 128)
-            cacheheight = 128;
+        uint8_t i = 0;
+        uint8_t patchcount = tex->patchcount;
 
-        _fmemset(tmpMask, 0, 128);
-
-        for (uint8_t i = 0; i < tex->patchcount; i++)
+        do
         {
             const texpatch_t __far* patch = &tex->patches[i];
 
@@ -1988,13 +1923,12 @@ static const byte __far* R_ComposeColumn(const int16_t texture, const texture_t 
             {
                 const column_t __far* patchcol = (const column_t __far*)((const byte __far*)realpatch + realpatch->columnofs[xc - x1]);
 
-                R_DrawColumnInCache(patchcol, tmpCache, tmpMask, patch->originy, cacheheight);
+                R_DrawColumnInCache (patchcol, tmpCache, patch->originy, tex->height);
             }
-        }
+        } while(++i < patchcount);
 
-        R_MakeColumnCacheOpaque(tmpCache, tmpMask, cacheheight);
-        R_RepeatColumnCacheToSamplerHeight(tmpCache, cacheheight);
-        _fmemcpy(colcache, tmpCache, 128);
+        //Block copy will drop low 2 bits of len.
+        _fmemcpy(colcache, tmpCache, (tex->height + 3) & ~3);
 
         columnCacheEntries[cachekey] = CACHE_ENTRY(xc, texture);
     }
@@ -2008,32 +1942,20 @@ static void R_DrawSegTextureColumn(const texture_t __far* tex, int16_t texture, 
     {
         int16_t patch_num;
         int16_t x_c;
-        int16_t origin_y;
+        R_GetColumn(tex, texcolumn, &patch_num, &x_c);
 
-        if (R_GetColumn(tex, texcolumn, &patch_num, &x_c, &origin_y))
-        {
-            const patch_t __far* patch = W_GetLumpByNum(patch_num);
-            const column_t __far* column = (const column_t __far*) ((const byte __far*)patch + patch->columnofs[x_c]);
+        const patch_t __far* patch = W_GetLumpByNum(patch_num);
 
-            /* The raw patch stream is only a valid wall sampler when the first
-             * post alone covers the whole 0..127 range used by R_DrawColumn*.
-             * Many one-patch Doom wall textures are stored as sparse patch
-             * posts.  Treating column+3 as a linear 128-byte source makes the
-             * renderer sample post headers, dummy bytes and 0xff terminators;
-             * in the sprite microframebuffer those metadata bytes become loud
-             * 4x4 red/magenta/white blocks.
-             */
-            if (R_PatchColumnCanUseRawSampler(column, origin_y))
-            {
-                dcvars->source = (const byte __far*)column + 3;
-                R_DrawColumnWall(dcvars);
-                return;
-            }
-        }
+        const column_t __far* column = (const column_t __far*) ((const byte __far*)patch + patch->columnofs[x_c]);
+
+        dcvars->source = (const byte __far*)column + 3;
+        R_DrawColumnWall(dcvars);
     }
-
-    dcvars->source = R_ComposeColumn(texture, tex, texcolumn);
-    R_DrawColumnWall(dcvars);
+    else
+    {
+        dcvars->source = R_ComposeColumn(texture, tex, texcolumn);
+        R_DrawColumnWall(dcvars);
+    }
 }
 #endif
 
