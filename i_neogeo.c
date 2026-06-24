@@ -180,8 +180,9 @@ static void I_ShutdownTimer(void)
 #if defined NEOGEO_SPRITE_MICROFB
 #define NEOGEO_HEAP_SIZE 44000
 #else
+// 51450 is the maximum value with which this program can still be compiled.
 // Leave 2 KB for the stack.
-#define NEOGEO_HEAP_SIZE (51440-2*1024)
+#define NEOGEO_HEAP_SIZE (51450-2*1024)
 #endif
 #endif
 

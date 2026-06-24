@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023-2025 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -562,25 +562,18 @@ static void P_KillMobj(mobj_t __far* source, mobj_t __far* target)
   // This determines the kind of object spawned
   // during the death frame of a thing.
 
-  if( (_g_player.cheats & CF_ENEMY_ROCKETS) && (target->type >= MT_POSSESSED) && (target->type <= MT_BRUISERSHOT) )
+  switch (target->type)
   {
-    item = MT_MISC27; //Everyone drops a rocket launcher.
-  }
-  else
-  {
-      switch (target->type)
-      {
-      case MT_POSSESSED:
-          item = MT_CLIP;
-          break;
+  case MT_POSSESSED:
+      item = MT_CLIP;
+      break;
 
-      case MT_SHOTGUY:
-          item = MT_SHOTGUN;
-          break;
+  case MT_SHOTGUY:
+      item = MT_SHOTGUN;
+      break;
 
-      default:
-          return;
-      }
+  default:
+      return;
   }
 
   mo = P_SpawnMobj (target->x,target->y,ONFLOORZ, item);
