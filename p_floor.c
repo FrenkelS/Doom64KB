@@ -435,12 +435,12 @@ fixed_t P_FindNextHighestFloor(sector_t __far* sec)
   int16_t i;
 
   for (i=0 ;i < sec->linecount ; i++)
-    if ((other = getNextSector(sec->lines[i],sec)) &&
+    if ((other = getNextSector(SECTOR_LINE(sec, i),sec)) &&
          other->floorheight > currentheight)
     {
       fixed_t height = other->floorheight;
       while (++i < sec->linecount)
-        if ((other = getNextSector(sec->lines[i],sec)) &&
+        if ((other = getNextSector(SECTOR_LINE(sec, i),sec)) &&
             other->floorheight < height &&
             other->floorheight > currentheight)
           height = other->floorheight;
@@ -631,9 +631,10 @@ boolean EV_BuildStairs(const line_t __far* line)
 
       for (i = 0;i < sec->linecount;i++)
       {          
-        sector_t __far* tsec = LN_FRONTSECTOR((sec->lines[i]));
+        const line_t __far* line = SECTOR_LINE(sec, i);
+        sector_t __far* tsec = LN_FRONTSECTOR(line);
         int16_t newsecnum;
-        if ( !((sec->lines[i])->flags & ML_TWOSIDED) )
+        if ( !(line->flags & ML_TWOSIDED) )
           continue;
 
         newsecnum = tsec-_g_sectors;
@@ -641,7 +642,7 @@ boolean EV_BuildStairs(const line_t __far* line)
         if (secnum != newsecnum)
           continue;
 
-        tsec = LN_BACKSECTOR((sec->lines[i]));
+        tsec = LN_BACKSECTOR(line);
         if (!tsec) continue;     //jff 5/7/98 if no backside, continue
         newsecnum = tsec - _g_sectors;
 
@@ -709,7 +710,7 @@ boolean EV_DoDonut(const line_t __far* line)
     if (s1->floordata != NULL)
       continue;
 
-    s2 = getNextSector(s1->lines[0],s1);  // s2 is pool's sector
+    s2 = getNextSector(SECTOR_LINE(s1, 0),s1);  // s2 is pool's sector
     if (!s2) continue;                    // note lowest numbered line around
                                           // pillar must be two-sided
 
@@ -723,12 +724,14 @@ boolean EV_DoDonut(const line_t __far* line)
     {
 
 
-        if (!LN_BACKSECTOR((s2->lines[i])) || LN_BACKSECTOR((s2->lines[i])) == s1)
+        const line_t __far* line = SECTOR_LINE(s2, i);
+
+        if (!LN_BACKSECTOR(line) || LN_BACKSECTOR(line) == s1)
             continue;
 
       rtn = true; //jff 1/26/98 no donut action - no switch change on return
 
-      s3 = LN_BACKSECTOR((s2->lines[i]));      // s3 is model sector for changes
+      s3 = LN_BACKSECTOR(line);      // s3 is model sector for changes
 
       //  Spawn rising slime
       floor = Z_CallocLevSpec(sizeof(*floor));

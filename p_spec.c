@@ -127,7 +127,7 @@ fixed_t P_FindLowestFloorSurrounding(sector_t __far* sec)
 
   for (i=0 ;i < sec->linecount ; i++)
   {
-    check = sec->lines[i];
+    check = SECTOR_LINE(sec, i);
     other = getNextSector(check,sec);
 
     if (!other)
@@ -155,7 +155,7 @@ fixed_t P_FindHighestFloorSurrounding(sector_t __far* sec)
 
   for (i=0 ;i < sec->linecount ; i++)
   {
-    check = sec->lines[i];
+    check = SECTOR_LINE(sec, i);
     other = getNextSector(check,sec);
 
     if (!other)
@@ -183,7 +183,7 @@ fixed_t P_FindLowestCeilingSurrounding(sector_t __far* sec)
 
   for (i=0 ;i < sec->linecount ; i++)
   {
-    check = sec->lines[i];
+    check = SECTOR_LINE(sec, i);
     other = getNextSector(check,sec);
 
     if (!other)

@@ -101,7 +101,7 @@ const int16_t      __far* _g_blockmaplump;
 
 fixed_t   _g_bmaporgx, _g_bmaporgy;     // origin of block map
 
-mobj_t    __far*__far* _g_blocklinks;           // for thing chains
+uint16_t __far* _g_blocklinks;           // indexes into _g_thingPool
 
 //
 // REJECT
@@ -324,8 +324,10 @@ static void P_LoadBlockMap (int16_t lump)
     _g_bmapheight = _g_blockmaplump[3];
 
 
-    // clear out mobj chains - CPhipps - use calloc
-    _g_blocklinks = Z_CallocLevel(_g_bmapwidth * _g_bmapheight * sizeof(*_g_blocklinks));
+    // clear out mobj chains - CPhipps - use NO_INDEX as the empty head
+    const uint16_t blocklinksize = _g_bmapwidth * _g_bmapheight * sizeof(*_g_blocklinks);
+    _g_blocklinks = Z_MallocLevel(blocklinksize, NULL);
+    _fmemset(_g_blocklinks, 0xff, blocklinksize);
 
     _g_blockmap = _g_blockmaplump+4;
 }
@@ -352,7 +354,7 @@ static void P_LoadReject(int16_t lump)
 // cph - convenient sub-function
 static void P_AddLineToSector(const line_t __far* li, sector_t __far* sector)
 {
-  sector->lines[sector->linecount++] = li;
+  sector->lines[sector->linecount++] = li->lineno;
 }
 
 static void M_ClearBox (fixed_t *box)
@@ -409,7 +411,7 @@ static void P_GroupLines (void)
     }
 
     {  // allocate line tables for each sector
-        const line_t __far*__far*linebuffer = Z_MallocLevel(total*sizeof(line_t __far*), NULL);
+        uint16_t __far* linebuffer = Z_MallocLevel(total*sizeof(*linebuffer), NULL);
 
         for (i=0, sector = _g_sectors; i<_g_numsectors; i++, sector++)
         {
@@ -434,8 +436,9 @@ static void P_GroupLines (void)
 
         for(int16_t l = 0; l < sector->linecount; l++)
         {
-            M_AddToBox (bbox, (fixed_t)sector->lines[l]->v1.x<<FRACBITS, (fixed_t)sector->lines[l]->v1.y<<FRACBITS);
-            M_AddToBox (bbox, (fixed_t)sector->lines[l]->v2.x<<FRACBITS, (fixed_t)sector->lines[l]->v2.y<<FRACBITS);
+            const line_t __far* line = SECTOR_LINE(sector, l);
+            M_AddToBox (bbox, (fixed_t)line->v1.x<<FRACBITS, (fixed_t)line->v1.y<<FRACBITS);
+            M_AddToBox (bbox, (fixed_t)line->v2.x<<FRACBITS, (fixed_t)line->v2.y<<FRACBITS);
         }
 
         sector->soundorg.x = bbox[BOXRIGHT]/2+bbox[BOXLEFT]/2;

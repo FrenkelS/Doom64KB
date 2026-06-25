@@ -51,6 +51,8 @@ typedef struct bmalpool_s {
 	uint32_t               used;
 } bmalpool_t;
 
+#define BMAL_POOL_BITS 8
+
 
 inline static void __far* getelem(bmalpool_t __far* p, size_t size, size_t n)
 {
@@ -75,7 +77,7 @@ inline static PUREFUNC int16_t iselem(const bmalpool_t __far* pool, size_t size,
 
 	dif -= sizeof(bmalpool_t);
 	dif /= size;
-	return dif >= 8 * sizeof(uint32_t) ? -1 : dif;
+	return dif >= BMAL_POOL_BITS ? -1 : dif;
 #endif
 }
 
@@ -100,7 +102,7 @@ void __far* Z_BMalloc(struct block_memory_alloc_s *pzone)
 {
 	bmalpool_t __far*__far* pool = (bmalpool_t __far*__far*)&(pzone->firstpool);
 	while (*pool != NULL) {
-		if ((*pool)->used == 0xffffffff) {
+		if ((*pool)->used == ((1UL << BMAL_POOL_BITS) - 1)) {
 			pool = &((*pool)->nextpool);
 		} else {
 			size_t n = __builtin_ctzl(~(*pool)->used);
@@ -114,7 +116,7 @@ void __far* Z_BMalloc(struct block_memory_alloc_s *pzone)
 
 	// CPhipps: Allocate new memory, initialised to 0
 
-	*pool = newpool = Z_CallocLevel(sizeof(bmalpool_t) + pzone->size * 8 * sizeof(uint32_t));
+	*pool = newpool = Z_CallocLevel(sizeof(bmalpool_t) + pzone->size * BMAL_POOL_BITS);
 
 	// Return element 0 from this pool to satisfy the request
 	newpool->used = 1;

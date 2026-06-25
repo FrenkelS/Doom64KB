@@ -101,7 +101,7 @@ typedef struct
   // thinglist is a subset of touching_thinglist
   struct msecnode_s __far* touching_thinglist;
 
-  const struct line_s __far*__far*lines;
+  uint16_t __far* lines;        // Indexes into _g_maplines.
 
   uint16_t validcount;        // if == validcount, already checked
   int16_t linecount;

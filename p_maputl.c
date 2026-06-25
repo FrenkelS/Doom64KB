@@ -41,6 +41,7 @@
 #include "p_maputl.h"
 #include "p_map.h"
 #include "p_setup.h"
+#include "i_system.h"
 
 #include "globdata.h"
 
@@ -58,6 +59,19 @@ divline_t _g_trace;
 #define MAXINTERCEPTS 64
 static intercept_t intercepts[MAXINTERCEPTS];
 static intercept_t* intercept_p;
+
+static uint16_t P_MobjToBlockIndex(const mobj_t __far* thing)
+{
+  if (_g_thingPool <= thing && thing < _g_thingPool + _g_thingPoolSize)
+    return thing - _g_thingPool;
+
+  I_Error("P_MobjToBlockIndex: non-pooled blockmap thing");
+}
+
+static mobj_t __far* P_BlockIndexToMobj(uint16_t index)
+{
+  return &_g_thingPool[index];
+}
 
 
 //
@@ -325,10 +339,24 @@ void P_UnsetThingPosition(mobj_t __far* thing)
        * linking.
        */
 
-      mobj_t __far* bnext;
-      mobj_t __far*__far* bprev = thing->bprev;
-      if (bprev && (*bprev = bnext = thing->bnext))  // unlink from block map
-        bnext->bprev = bprev;
+      int16_t blockx = (thing->x - _g_bmaporgx)>>MAPBLOCKSHIFT;
+      int16_t blocky = (thing->y - _g_bmaporgy)>>MAPBLOCKSHIFT;
+      if (0 <= blockx && blockx < _g_bmapwidth && 0 <= blocky && blocky < _g_bmapheight)
+      {
+        const uint16_t thingindex = P_MobjToBlockIndex(thing);
+        uint16_t __far* link = &_g_blocklinks[blocky*_g_bmapwidth+blockx];
+        while (*link != NO_INDEX)
+        {
+          mobj_t __far* linked = P_BlockIndexToMobj(*link);
+          if (*link == thingindex)
+          {
+            *link = linked->bnext;
+            break;
+          }
+          link = &linked->bnext;
+        }
+      }
+      thing->bnext = NO_INDEX;
     }
 }
 
@@ -383,15 +411,12 @@ void P_SetThingPosition(mobj_t __far* thing)
         // killough 8/11/98: simpler scheme using pointer-to-pointer prev
         // pointers, allows head nodes to be treated like everything else
 
-        mobj_t __far*__far* link = &_g_blocklinks[blocky*_g_bmapwidth+blockx];
-        mobj_t __far* bnext = *link;
-        if ((thing->bnext = bnext))
-          bnext->bprev = &thing->bnext;
-        thing->bprev = link;
-        *link = thing;
+        uint16_t __far* link = &_g_blocklinks[blocky*_g_bmapwidth+blockx];
+        thing->bnext = *link;
+        *link = P_MobjToBlockIndex(thing);
       }
       else        // thing is off the map
-        thing->bnext = NULL, thing->bprev = NULL;
+        thing->bnext = NO_INDEX;
     }
 }
 
@@ -458,11 +483,14 @@ boolean P_BlockLinesIterator(int16_t x, int16_t y, boolean func(const line_t __f
 
 boolean P_BlockThingsIterator(int16_t x, int16_t y, boolean func(mobj_t __far*))
 {
-  mobj_t __far* mobj;
   if (0 <= x && x < _g_bmapwidth && 0 <= y && y < _g_bmapheight)
-    for (mobj = _g_blocklinks[y*_g_bmapwidth+x]; mobj; mobj = mobj->bnext)
+    for (uint16_t index = _g_blocklinks[y*_g_bmapwidth+x]; index != NO_INDEX;)
+    {
+      mobj_t __far* mobj = P_BlockIndexToMobj(index);
+      index = mobj->bnext;
       if (!func(mobj))
         return false;
+    }
   return true;
 }
 

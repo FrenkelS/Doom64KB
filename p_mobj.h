@@ -219,8 +219,7 @@ typedef struct mobj_s
 
     // Interaction info, by BLOCKMAP.
     // Links in blocks (if needed).
-    struct mobj_s __far*      bnext;
-    struct mobj_s __far*__far*     bprev; // killough 8/11/98: change to ptr-to-ptr
+    uint16_t            bnext; // Index into _g_thingPool, or NO_INDEX.
 
     struct subsector_s __far* subsector;
 
@@ -304,4 +303,3 @@ void    P_SpawnMapThing (const mapthing_t __far* mthing);
 struct player_s* P_MobjIsPlayer(const mobj_t __far* mobj);
 
 #endif
-

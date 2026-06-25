@@ -153,6 +153,8 @@ extern int16_t      _g_numlines;
 extern linedata_t   __far* _g_lines;
 extern const line_t *_g_maplines;
 
+#define SECTOR_LINE(sec, i) (&_g_maplines[(sec)->lines[(i)]])
+
 
 extern side_t   __far* _g_sides;
 extern const mapsidedef_t *_g_mapsides;
@@ -177,7 +179,7 @@ extern const int16_t      __far* _g_blockmaplump;
 
 extern fixed_t   _g_bmaporgx, _g_bmaporgy;     // origin of block map
 
-extern mobj_t    __far*__far* _g_blocklinks;           // for thing chains
+extern uint16_t __far* _g_blocklinks;           // indexes into _g_thingPool
 
 //
 // REJECT
