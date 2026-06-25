@@ -23,10 +23,11 @@
  *
  *      This backend no longer uses the FIX layer as the game framebuffer.
  *      The Doom renderer uses a runtime-selected logical framebuffer size up
- *      to 80x56.  Sprite output displays that active area as 4x4 or 8x8
+ *      to 80x56.  Sprite output displays that active area as 4x4, 6x6, or 8x8
  *      hardware-sprite microcells:
  *
  *          4x4: 160 sprite strips, 80 active per scanline = 320x224 pixels
+ *          6x6: 106 sprite strips, 53 active per scanline = 318x222 pixels
  *          8x8:  80 sprite strips, 40 active per scanline = 320x224 pixels
  *      The full-color path uses one shrunk 16x16 C-ROM tile per logical
  *      pixel.  The hardware shrinker reduces each tile to the selected cell.
@@ -125,11 +126,13 @@ typedef struct
 
 static const microfb_mode_t microfb_modes[] =
 {
-	{ "High", 4, 80, 56, 0x033fu, 0, 0 },
-	{ "Low", 8, 40, 28, 0x077fu, 0, 0 }
+	{ "Low", 8, 40, 28, 0x077fu, 0, 0 },
+	{ "Medium", 6, 53, 37, 0x055fu, 1, 1 },
+	{ "High", 4, 80, 56, 0x033fu, 0, 0 }
 };
 
 #define MICROFB_MODE_COUNT (sizeof(microfb_modes) / sizeof(microfb_modes[0]))
+#define MICROFB_DEFAULT_MODE_INDEX (MICROFB_MODE_COUNT - 1u)
 
 
 static uint8_t _s_screen[VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT];
@@ -378,9 +381,9 @@ void I_InitGraphicsHardwareSpecificCode(void)
 	I_ReloadPalette();
 	I_UploadNewPalette(0);
 
-	_s_microfb_mode_index = 0;
+	_s_microfb_mode_index = MICROFB_DEFAULT_MODE_INDEX;
 	_s_pending_microfb_mode_index = _s_microfb_mode_index;
-	R_SetRenderSize(microfb_modes[0].cols, microfb_modes[0].rows);
+	R_SetRenderSize(microfb_modes[MICROFB_DEFAULT_MODE_INDEX].cols, microfb_modes[MICROFB_DEFAULT_MODE_INDEX].rows);
 	memset(_s_screen, 0, sizeof(_s_screen));
 	NG_ClearFixOverlay();
 	NG_InitMicroSprites();
