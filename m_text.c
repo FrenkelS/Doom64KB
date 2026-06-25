@@ -534,7 +534,7 @@ static const menuitem_t OptionsMenu[]=
   {1,"Messages:",    M_ChangeMessages},
   {1,"Always Run:",  M_ChangeAlwaysRun},
 #if defined NEOGEO_SPRITE_MICROFB
-  {2,"Sprite Size:", M_ChangeSpriteQuality},
+  {2,"Graphic Detail:", M_ChangeSpriteQuality},
 #endif
   {2,"Gamma Boost:", M_ChangeGamma},
 #if !defined DISABLE_SOUND_OPTIONS
@@ -547,7 +547,7 @@ static const menu_t OptionsDef =
   opt_end,
   OptionsMenu,
   M_DrawOptions,
-  (VIEWWINDOWWIDTH - 12) / 2,4,
+  (VIEWWINDOWWIDTH - 18) / 2,4,
   &MainDef,1,
 };
 
@@ -556,20 +556,21 @@ static const menu_t OptionsDef =
 //
 static const char msgNames[2][4]  = {"Off","On"};
 
+#define OPTIONS_VALUE_X (OptionsDef.x + 17)
 
 static void M_DrawOptions(void)
 {
 	V_DrawString((VIEWWINDOWWIDTH - 7) / 2, 2, 12, "OPTIONS");
 
-	V_DrawString(OptionsDef.x + 13, OptionsDef.y + LINEHEIGHT * messages,  12, msgNames[showMessages]);
+	V_DrawString(OPTIONS_VALUE_X, OptionsDef.y + LINEHEIGHT * messages,  12, msgNames[showMessages]);
 
-	V_DrawString(OptionsDef.x + 13, OptionsDef.y + LINEHEIGHT * alwaysrun, 12, msgNames[_g_alwaysRun]);
+	V_DrawString(OPTIONS_VALUE_X, OptionsDef.y + LINEHEIGHT * alwaysrun, 12, msgNames[_g_alwaysRun]);
 
 #if defined NEOGEO_SPRITE_MICROFB
-	V_DrawString(OptionsDef.x + 13, OptionsDef.y + LINEHEIGHT * spritesize, 12, I_NeoGeoSpriteQualityName());
+	V_DrawString(OPTIONS_VALUE_X, OptionsDef.y + LINEHEIGHT * spritesize, 12, I_NeoGeoSpriteQualityName());
 #endif
 
-	M_DrawThermo(OptionsDef.x + 13, OptionsDef.y + LINEHEIGHT * gamma, 6, _g_gamma);
+	M_DrawThermo(OPTIONS_VALUE_X, OptionsDef.y + LINEHEIGHT * gamma, 6, _g_gamma);
 }
 
 static void M_Options(int16_t choice)

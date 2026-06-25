@@ -125,8 +125,8 @@ typedef struct
 
 static const microfb_mode_t microfb_modes[] =
 {
-	{ "4x4", 4, 80, 56, 0x033fu, 0, 0 },
-	{ "8x8", 8, 40, 28, 0x077fu, 0, 0 }
+	{ "High", 4, 80, 56, 0x033fu, 0, 0 },
+	{ "Low", 8, 40, 28, 0x077fu, 0, 0 }
 };
 
 #define MICROFB_MODE_COUNT (sizeof(microfb_modes) / sizeof(microfb_modes[0]))
