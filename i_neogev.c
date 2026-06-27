@@ -426,7 +426,116 @@ void wipe_StartScreen(void)
 }
 
 
+static int16_t *wipe_y_lookup;
+
+
+static boolean wipe_ScreenWipe(int16_t ticks)
+{
+	boolean done = true;
+
+	*REG_VRAMMOD = 1;
+
+	while (ticks--)
+	{
+		for (int16_t i = 0; i < VIEWWINDOWWIDTH; i++)
+		{
+			if (wipe_y_lookup[i] < 0)
+			{
+				wipe_y_lookup[i]++;
+				done = false;
+				continue;
+			}
+
+			// scroll down columns, which are still visible
+			if (wipe_y_lookup[i] < VIEWWINDOWHEIGHT)
+			{
+				int16_t dy = 1;
+				// At most dy shall be so that the column is shifted by VIEWWINDOWHEIGHT (i.e. just invisible)
+				if (wipe_y_lookup[i] + dy >= VIEWWINDOWHEIGHT)
+					dy = VIEWWINDOWHEIGHT - wipe_y_lookup[i];
+
+				int16_t s = ((i + 1) * 32) + (VIEWWINDOWHEIGHT - 1 - dy) + 2;
+				int16_t d = ((i + 1) * 32) + (VIEWWINDOWHEIGHT - 1)      + 2;
+
+				// scroll down the column. Of course we need to copy from the bottom... up to
+				// VIEWWINDOWHEIGHT - yLookup - dy
+
+				for (int16_t j = VIEWWINDOWHEIGHT - wipe_y_lookup[i] - dy; j; j--)
+				{
+					*REG_VRAMADDR = ADDR_FIXMAP + s;
+					uint16_t entry = *REG_VRAMRW;
+					*REG_VRAMADDR = ADDR_FIXMAP + d;
+					*REG_VRAMRW = entry;
+					s--;
+					d--;
+				}
+
+				// copy new screen. We need to copy only between y_lookup and + dy y_lookup
+				uint16_t *sptr = &_s_screen[wipe_y_lookup[i] * VIEWWINDOWWIDTH + i];
+				*REG_VRAMADDR = ADDR_FIXMAP + ((i + 1) * 32) + wipe_y_lookup[i] + 2;
+
+				for (int16_t j = 0 ; j < dy; j++)
+				{
+					*REG_VRAMRW = *sptr;
+					sptr += VIEWWINDOWWIDTH;
+				}
+
+				wipe_y_lookup[i] += dy;
+				done = false;
+			}
+		}
+	}
+
+	*REG_VRAMMOD = 32;
+
+	return done;
+}
+
+
+static void wipe_initMelt()
+{
+	wipe_y_lookup[0] = -(M_Random() % 16);
+	for (int16_t i = 1; i < VIEWWINDOWWIDTH; i++)
+	{
+		int16_t r = (M_Random() % 3) - 1;
+
+		wipe_y_lookup[i] = wipe_y_lookup[i - 1] + r;
+
+		if (wipe_y_lookup[i] > 0)
+			wipe_y_lookup[i] = 0;
+		else if (wipe_y_lookup[i] == -16)
+			wipe_y_lookup[i] = -15;
+	}
+}
+
+
 void D_Wipe(void)
 {
-	// TODO
+	wipe_y_lookup = Z_TryMallocStatic(VIEWWINDOWWIDTH * sizeof(int16_t));
+	if (!wipe_y_lookup)
+		return;
+
+	wipe_initMelt();
+
+	boolean done;
+	int32_t wipestart = I_GetTime() - 1;
+
+	do
+	{
+		int32_t nowtime;
+		int16_t tics;
+		do
+		{
+			nowtime = I_GetTime();
+			tics = nowtime - wipestart;
+		} while (!tics);
+
+		wipestart = nowtime;
+		done = wipe_ScreenWipe(tics);
+
+		M_Drawer();                   // menu is drawn even on top of wipes
+
+	} while (!done);
+
+	Z_Free(wipe_y_lookup);
 }
