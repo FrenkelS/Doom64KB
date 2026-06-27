@@ -698,11 +698,11 @@ void G_UpdateSaveGameStrings()
     {
         if(saveslots[i].save_present != 1)
         {
-            strcpy(_g_savegamestrings[i], "EMPTY");
+            strcpy_s(_g_savegamestrings[i], sizeof(_g_savegamestrings[i]), "EMPTY");
         }
         else
         {
-            strcpy(_g_savegamestrings[i], "E1My");
+            strcpy_s(_g_savegamestrings[i], sizeof(_g_savegamestrings[i]), "E1My");
 
             _g_savegamestrings[i][3] = '0' + saveslots[i].gamemap;
         }
