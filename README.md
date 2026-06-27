@@ -11,7 +11,8 @@ It's based on [Doom8088](https://github.com/FrenkelS/Doom8088), a port of Doom f
 
 **What's special?:**
  - Supports only Doom 1 E1M1 and E1M8
- - No audio
+ - Digital sound effects
+ - No music
  - No texture mapped floors and ceilings
  - No light diminishing
  - No saving and loading
