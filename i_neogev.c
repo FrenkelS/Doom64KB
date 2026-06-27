@@ -300,7 +300,16 @@ void V_DrawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint8_t color)
 
 void V_DrawBackground(int16_t backgroundnum)
 {
-	// TODO
+	const uint8_t __far* lump = W_GetLumpByNum(backgroundnum);
+
+	for (int16_t y = 0; y < VIEWWINDOWHEIGHT; y++)
+	{
+		uint16_t *dst = &_s_screen[y * VIEWWINDOWWIDTH + 0];
+		for (int16_t x = 0; x < VIEWWINDOWWIDTH; x++)
+		{
+			*dst++ = (lump[((y * 2) & 63) * 64 + ((x * 2) & 63)] << 8) | DITHER_CHARACTER;
+		}
+	}
 }
 
 
@@ -314,7 +323,7 @@ void V_DrawRawFullScreen(int16_t num)
 #else
 	const uint8_t *lump = W_GetLumpByNum(num);
 
-	static const fixed_t DXI = ((fixed_t)SCREENWIDTH << FRACBITS) / VIEWWINDOWWIDTH;
+	static const fixed_t DXI = ((fixed_t)SCREENWIDTH  << FRACBITS) / VIEWWINDOWWIDTH;
 	static const fixed_t DYI = ((fixed_t)SCREENHEIGHT << FRACBITS) / VIEWWINDOWHEIGHT;
 
 	uint16_t *dst = &_s_screen[0];
