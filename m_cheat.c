@@ -17,8 +17,6 @@ static void cheat_invisibility(void);
 static void cheat_rad(void);
 static void cheat_map(void);
 static void cheat_goggles(void);
-static void cheat_exit(void);
-static void cheat_end(void);
 static void cheat_fps(void);
 
 
@@ -43,8 +41,6 @@ static cheatseq_t cheat_def[] =
 	{cheat_rad,           "idbeholdr",  NULL},
 	{cheat_map,           "idbeholda",  NULL},
 	{cheat_goggles,       "idbeholdl",  NULL},
-	{cheat_exit,          "idclev",     NULL},
-	{cheat_end,           "idend",      NULL},
 	{cheat_fps,           "idrate",     NULL}
 };
 
@@ -220,16 +216,6 @@ static void cheat_map()
 static void cheat_goggles()
 {
     P_GivePower(&_g_player, pw_infrared);
-}
-
-static void cheat_exit()
-{
-    G_ExitLevel();
-}
-
-static void cheat_end()
-{
-	_g_gameaction = ga_victory;
 }
 
 
