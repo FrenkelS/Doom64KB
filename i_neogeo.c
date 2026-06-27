@@ -117,66 +117,14 @@ void I_StartTic(void)
 //
 
 #define RESET_SOUND_DRIVER 3
-#define WOOSH 4
-#define KICK  5
-#define BREAK 6
+
+
+static const int16_t firstsfx = 3;
+
 
 void DMX_Play(sfxenum_t id)
 {
-	switch (id) {
-		case sfx_pistol:	*REG_SOUND = KICK;  break;
-		case sfx_shotgn:	*REG_SOUND = KICK;  break;
-		case sfx_sgcock:	*REG_SOUND = WOOSH; break;
-		case sfx_sawup:		*REG_SOUND = WOOSH; break;
-		case sfx_sawidl:	*REG_SOUND = WOOSH; break;
-		case sfx_sawful:	*REG_SOUND = WOOSH; break;
-		case sfx_sawhit:	*REG_SOUND = KICK;  break;
-		case sfx_rlaunc:	*REG_SOUND = WOOSH; break;
-		case sfx_rxplod:	*REG_SOUND = WOOSH; break;
-		case sfx_firsht:	*REG_SOUND = WOOSH; break;
-		case sfx_firxpl:	*REG_SOUND = WOOSH; break;
-		case sfx_pstart:	*REG_SOUND = WOOSH; break;
-		case sfx_pstop:		*REG_SOUND = WOOSH; break;
-		case sfx_doropn:	*REG_SOUND = WOOSH; break;
-		case sfx_dorcls:	*REG_SOUND = WOOSH; break;
-		case sfx_stnmov:	*REG_SOUND = WOOSH; break;
-		case sfx_swtchn:	*REG_SOUND = WOOSH; break;
-		case sfx_swtchx:	*REG_SOUND = WOOSH; break;
-		case sfx_plpain:	*REG_SOUND = WOOSH; break;
-		case sfx_dmpain:	*REG_SOUND = WOOSH; break;
-		case sfx_popain:	*REG_SOUND = WOOSH; break;
-		case sfx_slop:		*REG_SOUND = WOOSH; break;
-		case sfx_itemup:	*REG_SOUND = WOOSH; break;
-		case sfx_wpnup:		*REG_SOUND = WOOSH; break;
-		case sfx_oof:		*REG_SOUND = WOOSH; break;
-		case sfx_telept:	*REG_SOUND = WOOSH; break;
-		case sfx_posit1:	*REG_SOUND = WOOSH; break;
-		case sfx_posit2:	*REG_SOUND = WOOSH; break;
-		case sfx_posit3:	*REG_SOUND = WOOSH; break;
-		case sfx_bgsit1:	*REG_SOUND = WOOSH; break;
-		case sfx_bgsit2:	*REG_SOUND = WOOSH; break;
-		case sfx_sgtsit:	*REG_SOUND = WOOSH; break;
-		case sfx_brssit:	*REG_SOUND = WOOSH; break;
-		case sfx_sgtatk:	*REG_SOUND = KICK;  break;
-		case sfx_claw:		*REG_SOUND = WOOSH; break;
-		case sfx_pldeth:	*REG_SOUND = BREAK; break;
-		case sfx_pdiehi:	*REG_SOUND = WOOSH; break;
-		case sfx_podth1:	*REG_SOUND = BREAK; break;
-		case sfx_podth2:	*REG_SOUND = BREAK; break;
-		case sfx_podth3:	*REG_SOUND = BREAK; break;
-		case sfx_bgdth1:	*REG_SOUND = BREAK; break;
-		case sfx_bgdth2:	*REG_SOUND = BREAK; break;
-		case sfx_sgtdth:	*REG_SOUND = BREAK; break;
-		case sfx_brsdth:	*REG_SOUND = BREAK; break;
-		case sfx_posact:	*REG_SOUND = WOOSH; break;
-		case sfx_bgact:		*REG_SOUND = WOOSH; break;
-		case sfx_dmact:		*REG_SOUND = WOOSH; break;
-		case sfx_noway:		*REG_SOUND = WOOSH; break;
-		case sfx_barexp:	*REG_SOUND = BREAK; break;
-		case sfx_punch:		*REG_SOUND = WOOSH; break;
-		case sfx_tink:		*REG_SOUND = WOOSH; break;
-		case sfx_getpow:	*REG_SOUND = WOOSH; break;
-	}
+	*REG_SOUND = firstsfx + id;
 }
 
 
