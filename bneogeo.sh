@@ -131,7 +131,7 @@ for arg in "$@"
 do
   if [ "$arg" = "-run" ]
   then
-    ngdevkit-gngeo -b glsl --shaderpath="/mnt/c/Projects/ngdevkit-examples/shaders" --shader="qcrt-flat.glslp" --scale 3 --no-resize --system home -i neogeo/rom -d neogeo/rom/gngeo_data.zip doom64kb --p1control A=K97,B=K115,C=K113,D=K119,START=K49,COIN=K51,UP=K82,DOWN=K81,LEFT=K80,RIGHT=K79
+    ngdevkit-gngeo -b glsl --shaderpath="./neogeo/shaders" --shader="qcrt-flat.glslp" --scale 3 --no-resize --system home -i neogeo/rom -d neogeo/rom/gngeo_data.zip doom64kb --p1control A=K97,B=K115,C=K113,D=K119,START=K49,COIN=K51,UP=K82,DOWN=K81,LEFT=K80,RIGHT=K79
     break
   fi
 done

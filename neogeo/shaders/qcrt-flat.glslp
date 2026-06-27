@@ -1,0 +1,13 @@
+shaders = "3"
+
+shader0 = "shaders/qcrt-sharpen-ghost-intensity.glsl"
+filter_linear0 = "false"
+
+shader1 = "shaders/qcrt-aperture_grille-s_intensity.glsl"
+filter_linear1 = "true"
+scale_type_x1 = "viewport"
+scale_x1 = "1.0"
+
+shader2 = "shaders/qcrt-scanlines.glsl"
+filter_linear2 = "false"
+
