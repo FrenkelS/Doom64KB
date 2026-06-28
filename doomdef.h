@@ -151,7 +151,6 @@ typedef enum {
 // Power up artifacts.
 typedef enum {
   pw_invulnerability,
-  pw_strength,
   pw_invisibility,
   pw_ironfeet,
   pw_allmap,

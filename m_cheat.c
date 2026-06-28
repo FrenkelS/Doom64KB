@@ -12,7 +12,6 @@ static void cheat_idkfa(void);
 static void cheat_ammo(void);
 static void cheat_noclip(void);
 static void cheat_invincibility(void);
-static void cheat_berserk(void);
 static void cheat_invisibility(void);
 static void cheat_rad(void);
 static void cheat_map(void);
@@ -36,7 +35,6 @@ static cheatseq_t cheat_def[] =
 	{cheat_ammo,          "idfa",       NULL},
 	{cheat_noclip,        "idspispopd", NULL},
 	{cheat_invincibility, "idbeholdv",  NULL},
-	{cheat_berserk,       "idbeholds",  NULL},
 	{cheat_invisibility,  "idbeholdi",  NULL},
 	{cheat_rad,           "idbeholdr",  NULL},
 	{cheat_map,           "idbeholda",  NULL},
@@ -193,10 +191,6 @@ static void cheat_invincibility()
     P_GivePower(&_g_player, pw_invulnerability);
 }
 
-static void cheat_berserk()
-{
-    P_GivePower(&_g_player, pw_strength);
-}
 
 static void cheat_invisibility()
 {

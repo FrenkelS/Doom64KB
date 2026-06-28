@@ -185,9 +185,10 @@ static void I_ShutdownTimer(void)
 //
 
 // The Neo Geo has 64 KB of RAM.
-// 52224 is the maximum value with which this program can still be compiled.
+// 52240 is the maximum value with which this program can still be compiled.
 // Leave 2 KB for the stack.
-#define HEAP_SIZE (52224-2*1024)
+#define HEAP_SIZE (52240-2*1024)
+//#define HEAP_SIZE 52240
 
 
 uint8_t __far* I_ZoneBase(uint32_t *heapSize)

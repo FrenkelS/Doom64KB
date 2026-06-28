@@ -241,7 +241,7 @@ static void P_GiveCard(player_t *player, card_t card)
 boolean P_GivePower(player_t *player, powertype_t power)
 {
   static const int16_t tics[NUMPOWERS] = {
-    INVULNTICS, 1 /* strength */, INVISTICS,
+    INVULNTICS, INVISTICS,
     IRONTICS, 1 /* allmap */, INFRATICS,
    };
 
@@ -253,9 +253,6 @@ boolean P_GivePower(player_t *player, powertype_t power)
       case pw_allmap:
         if (player->powers[pw_allmap])
           return false;
-        break;
-      case pw_strength:
-        P_GiveBody(player,100);
         break;
     }
 

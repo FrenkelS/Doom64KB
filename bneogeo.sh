@@ -1,4 +1,3 @@
-mkdir neogeo
 mkdir neogeo/rom
 
 set -e
