@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -484,8 +484,7 @@ static void ST_updateFaceWidget(void)
     if (priority < 5)
     {
         // invulnerability
-        if ((_g_player.cheats & CF_GODMODE)
-                || _g_player.powers[pw_invulnerability])
+        if (_g_player.cheats & CF_GODMODE)
         {
             priority = 4;
 

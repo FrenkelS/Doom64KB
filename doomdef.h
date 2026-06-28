@@ -150,7 +150,6 @@ typedef enum {
 
 // Power up artifacts.
 typedef enum {
-  pw_invulnerability,
   pw_invisibility,
   pw_ironfeet,
   pw_allmap,
@@ -160,7 +159,6 @@ typedef enum {
 
 // Power up durations (how many seconds till expiration).
 typedef enum {
-  INVULNTICS  = (30*TICRATE),
   INVISTICS   = (60*TICRATE),
   INFRATICS   = (120*TICRATE),
   IRONTICS    = (60*TICRATE)

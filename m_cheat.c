@@ -11,7 +11,6 @@ static void cheat_choppers(void);
 static void cheat_idkfa(void);
 static void cheat_ammo(void);
 static void cheat_noclip(void);
-static void cheat_invincibility(void);
 static void cheat_invisibility(void);
 static void cheat_rad(void);
 static void cheat_map(void);
@@ -34,7 +33,6 @@ static cheatseq_t cheat_def[] =
 	{cheat_idkfa,         "idkfa",      NULL},
 	{cheat_ammo,          "idfa",       NULL},
 	{cheat_noclip,        "idspispopd", NULL},
-	{cheat_invincibility, "idbeholdv",  NULL},
 	{cheat_invisibility,  "idbeholdi",  NULL},
 	{cheat_rad,           "idbeholdr",  NULL},
 	{cheat_map,           "idbeholda",  NULL},
@@ -105,8 +103,6 @@ static void cheat_choppers()
 {
     _g_player.weaponowned[wp_chainsaw] = true;
     _g_player.pendingweapon = wp_chainsaw;
-
-    P_GivePower(&_g_player, pw_invulnerability);
 
     _g_player.message = STSTR_CHOPPERS;
 }
@@ -184,11 +180,6 @@ static void cheat_noclip()
         _g_player.message = STSTR_NCOFF;
 
     }
-}
-
-static void cheat_invincibility()
-{
-    P_GivePower(&_g_player, pw_invulnerability);
 }
 
 

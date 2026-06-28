@@ -50,10 +50,6 @@
 static boolean onground; // whether player is on ground or in air
 
 
-// Index of the special effects (INVUL inverse) map.
-
-#define INVERSECOLORMAP 32
-
 //
 // Movement.
 //
@@ -441,9 +437,6 @@ void P_PlayerThink (player_t* player)
 
   // killough 1/98: Make idbeholdx toggle:
 
-  if (player->powers[pw_invulnerability] > 0) // killough
-    player->powers[pw_invulnerability]--;
-
   if (player->powers[pw_invisibility] > 0)    // killough
     if (! --player->powers[pw_invisibility] )
       player->mo->flags &= ~MF_SHADOW;
@@ -463,7 +456,5 @@ void P_PlayerThink (player_t* player)
   // Handling colormaps.
   // killough 3/20/98: reformat to terse C syntax
 
-  player->fixedcolormap = player->powers[pw_invulnerability] > 4*32 ||
-    player->powers[pw_invulnerability] & 8 ? INVERSECOLORMAP :
-    player->powers[pw_infrared] > 4*32 || player->powers[pw_infrared] & 8;
+  player->fixedcolormap = player->powers[pw_infrared] > 4*32 || player->powers[pw_infrared] & 8;
   }
