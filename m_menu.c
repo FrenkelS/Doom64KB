@@ -115,8 +115,6 @@ static int16_t whichSkull;       // which skull to draw (he blinks)
 boolean _g_menuactive;    // The menus are up
 static boolean messageNeedsInput; // timed message = no input from user
 
-char _g_savegamestrings[8][8];
-
 
 int16_t showMessages = 1;
 

@@ -101,6 +101,7 @@ static boolean gamekeydown[NUMKEYS];
 
 static skill_t d_skill;
 
+char _g_savegamestrings[8][8];
 static byte  savegameslot;         // Slot to load if gameaction == ga_loadgame
 
 
