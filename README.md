@@ -34,7 +34,7 @@ It's based on [Doom8088](https://github.com/FrenkelS/Doom8088), a port of Doom f
 |Effects                 |Code                                             |
 |------------------------|-------------------------------------------------|
 |Chainsaw                |C,    Up,   Up,   Left,  C,    A,    A,     Up   |
-|God mode                |Up,   UP,   Down, Down,  Left, Left, Right, Right|
+|God mode                |Up,   Up,   Down, Down,  Left, Left, Right, Right|
 |Weapons & Keys          |C,    Left, D,    Right, A,    Up,   A,     Up   |
 |Weapons                 |D,    D,    A,    D,     A,    Up,   Up,    Left |
 |No Clipping             |Up,   Down, Left, Right, Up,   Down, Left,  Right|
