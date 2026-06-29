@@ -101,8 +101,13 @@ static boolean gamekeydown[NUMKEYS];
 
 static skill_t d_skill;
 
+
+#define DISABLE_SAVE_GAME
+
+#if !defined DISABLE_SAVE_GAME
 char _g_savegamestrings[8][8];
 static byte  savegameslot;         // Slot to load if gameaction == ga_loadgame
+#endif
 
 
 static boolean secretexit;
@@ -684,8 +689,9 @@ inline static void LoadSRAM(byte __far* eeprom, uint16_t size, uint16_t offset)
 //
 // Update the strings displayed in the load-save menu.
 //
-void G_UpdateSaveGameStrings()
+void G_UpdateSaveGameStrings(void)
 {
+#if !defined DISABLE_SAVE_GAME
     uint16_t savebuffersize = sizeof(gba_save_data_t) * 8;
 
 
@@ -710,19 +716,23 @@ void G_UpdateSaveGameStrings()
     }
 
     Z_Free(loadbuffer);
+#endif
 }
 
 // killough 3/16/98: add slot info
 void G_LoadGame(int16_t slot)
 {
+#if !defined DISABLE_SAVE_GAME
     savegameslot = slot;
     _g_demoplayback = false;
 
     G_DoLoadGame();
+#endif
 }
 
 static void G_DoLoadGame(void)
 {
+#if !defined DISABLE_SAVE_GAME
     uint16_t savebuffersize = sizeof(gba_save_data_t) * 8;
 
 
@@ -752,6 +762,7 @@ static void G_DoLoadGame(void)
 		_g_player.backpack = true;
 
     Z_Free(loadbuffer);
+#endif
 }
 
 //
@@ -761,8 +772,10 @@ static void G_DoLoadGame(void)
 
 void G_SaveGame(int16_t slot)
 {
+#if !defined DISABLE_SAVE_GAME
     savegameslot = slot;
     G_DoSaveGame();
+#endif
 }
 
 
@@ -776,6 +789,7 @@ inline static void SaveSRAM(const byte __far* eeprom, uint16_t size, uint16_t of
 
 static void G_DoSaveGame(void)
 {
+#if !defined DISABLE_SAVE_GAME
     uint16_t savebuffersize = sizeof(gba_save_data_t) * 8;
 
     byte __far* savebuffer = Z_MallocStatic(savebuffersize);
@@ -803,6 +817,7 @@ static void G_DoSaveGame(void)
     _g_player.message = GGSAVED;
 
     G_UpdateSaveGameStrings();
+#endif
 }
 
 void G_SaveSettings()
