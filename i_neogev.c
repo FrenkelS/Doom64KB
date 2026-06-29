@@ -128,6 +128,17 @@ void I_FinishUpdate(void)
 }
 
 
+static const int LUTY[VIEWWINDOWHEIGHT] = {
+	 0 * VIEWWINDOWWIDTH,  1 * VIEWWINDOWWIDTH,  2 * VIEWWINDOWWIDTH,  3 * VIEWWINDOWWIDTH,
+	 4 * VIEWWINDOWWIDTH,  5 * VIEWWINDOWWIDTH,  6 * VIEWWINDOWWIDTH,  7 * VIEWWINDOWWIDTH,
+	 8 * VIEWWINDOWWIDTH,  9 * VIEWWINDOWWIDTH, 10 * VIEWWINDOWWIDTH, 11 * VIEWWINDOWWIDTH,
+	12 * VIEWWINDOWWIDTH, 13 * VIEWWINDOWWIDTH, 14 * VIEWWINDOWWIDTH, 15 * VIEWWINDOWWIDTH,
+	16 * VIEWWINDOWWIDTH, 17 * VIEWWINDOWWIDTH, 18 * VIEWWINDOWWIDTH, 19 * VIEWWINDOWWIDTH,
+	20 * VIEWWINDOWWIDTH, 21 * VIEWWINDOWWIDTH, 22 * VIEWWINDOWWIDTH, 23 * VIEWWINDOWWIDTH,
+	24 * VIEWWINDOWWIDTH, 25 * VIEWWINDOWWIDTH, 26 * VIEWWINDOWWIDTH, 27 * VIEWWINDOWWIDTH
+};
+
+
 #define COLEXTRABITS (8 - 1)
 #define COLBITS (8 + 1)
 
@@ -143,7 +154,7 @@ void R_DrawColumnSprite(const draw_column_vars_t *dcvars)
 
 	const uint8_t *colormap = dcvars->colormap;
 
-	uint8_t *dest = (uint8_t*)&_s_screen[dcvars->yl * VIEWWINDOWWIDTH + dcvars->x];
+	uint8_t *dest = (uint8_t*)&_s_screen[LUTY[dcvars->yl] + dcvars->x];
 
 	const uint16_t fracstep = dcvars->fracstep;
 	uint16_t frac = (dcvars->texturemid >> COLEXTRABITS) + (dcvars->yl - CENTERY) * fracstep;
@@ -196,7 +207,7 @@ void R_DrawColumnFlat(uint8_t color, const draw_column_vars_t *dcvars)
 	if (count <= 0)
 		return;
 
-	uint8_t *dest = (uint8_t*)&_s_screen[dcvars->yl * VIEWWINDOWWIDTH + dcvars->x];
+	uint8_t *dest = (uint8_t*)&_s_screen[LUTY[dcvars->yl] + dcvars->x];
 
 	switch (count)
 	{
@@ -257,7 +268,7 @@ void R_DrawFuzzColumn(const draw_column_vars_t *dcvars)
 	if (count <= 0)
 		return;
 
-	uint8_t *dest = (uint8_t*)&_s_screen[dcvars->yl * VIEWWINDOWWIDTH + dcvars->x];
+	uint8_t *dest = (uint8_t*)&_s_screen[LUTY[dcvars->yl] + dcvars->x];
 
 	static int16_t fuzzpos = 0;
 
