@@ -139,7 +139,7 @@ typedef struct
 {
     sector_t __far* sector;      // Sector the SideDef is facing.
 
-    int16_t textureoffset; // add this to the calculated texture column
+    uint8_t textureoffset; // add this to the calculated texture column
 
     int8_t toptexture;
     int8_t bottomtexture;
