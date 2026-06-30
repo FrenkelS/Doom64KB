@@ -1865,7 +1865,7 @@ static void R_DrawColumnInCache(const column_t __far* patch, byte* cache, int16_
  * straight from const patch_t*.
 */
 
-#define MAX_CACHE_ENTRIES 4
+#define MAX_CACHE_ENTRIES 32
 #define MAX_CACHE_TRIES 4
 
 static uint16_t CACHE_ENTRY(int16_t column, int16_t texture)
@@ -1873,7 +1873,13 @@ static uint16_t CACHE_ENTRY(int16_t column, int16_t texture)
 	return column | (texture << 8);
 }
 
+
+#if defined __NGDEVKIT__
+#include <ngdevkit/registers.h>
+static byte *columnCache = (byte *)&MMAP_PALBANK1[16 * 16];
+#else
 static byte __far columnCache[MAX_CACHE_ENTRIES*128];
+#endif
 static uint16_t columnCacheEntries[MAX_CACHE_ENTRIES];
 
 static uint16_t FindColumnCacheItem(int16_t texture, int16_t column)
@@ -1914,7 +1920,7 @@ static const byte __far* R_ComposeColumn(const int16_t texture, const texture_t 
     if (cacheEntry != CACHE_ENTRY(xc, texture))
     {
         //misses++;
-        static byte tmpCache[128];
+        byte tmpCache[128];
 
         uint8_t i = 0;
         uint8_t patchcount = tex->patchcount;
