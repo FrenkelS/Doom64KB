@@ -83,6 +83,30 @@ extern const int16_t CENTERY;
 #define FIX_OVERLAY_WIDTH 38
 #define FIX_OVERLAY_HEIGHT 28
 #define FIX_CLEAR_CHAR ' '
+#define FIX_WIPE_WIDTH 40
+#define FIX_WIPE_HEIGHT 28
+#define FIX_WIPE_Y_OFFSET 2
+#define FIX_WIPE_CHAR 0x00u
+
+static const uint16_t colors[] =
+{
+	0x0000,
+	0x0000,
+	0x0000,
+	0x0000,
+	0x2000, // 4 red
+	0x0000,
+	0x0000,
+	0x6000, // 7 light gray
+	0x9000, // 8 dark gray
+	0xc000, // 9 light blue
+	0x0000,
+	0x0000,
+	0xb000, // 12 light red
+	0x0000,
+	0xa000, // 14 yellow
+	0x3000  // 15 white
+};
 
 #if (VIEWWINDOWHEIGHT % MICROFB_COLUMN_CHUNKS) != 0
 #error Neo Geo sprite microframebuffer requires VIEWWINDOWHEIGHT divisible by MICROFB_COLUMN_CHUNKS
@@ -208,10 +232,10 @@ static void I_UploadNewPalette(int8_t pal)
 static void NG_ClearFixOverlay(void)
 {
 	*REG_VRAMMOD = 32;
-	for (uint16_t y = 0; y < FIX_OVERLAY_HEIGHT; y++)
+	for (uint16_t y = 0; y < 32; y++)
 	{
-		*REG_VRAMADDR = ADDR_FIXMAP + ((0 + 1) * 32) + y + 2;
-		for (uint16_t x = 0; x < FIX_OVERLAY_WIDTH; x++)
+		*REG_VRAMADDR = ADDR_FIXMAP + y;
+		for (uint16_t x = 0; x < 40; x++)
 			*REG_VRAMRW = FIX_CLEAR_CHAR;
 	}
 }
@@ -579,27 +603,6 @@ void V_DrawRawFullScreen(int16_t num)
 }
 
 
-static const uint16_t colors[] =
-{
-	0x0000,
-	0x0000,
-	0x0000,
-	0x0000,
-	0x2000, // 4 red
-	0x0000,
-	0x0000,
-	0x6000, // 7 light gray
-	0x9000, // 8 dark gray
-	0xc000, // 9 light blue
-	0x0000,
-	0x0000,
-	0xb000, // 12 light red
-	0x0000,
-	0xa000, // 14 yellow
-	0x3000  // 15 white
-};
-
-
 static int16_t NG_TextX(int16_t x)
 {
 #if VIEWWINDOWWIDTH > FIX_OVERLAY_WIDTH
@@ -705,9 +708,26 @@ void I_InitScreenPages(void)
 }
 
 
+static void NG_DrawFixWipeMask(void)
+{
+	*REG_VRAMMOD = 32;
+	for (uint16_t y = 0; y < FIX_WIPE_HEIGHT; y++)
+	{
+		*REG_VRAMADDR = ADDR_FIXMAP + FIX_WIPE_Y_OFFSET + y;
+		for (uint16_t x = 0; x < FIX_WIPE_WIDTH; x++)
+		{
+			const uint16_t sx = (x * VIEWWINDOWWIDTH) / FIX_WIPE_WIDTH;
+			const uint16_t sy = (y * VIEWWINDOWHEIGHT) / FIX_WIPE_HEIGHT;
+			const uint8_t color = _s_screen[sy * VIEWWINDOWWIDTH + sx];
+			*REG_VRAMRW = ((uint16_t)color << 8) | FIX_WIPE_CHAR;
+		}
+	}
+}
+
+
 void wipe_StartScreen(void)
 {
-	I_InitScreenPages();
+	NG_DrawFixWipeMask();
 }
 
 
@@ -722,7 +742,7 @@ static boolean wipe_ScreenWipe(int16_t ticks)
 
 	while (ticks--)
 	{
-		for (int16_t i = 0; i < VIEWWINDOWWIDTH; i++)
+		for (int16_t i = 0; i < FIX_WIPE_WIDTH; i++)
 		{
 			if (wipe_y_lookup[i] < 0)
 			{
@@ -732,46 +752,36 @@ static boolean wipe_ScreenWipe(int16_t ticks)
 			}
 
 			// scroll down columns, which are still visible
-			if (wipe_y_lookup[i] < VIEWWINDOWHEIGHT)
+			if (wipe_y_lookup[i] < FIX_WIPE_HEIGHT)
 			{
 				int16_t dy = 1;
-				// At most dy shall be so that the column is shifted by VIEWWINDOWHEIGHT (i.e. just invisible)
-				if (wipe_y_lookup[i] + dy >= VIEWWINDOWHEIGHT)
-					dy = VIEWWINDOWHEIGHT - wipe_y_lookup[i];
+				// At most dy shall be so that the column is shifted just invisible.
+				if (wipe_y_lookup[i] + dy >= FIX_WIPE_HEIGHT)
+					dy = FIX_WIPE_HEIGHT - wipe_y_lookup[i];
 
-				int16_t s = ((i + 1) * 32) + (VIEWWINDOWHEIGHT - 1 - dy) + 2;
-				int16_t d = ((i + 1) * 32) + (VIEWWINDOWHEIGHT - 1)      + 2;
+				int16_t s = FIX_WIPE_Y_OFFSET + FIX_WIPE_HEIGHT - 1 - dy;
+				int16_t d = FIX_WIPE_Y_OFFSET + FIX_WIPE_HEIGHT - 1;
+				const uint16_t column = (uint16_t)i * 32u;
 
-				// scroll down the column. Of course we need to copy from the bottom... up to
-				// VIEWWINDOWHEIGHT - yLookup - dy
-
-				for (int16_t j = VIEWWINDOWHEIGHT - wipe_y_lookup[i] - dy; j; j--)
+				for (int16_t j = FIX_WIPE_HEIGHT - wipe_y_lookup[i] - dy; j; j--)
 				{
-					*REG_VRAMADDR = ADDR_FIXMAP + s;
+					*REG_VRAMADDR = ADDR_FIXMAP + column + (uint16_t)s;
 					uint16_t entry = *REG_VRAMRW;
-					*REG_VRAMADDR = ADDR_FIXMAP + d;
+					*REG_VRAMADDR = ADDR_FIXMAP + column + (uint16_t)d;
 					*REG_VRAMRW = entry;
 					s--;
 					d--;
 				}
 
-				// copy new screen. We need to copy only between y_lookup and + dy y_lookup
-				uint8_t *sptr = &_s_screen[wipe_y_lookup[i] * VIEWWINDOWWIDTH + i];
-				*REG_VRAMADDR = ADDR_FIXMAP + ((i + 1) * 32) + wipe_y_lookup[i] + 2;
-
-				for (int16_t j = 0 ; j < dy; j++)
-				{
-					*REG_VRAMRW = *sptr;
-					sptr += VIEWWINDOWWIDTH;
-				}
+				*REG_VRAMADDR = ADDR_FIXMAP + column + FIX_WIPE_Y_OFFSET + (uint16_t)wipe_y_lookup[i];
+				for (int16_t j = 0; j < dy; j++)
+					*REG_VRAMRW = FIX_CLEAR_CHAR;
 
 				wipe_y_lookup[i] += dy;
 				done = false;
 			}
 		}
 	}
-
-	*REG_VRAMMOD = 32;
 
 	return done;
 }
@@ -780,7 +790,7 @@ static boolean wipe_ScreenWipe(int16_t ticks)
 static void wipe_initMelt()
 {
 	wipe_y_lookup[0] = -(M_Random() % 16);
-	for (int16_t i = 1; i < VIEWWINDOWWIDTH; i++)
+	for (int16_t i = 1; i < FIX_WIPE_WIDTH; i++)
 	{
 		int16_t r = (M_Random() % 3) - 1;
 
@@ -796,9 +806,11 @@ static void wipe_initMelt()
 
 void D_Wipe(void)
 {
-	wipe_y_lookup = Z_TryMallocStatic(VIEWWINDOWWIDTH * sizeof(int16_t));
+	wipe_y_lookup = Z_TryMallocStatic(FIX_WIPE_WIDTH * sizeof(int16_t));
 	if (!wipe_y_lookup)
 		return;
+
+	I_FinishUpdate();
 
 	wipe_initMelt();
 
@@ -819,8 +831,11 @@ void D_Wipe(void)
 		done = wipe_ScreenWipe(tics);
 
 		M_Drawer();                   // menu is drawn even on top of wipes
+		NG_WaitVBlankStart();
+		NG_UploadFixOverlay();
 
 	} while (!done);
 
+	NG_ClearFixOverlay();
 	Z_Free(wipe_y_lookup);
 }

@@ -1877,7 +1877,11 @@ static uint16_t CACHE_ENTRY(int16_t column, int16_t texture)
 
 #if defined __NGDEVKIT__
 #include <ngdevkit/registers.h>
+#if defined NEOGEO_SPRITE_MICROFB
+static byte *columnCache = (byte *)&MMAP_PALBANK1[64 * 16];
+#else
 static byte *columnCache = (byte *)&MMAP_PALBANK1[16 * 16];
+#endif
 #else
 static byte __far columnCache[MAX_CACHE_ENTRIES*128];
 #endif
