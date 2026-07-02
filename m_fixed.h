@@ -67,11 +67,14 @@ fixed_t CONSTFUNC FixedMulAngle(fixed_t a, fixed_t b);
 fixed_t CONSTFUNC FixedMul3216(fixed_t a, uint16_t blw);
 
 
+extern const uint32_t reciprocalTable[65536];
+
+
 //Approx Reciprocal of v
 // Divide FFFFFFFFh by a number.
 #define FixedReciprocal(v)      (0xffffffffu/(v))
 #define FixedReciprocalBig(v)   (0xffffffffu/(v))
-#define FixedReciprocalSmall(v) (0xffffffffu/(uint16_t)(v))
+#define FixedReciprocalSmall(v) (reciprocalTable[(v)])
 
 
 /*
