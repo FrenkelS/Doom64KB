@@ -378,6 +378,24 @@ void I_FinishUpdate(void)
 }
 
 
+static const int LUTY[VIEWWINDOWHEIGHT] = {
+	 0 * VIEWWINDOWWIDTH,  1 * VIEWWINDOWWIDTH,  2 * VIEWWINDOWWIDTH,  3 * VIEWWINDOWWIDTH,
+	 4 * VIEWWINDOWWIDTH,  5 * VIEWWINDOWWIDTH,  6 * VIEWWINDOWWIDTH,  7 * VIEWWINDOWWIDTH,
+	 8 * VIEWWINDOWWIDTH,  9 * VIEWWINDOWWIDTH, 10 * VIEWWINDOWWIDTH, 11 * VIEWWINDOWWIDTH,
+	12 * VIEWWINDOWWIDTH, 13 * VIEWWINDOWWIDTH, 14 * VIEWWINDOWWIDTH, 15 * VIEWWINDOWWIDTH,
+	16 * VIEWWINDOWWIDTH, 17 * VIEWWINDOWWIDTH, 18 * VIEWWINDOWWIDTH, 19 * VIEWWINDOWWIDTH,
+	20 * VIEWWINDOWWIDTH, 21 * VIEWWINDOWWIDTH, 22 * VIEWWINDOWWIDTH, 23 * VIEWWINDOWWIDTH,
+	24 * VIEWWINDOWWIDTH, 25 * VIEWWINDOWWIDTH, 26 * VIEWWINDOWWIDTH, 27 * VIEWWINDOWWIDTH,
+	28 * VIEWWINDOWWIDTH, 29 * VIEWWINDOWWIDTH, 30 * VIEWWINDOWWIDTH, 31 * VIEWWINDOWWIDTH,
+	32 * VIEWWINDOWWIDTH, 33 * VIEWWINDOWWIDTH, 34 * VIEWWINDOWWIDTH, 35 * VIEWWINDOWWIDTH,
+	36 * VIEWWINDOWWIDTH, 37 * VIEWWINDOWWIDTH, 38 * VIEWWINDOWWIDTH, 39 * VIEWWINDOWWIDTH,
+	40 * VIEWWINDOWWIDTH, 41 * VIEWWINDOWWIDTH, 42 * VIEWWINDOWWIDTH, 43 * VIEWWINDOWWIDTH,
+	44 * VIEWWINDOWWIDTH, 45 * VIEWWINDOWWIDTH, 46 * VIEWWINDOWWIDTH, 47 * VIEWWINDOWWIDTH,
+	48 * VIEWWINDOWWIDTH, 49 * VIEWWINDOWWIDTH, 50 * VIEWWINDOWWIDTH, 51 * VIEWWINDOWWIDTH,
+	52 * VIEWWINDOWWIDTH, 53 * VIEWWINDOWWIDTH, 54 * VIEWWINDOWWIDTH, 55 * VIEWWINDOWWIDTH
+};
+
+
 #define COLEXTRABITS (8 - 1)
 #define COLBITS (8 + 1)
 
@@ -391,7 +409,7 @@ void R_DrawColumnSprite(const draw_column_vars_t *dcvars)
 
 	const uint8_t *source = dcvars->source;
 	const uint8_t *colormap = dcvars->colormap;
-	uint8_t *dest = &_s_screen[dcvars->yl * VIEWWINDOWWIDTH + dcvars->x];
+	uint8_t *dest = (uint8_t*)&_s_screen[LUTY[dcvars->yl] + dcvars->x];
 
 	const uint16_t fracstep = dcvars->fracstep;
 	uint16_t frac = (dcvars->texturemid >> COLEXTRABITS) + (dcvars->yl - CENTERY) * fracstep;
@@ -418,7 +436,7 @@ void R_DrawColumnFlat(uint8_t color, const draw_column_vars_t *dcvars)
 	if (count <= 0)
 		return;
 
-	uint8_t *dest = &_s_screen[dcvars->yl * VIEWWINDOWWIDTH + dcvars->x];
+	uint8_t *dest = (uint8_t*)&_s_screen[LUTY[dcvars->yl] + dcvars->x];
 	while (count--)
 	{
 		*dest = color;
@@ -427,12 +445,45 @@ void R_DrawColumnFlat(uint8_t color, const draw_column_vars_t *dcvars)
 }
 
 
+#define FUZZCOLOR1 106
+#define FUZZCOLOR2 107
+#define FUZZCOLOR3 108
+#define FUZZCOLOR4 109
+#define FUZZTABLE 50
+
+static const uint8_t fuzzcolors[FUZZTABLE] =
+{
+	FUZZCOLOR1,FUZZCOLOR2,FUZZCOLOR3,FUZZCOLOR4,FUZZCOLOR1,FUZZCOLOR3,FUZZCOLOR2,
+	FUZZCOLOR1,FUZZCOLOR3,FUZZCOLOR4,FUZZCOLOR1,FUZZCOLOR3,FUZZCOLOR1,FUZZCOLOR2,
+	FUZZCOLOR3,FUZZCOLOR1,FUZZCOLOR3,FUZZCOLOR4,FUZZCOLOR2,FUZZCOLOR4,FUZZCOLOR2,
+	FUZZCOLOR1,FUZZCOLOR4,FUZZCOLOR2,FUZZCOLOR3,FUZZCOLOR1,FUZZCOLOR3,FUZZCOLOR1,FUZZCOLOR4,
+	FUZZCOLOR3,FUZZCOLOR2,FUZZCOLOR1,FUZZCOLOR3,FUZZCOLOR4,FUZZCOLOR2,FUZZCOLOR1,
+	FUZZCOLOR3,FUZZCOLOR4,FUZZCOLOR2,FUZZCOLOR4,FUZZCOLOR2,FUZZCOLOR1,FUZZCOLOR3,
+	FUZZCOLOR1,FUZZCOLOR3,FUZZCOLOR4,FUZZCOLOR1,FUZZCOLOR3,FUZZCOLOR2,FUZZCOLOR1
+};
+
+
 void R_DrawFuzzColumn(const draw_column_vars_t *dcvars)
 {
-	/* Cheap spectre fallback: draw the column black instead of attempting the
-	 * original neighboring-pixel fuzz on the scaled sprite framebuffer.
-	 */
-	R_DrawColumnFlat(0, dcvars);
+	int16_t count = (dcvars->yh - dcvars->yl) + 1;
+
+	if (count <= 0)
+		return;
+
+	uint8_t *dest = (uint8_t*)&_s_screen[LUTY[dcvars->yl] + dcvars->x];
+
+	static int16_t fuzzpos = 0;
+
+	do
+	{
+		*dest = fuzzcolors[fuzzpos];
+		dest += VIEWWINDOWWIDTH;
+
+		fuzzpos++;
+		if (fuzzpos >= FUZZTABLE)
+			fuzzpos = 0;
+
+	} while (--count);
 }
 
 
@@ -507,7 +558,7 @@ void V_DrawRawFullScreen(int16_t num)
 #else
 	const uint8_t *lump = W_GetLumpByNum(num);
 
-	static const fixed_t DXI = ((fixed_t)SCREENWIDTH << FRACBITS) / VIEWWINDOWWIDTH;
+	static const fixed_t DXI = ((fixed_t)SCREENWIDTH  << FRACBITS) / VIEWWINDOWWIDTH;
 	static const fixed_t DYI = ((fixed_t)SCREENHEIGHT << FRACBITS) / VIEWWINDOWHEIGHT;
 
 	uint8_t *dst = &_s_screen[0];
@@ -660,7 +711,116 @@ void wipe_StartScreen(void)
 }
 
 
+static int16_t *wipe_y_lookup;
+
+
+static boolean wipe_ScreenWipe(int16_t ticks)
+{
+	boolean done = true;
+
+	*REG_VRAMMOD = 1;
+
+	while (ticks--)
+	{
+		for (int16_t i = 0; i < VIEWWINDOWWIDTH; i++)
+		{
+			if (wipe_y_lookup[i] < 0)
+			{
+				wipe_y_lookup[i]++;
+				done = false;
+				continue;
+			}
+
+			// scroll down columns, which are still visible
+			if (wipe_y_lookup[i] < VIEWWINDOWHEIGHT)
+			{
+				int16_t dy = 1;
+				// At most dy shall be so that the column is shifted by VIEWWINDOWHEIGHT (i.e. just invisible)
+				if (wipe_y_lookup[i] + dy >= VIEWWINDOWHEIGHT)
+					dy = VIEWWINDOWHEIGHT - wipe_y_lookup[i];
+
+				int16_t s = ((i + 1) * 32) + (VIEWWINDOWHEIGHT - 1 - dy) + 2;
+				int16_t d = ((i + 1) * 32) + (VIEWWINDOWHEIGHT - 1)      + 2;
+
+				// scroll down the column. Of course we need to copy from the bottom... up to
+				// VIEWWINDOWHEIGHT - yLookup - dy
+
+				for (int16_t j = VIEWWINDOWHEIGHT - wipe_y_lookup[i] - dy; j; j--)
+				{
+					*REG_VRAMADDR = ADDR_FIXMAP + s;
+					uint16_t entry = *REG_VRAMRW;
+					*REG_VRAMADDR = ADDR_FIXMAP + d;
+					*REG_VRAMRW = entry;
+					s--;
+					d--;
+				}
+
+				// copy new screen. We need to copy only between y_lookup and + dy y_lookup
+				uint8_t *sptr = &_s_screen[wipe_y_lookup[i] * VIEWWINDOWWIDTH + i];
+				*REG_VRAMADDR = ADDR_FIXMAP + ((i + 1) * 32) + wipe_y_lookup[i] + 2;
+
+				for (int16_t j = 0 ; j < dy; j++)
+				{
+					*REG_VRAMRW = *sptr;
+					sptr += VIEWWINDOWWIDTH;
+				}
+
+				wipe_y_lookup[i] += dy;
+				done = false;
+			}
+		}
+	}
+
+	*REG_VRAMMOD = 32;
+
+	return done;
+}
+
+
+static void wipe_initMelt()
+{
+	wipe_y_lookup[0] = -(M_Random() % 16);
+	for (int16_t i = 1; i < VIEWWINDOWWIDTH; i++)
+	{
+		int16_t r = (M_Random() % 3) - 1;
+
+		wipe_y_lookup[i] = wipe_y_lookup[i - 1] + r;
+
+		if (wipe_y_lookup[i] > 0)
+			wipe_y_lookup[i] = 0;
+		else if (wipe_y_lookup[i] == -16)
+			wipe_y_lookup[i] = -15;
+	}
+}
+
+
 void D_Wipe(void)
 {
-	// TODO
+	wipe_y_lookup = Z_TryMallocStatic(VIEWWINDOWWIDTH * sizeof(int16_t));
+	if (!wipe_y_lookup)
+		return;
+
+	wipe_initMelt();
+
+	boolean done;
+	int32_t wipestart = I_GetTime() - 1;
+
+	do
+	{
+		int32_t nowtime;
+		int16_t tics;
+		do
+		{
+			nowtime = I_GetTime();
+			tics = nowtime - wipestart;
+		} while (!tics);
+
+		wipestart = nowtime;
+		done = wipe_ScreenWipe(tics);
+
+		M_Drawer();                   // menu is drawn even on top of wipes
+
+	} while (!done);
+
+	Z_Free(wipe_y_lookup);
 }

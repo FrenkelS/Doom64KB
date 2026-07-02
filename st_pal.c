@@ -1,7 +1,7 @@
 /*-----------------------------------------------------------------------------
  *
  *
- *  Copyright (C) 2024 Frenkel Smeijers
+ *  Copyright (C) 2024-2026 Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -19,7 +19,7 @@
  *  02111-1307, USA.
  *
  * DESCRIPTION:
- *      Does palette indicators (red pain/berserk, bright pickup)
+ *      Does palette indicators (red pain, bright pickup)
  *
  *-----------------------------------------------------------------------------*/
 
@@ -56,14 +56,6 @@ void ST_doPaletteStuff(void)
 {
     int8_t  palette;
     int16_t cnt = _g_player.damagecount;
-
-    if (_g_player.powers[pw_strength])
-    {
-        // slowly fade the berzerk out
-        int16_t bzc = 12 - (_g_player.powers[pw_strength] >> 6);
-        if (bzc > cnt)
-            cnt = bzc;
-    }
 
     if (cnt)
     {

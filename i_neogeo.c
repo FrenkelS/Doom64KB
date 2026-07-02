@@ -117,23 +117,33 @@ void I_StartTic(void)
 // Audio
 //
 
+#define RESET_SOUND_DRIVER 3
+
+
+static const int16_t firstsfx = 3;
+
+
 void DMX_Play(sfxenum_t id)
 {
+	*REG_SOUND = firstsfx + id;
 }
 
 
 void DMX_Init(void)
 {
+	*REG_SOUND = RESET_SOUND_DRIVER;
 }
 
 
 void DMX_Init2(void)
 {
+	// Do nothing
 }
 
 
 void DMX_Shutdown(void)
 {
+	*REG_SOUND = RESET_SOUND_DRIVER;
 }
 
 
@@ -166,6 +176,7 @@ void I_InitTimer(void)
 
 static void I_ShutdownTimer(void)
 {
+	// Do nothing
 }
 
 
@@ -180,9 +191,9 @@ static void I_ShutdownTimer(void)
 #if defined NEOGEO_SPRITE_MICROFB
 #define NEOGEO_HEAP_SIZE 44000
 #else
-// 51450 is the maximum value with which this program can still be compiled.
+// 53016 is the maximum value with which this program can still be compiled.
 // Leave 2 KB for the stack.
-#define NEOGEO_HEAP_SIZE (51450-2*1024)
+#define NEOGEO_HEAP_SIZE (53016-2*1024)
 #endif
 #endif
 
@@ -226,6 +237,7 @@ static void I_Shutdown(void)
 
 	if (isKeyboardIsrSet)
 	{
+		// Do nothing
 	}
 }
 

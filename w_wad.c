@@ -75,8 +75,10 @@ typedef struct
 static unsigned char doom_iwad[2 * 1014 * 1024];
 #elif defined __DJGPP__
 #include "doom64kl.h"
-#else
+#elif defined __NGDEVKIT__
 #include "doom64ng.h"
+#else
+#error unsupported compiler
 #endif
 
 static filelump_t __far* fileinfo;

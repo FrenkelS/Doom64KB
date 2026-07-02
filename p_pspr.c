@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023-2025 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -146,8 +146,7 @@ weapontype_t P_SwitchWeapon(player_t *player)
     switch (*prefer++)
       {
       case 1:
-        if (!player->powers[pw_strength])      // allow chainsaw override
-          break;
+        break;
       case 0:
         newweapon = wp_fist;
         break;
@@ -632,9 +631,6 @@ void A_Punch(player_t *player, pspdef_t *psp)
 	int16_t	damage = (P_Random()%10+1)<<1;
 
 	UNUSED(psp);
-
-	if (player->powers[pw_strength])
-		damage *= 10;
 
 	angle = player->mo->angle;
 

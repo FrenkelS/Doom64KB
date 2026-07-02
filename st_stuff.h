@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -31,7 +31,7 @@
  * DESCRIPTION:
  *      Status bar code.
  *      Does the face/direction indicator animation.
- *      Does palette indicators as well (red pain/berserk, bright pickup)
+ *      Does palette indicators as well (red pain, bright pickup)
  *
  *-----------------------------------------------------------------------------*/
 
