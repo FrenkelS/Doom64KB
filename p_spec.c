@@ -425,7 +425,7 @@ void P_SpawnSpecials (void)
 
 typedef struct {
 	thinker_t thinker;				// Thinker structure for scrolling
-	int16_t __far* textureoffset;	// Affected textureoffset
+	uint8_t __far* textureoffset;	// Affected textureoffset
 } scroll_t;
 
 

@@ -1,4 +1,3 @@
-mkdir neogeo
 mkdir neogeo/rom
 
 set -e
@@ -10,7 +9,7 @@ unset CFLAGS
 
 CROM_FILE_BYTES="${CROM_FILE_BYTES:-4194304}"
 
-export RENDER_OPTIONS="-DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=118 -DWAD_FILE=\"DOOM64TB.WAD\" -DVIEWWINDOWWIDTH=80 -DVIEWWINDOWHEIGHT=56 -DMAPWIDTH=80 -DLOW_MEMORY -DNEOGEO_SPRITE_MICROFB -DNEOGEO_HEAP_SIZE=44000"
+export RENDER_OPTIONS="-DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=118 -DWAD_FILE=\"DOOM64TB.WAD\" -DVIEWWINDOWWIDTH=80 -DVIEWWINDOWHEIGHT=56 -DMAPWIDTH=80 -DLOW_MEMORY -D__NGDEVKIT__ -DNEOGEO_SPRITE_MICROFB -DNEOGEO_HEAP_SIZE=44000"
 
 export CPU=68000
 m68k-neogeo-elf-gcc -c i_neogev.c $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
@@ -115,7 +114,7 @@ rm w_wad.o
 rm z_zone.o
 
 m68k-neogeo-elf-objcopy -O binary -S -R .text2 --gap-fill 0xff --pad-to 1048576 neogeo/DOOM64KB.elf neogeo/rom/doom64kb-p1.p1 && dd if=neogeo/rom/doom64kb-p1.p1 of=neogeo/rom/doom64kb-p1.p1 conv=notrunc,swab status=none
-z80-neogeo-ihx-sdobjcopy -I ihex -O binary neogeo/assets/base-sound-driver.ihx neogeo/rom/doom64kb-m1.m1 --pad-to 131072
+z80-neogeo-ihx-sdobjcopy -I ihex -O binary neogeo/assets/demo_driver.ihx neogeo/rom/doom64kb-m1.m1 --pad-to 131072
 python3 tools/gen_neogeo_color_tiles.py \
   --base-c1 neogeo/assets/base-crom-logo.c1 \
   --base-c2 neogeo/assets/base-crom-logo.c2 \
@@ -124,11 +123,13 @@ python3 tools/gen_neogeo_color_tiles.py \
   --crom-size "$CROM_FILE_BYTES"
 cp neogeo/assets/generated/doom_color_microfb.c1 neogeo/rom/doom64kb-c1.c1 && truncate -s "$CROM_FILE_BYTES" neogeo/rom/doom64kb-c1.c1
 cp neogeo/assets/generated/doom_color_microfb.c2 neogeo/rom/doom64kb-c2.c2 && truncate -s "$CROM_FILE_BYTES" neogeo/rom/doom64kb-c2.c2
-echo neogeo/assets/ibmfont.fix | xargs -r cat > neogeo/rom/doom64kb-s1.s1 && truncate -s 131072 neogeo/rom/doom64kb-s1.s1
-echo | xargs -r cat > neogeo/rom/doom64kb-v1.v1 && truncate -s 524288 neogeo/rom/doom64kb-v1.v1
-romtool.py -b cartridge -f zip -p neogeo/rom/doom64kb-p1.p1 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -x "zip.comment=" -o neogeo/rom/doom64kb.zip
-romtool.py -b hash -f mame  -p neogeo/rom/doom64kb-p1.p1 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -l "Doom64KB: Neo Geo Edition" -o neogeo/rom/neogeo.xml
-romtool.py -b hash -f gngeo -p neogeo/rom/doom64kb-p1.p1 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -l "Doom64KB: Neo Geo Edition" -x gngeo.data=/usr/share/ngdevkit-gngeo/gngeo_data.zip -o neogeo/rom/gngeo_data.zip
+cp neogeo/assets/ibmfont.fix neogeo/rom/doom64kb-s1.s1
+cp neogeo/assets/samples.v1 neogeo/rom/doom64kb-v1.v1
+truncate -s 131072 neogeo/rom/doom64kb-s1.s1
+truncate -s 524288 neogeo/rom/doom64kb-v1.v1
+romtool.py -b cartridge -f zip   -p neogeo/rom/doom64kb-p1.p1 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -x "zip.comment="              -o neogeo/rom/doom64kb.zip
+romtool.py -b hash      -f mame  -p neogeo/rom/doom64kb-p1.p1 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -l "Doom64KB: Neo Geo Edition" -o neogeo/rom/neogeo.xml
+romtool.py -b hash      -f gngeo -p neogeo/rom/doom64kb-p1.p1 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -l "Doom64KB: Neo Geo Edition" -o neogeo/rom/gngeo_data.zip -x gngeo.data=/usr/share/ngdevkit-gngeo/gngeo_data.zip
 cp /usr/share/ngdevkit/aes.zip    neogeo/rom/aes.zip
 cp /usr/share/ngdevkit/neogeo.zip neogeo/rom/neogeo.zip
 
@@ -136,7 +137,7 @@ for arg in "$@"
 do
   if [ "$arg" = "-run" ]
   then
-    ngdevkit-gngeo -b glsl --shaderpath="/mnt/c/Projects/ngdevkit-examples/shaders" --shader="qcrt-flat.glslp" --scale 3 --no-resize --system home -i neogeo/rom -d neogeo/rom/gngeo_data.zip doom64kb --p1control A=K97,B=K115,C=K113,D=K119,START=K49,COIN=K51,UP=K82,DOWN=K81,LEFT=K80,RIGHT=K79
+    ngdevkit-gngeo -b glsl --shaderpath="./neogeo/shaders" --shader="qcrt-flat.glslp" --scale 3 --no-resize --system home -i neogeo/rom -d neogeo/rom/gngeo_data.zip doom64kb --p1control A=K97,B=K115,C=K113,D=K119,START=K49,COIN=K51,UP=K82,DOWN=K81,LEFT=K80,RIGHT=K79
     break
   fi
 done

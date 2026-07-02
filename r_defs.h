@@ -139,7 +139,7 @@ typedef struct
 {
     sector_t __far* sector;      // Sector the SideDef is facing.
 
-    int16_t textureoffset; // add this to the calculated texture column
+    uint8_t textureoffset; // add this to the calculated texture column
 
     int8_t toptexture;
     int8_t bottomtexture;
@@ -153,9 +153,10 @@ typedef PACKEDATTR_PRE struct {
    int8_t bottomtexture;
    int8_t midtexture;
   uint8_t sector;  // Front sector, towards viewer.
+   int8_t unused;
 } PACKEDATTR_POST mapsidedef_t;
 
-typedef char assertMapsidedefSize[sizeof(mapsidedef_t) == 7 ? 1 : -1];
+typedef char assertMapsidedefSize[sizeof(mapsidedef_t) == 8 ? 1 : -1];
 
 
 //
@@ -199,10 +200,10 @@ typedef PACKEDATTR_PRE struct line_s
 	int16_t tag;
 	uint8_t flags;			// Animation related.
 	int8_t slopetype;		// To aid move clipping.
-	int8_t const_special;
+	int16_t const_special;
 } PACKEDATTR_POST line_t;
 
-typedef char assertLineSize[sizeof(line_t) == 31 ? 1 : -1];
+typedef char assertLineSize[sizeof(line_t) == 32 ? 1 : -1];
 
 
 #define LN_FRONTSECTOR(l) (_g_sides[(l)->sidenum[0]].sector)

@@ -10,7 +10,7 @@
  *  Jess Haas, Nicolas Kalkhof, Colin Phipps, Florian Schulze
  *  Copyright 2005, 2006 by
  *  Florian Schulze, Colin Phipps, Neil Stevens, Andrey Budko
- *  Copyright 2023, 2024 by
+ *  Copyright 2023-2026 by
  *  Frenkel Smeijers
  *
  *  This program is free software; you can redistribute it and/or
@@ -49,10 +49,6 @@
 
 static boolean onground; // whether player is on ground or in air
 
-
-// Index of the special effects (INVUL inverse) map.
-
-#define INVERSECOLORMAP 32
 
 //
 // Movement.
@@ -439,15 +435,7 @@ void P_PlayerThink (player_t* player)
 
   // Counters, time dependent power ups.
 
-  // Strength counts up to diminish fade.
-
-  if (player->powers[pw_strength])
-    player->powers[pw_strength]++;
-
   // killough 1/98: Make idbeholdx toggle:
-
-  if (player->powers[pw_invulnerability] > 0) // killough
-    player->powers[pw_invulnerability]--;
 
   if (player->powers[pw_invisibility] > 0)    // killough
     if (! --player->powers[pw_invisibility] )
@@ -468,7 +456,5 @@ void P_PlayerThink (player_t* player)
   // Handling colormaps.
   // killough 3/20/98: reformat to terse C syntax
 
-  player->fixedcolormap = player->powers[pw_invulnerability] > 4*32 ||
-    player->powers[pw_invulnerability] & 8 ? INVERSECOLORMAP :
-    player->powers[pw_infrared] > 4*32 || player->powers[pw_infrared] & 8;
+  player->fixedcolormap = player->powers[pw_infrared] > 4*32 || player->powers[pw_infrared] & 8;
   }

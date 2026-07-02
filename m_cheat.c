@@ -11,74 +11,65 @@ static void cheat_choppers(void);
 static void cheat_idkfa(void);
 static void cheat_ammo(void);
 static void cheat_noclip(void);
-static void cheat_invincibility(void);
-static void cheat_berserk(void);
 static void cheat_invisibility(void);
 static void cheat_rad(void);
 static void cheat_map(void);
 static void cheat_goggles(void);
-static void cheat_exit(void);
-static void cheat_end(void);
 static void cheat_fps(void);
 
 
 typedef struct
 {
 	void (*cheat_function)(void);
-	char *sequence;
-	char *p;
+	uint32_t packed_sequence;
 } cheatseq_t;
 
 
-static cheatseq_t cheat_def[] =
+#define CHEAT_SEQ(a,b,c,d,e,f,g,h) ((a << 28)|(b << 24)|(c << 20)|(d << 16)|(e << 12)|(f << 8)|(g << 4)|(h))
+
+
+static const cheatseq_t cheat_def[] =
 {
-	{cheat_choppers,      "idchoppers", NULL},
-	{cheat_god,           "iddqd",      NULL},
-	{cheat_idkfa,         "idkfa",      NULL},
-	{cheat_ammo,          "idfa",       NULL},
-	{cheat_noclip,        "idspispopd", NULL},
-	{cheat_invincibility, "idbeholdv",  NULL},
-	{cheat_berserk,       "idbeholds",  NULL},
-	{cheat_invisibility,  "idbeholdi",  NULL},
-	{cheat_rad,           "idbeholdr",  NULL},
-	{cheat_map,           "idbeholda",  NULL},
-	{cheat_goggles,       "idbeholdl",  NULL},
-	{cheat_exit,          "idclev",     NULL},
-	{cheat_end,           "idend",      NULL},
-	{cheat_fps,           "idrate",     NULL}
+	{cheat_choppers,     CHEAT_SEQ(KEYD_L,    KEYD_UP,   KEYD_UP,   KEYD_LEFT,  KEYD_L,    KEYD_A,    KEYD_A,     KEYD_UP)},
+	{cheat_god,          CHEAT_SEQ(KEYD_UP,   KEYD_UP,   KEYD_DOWN, KEYD_DOWN,  KEYD_LEFT, KEYD_LEFT, KEYD_RIGHT, KEYD_RIGHT)},
+	{cheat_idkfa,        CHEAT_SEQ(KEYD_L,    KEYD_LEFT, KEYD_R,    KEYD_RIGHT, KEYD_A,    KEYD_UP,   KEYD_A,     KEYD_UP)},
+	{cheat_ammo,         CHEAT_SEQ(KEYD_R,    KEYD_R,    KEYD_A,    KEYD_R,     KEYD_A,    KEYD_UP,   KEYD_UP,    KEYD_LEFT)},
+	{cheat_noclip,       CHEAT_SEQ(KEYD_UP,   KEYD_DOWN, KEYD_LEFT, KEYD_RIGHT, KEYD_UP,   KEYD_DOWN, KEYD_LEFT,  KEYD_RIGHT)},
+	{cheat_invisibility, CHEAT_SEQ(KEYD_A,    KEYD_A,    KEYD_A,    KEYD_B,     KEYD_A,    KEYD_A,    KEYD_L,     KEYD_B)},
+	{cheat_rad,          CHEAT_SEQ(KEYD_B,    KEYD_B,    KEYD_R,    KEYD_UP,    KEYD_A,    KEYD_A,    KEYD_R,     KEYD_B)},
+	{cheat_map,          CHEAT_SEQ(KEYD_L,    KEYD_A,    KEYD_R,    KEYD_B,     KEYD_A,    KEYD_R,    KEYD_L,     KEYD_UP)},
+	{cheat_goggles,      CHEAT_SEQ(KEYD_DOWN, KEYD_LEFT, KEYD_R,    KEYD_LEFT,  KEYD_R,    KEYD_L,    KEYD_L,     KEYD_A)},
+	{cheat_fps,          CHEAT_SEQ(KEYD_A,    KEYD_B,    KEYD_L,    KEYD_UP,    KEYD_DOWN, KEYD_B,    KEYD_LEFT,  KEYD_LEFT)}
 };
 
 
-static const int16_t num_cheats = sizeof(cheat_def) / sizeof (cheatseq_t);
+static const int16_t num_cheats = sizeof(cheat_def) / sizeof(cheatseq_t);
 
 
-static boolean cht_CheckCheat(cheatseq_t *cht, char data1)
+boolean C_Responder(event_t *ev)
 {
-	if (!cht->p)
-		cht->p = cht->sequence; // initialize if first time
+	static uint32_t cheat_buffer;
 
-	if (*cht->p == data1)
-		cht->p++;
-	else
-		cht->p = cht->sequence;
-
-	if (*cht->p == '\0') // end of sequence character
-	{
-		cht->p = cht->sequence;
-		return true;
-	}
-
-    return false;
-}
-
-
-boolean C_Responder (event_t *ev)
-{
 	if (ev->type == ev_keydown)
 	{
+		//To enable fast cheat searching without having to
+		//maintain buffer of keypresses, we ensure that
+		//cheats are 8 keys long and the key-code is less
+		//than 16 so they fit in 4 bits.
+
+		//We can store a full 8 presses in a 32bit int.
+
+		//Adding a press to the list just means shifting the
+		//whole thing by 4 and ORing the next press into the
+		//low bits.
+
+		//We can test a cheat sequence with a simple int comparison.
+
+		cheat_buffer = (cheat_buffer << 4) | ev->data1;
+
 		for (int16_t i = 0; i < num_cheats; i++)
 		{
-			if (cht_CheckCheat(&cheat_def[i], ev->data1))
+			if (cheat_def[i].packed_sequence == cheat_buffer)
 			{
 				cheat_def[i].cheat_function();
 				return true;
@@ -111,8 +102,6 @@ static void cheat_choppers()
 {
     _g_player.weaponowned[wp_chainsaw] = true;
     _g_player.pendingweapon = wp_chainsaw;
-
-    P_GivePower(&_g_player, pw_invulnerability);
 
     _g_player.message = STSTR_CHOPPERS;
 }
@@ -192,15 +181,6 @@ static void cheat_noclip()
     }
 }
 
-static void cheat_invincibility()
-{
-    P_GivePower(&_g_player, pw_invulnerability);
-}
-
-static void cheat_berserk()
-{
-    P_GivePower(&_g_player, pw_strength);
-}
 
 static void cheat_invisibility()
 {
@@ -220,16 +200,6 @@ static void cheat_map()
 static void cheat_goggles()
 {
     P_GivePower(&_g_player, pw_infrared);
-}
-
-static void cheat_exit()
-{
-    G_ExitLevel();
-}
-
-static void cheat_end()
-{
-	_g_gameaction = ga_victory;
 }
 
 

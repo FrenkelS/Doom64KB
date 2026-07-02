@@ -241,7 +241,7 @@ static void P_GiveCard(player_t *player, card_t card)
 boolean P_GivePower(player_t *player, powertype_t power)
 {
   static const int16_t tics[NUMPOWERS] = {
-    INVULNTICS, 1 /* strength */, INVISTICS,
+    INVISTICS,
     IRONTICS, 1 /* allmap */, INFRATICS,
    };
 
@@ -253,9 +253,6 @@ boolean P_GivePower(player_t *player, powertype_t power)
       case pw_allmap:
         if (player->powers[pw_allmap])
           return false;
-        break;
-      case pw_strength:
-        P_GiveBody(player,100);
         break;
     }
 
@@ -643,11 +640,11 @@ void P_DamageMobj(mobj_t __far* target, mobj_t __far* inflictor, mobj_t __far* s
         damage = target->health - 1;
 
       // Below certain threshold,
-      // ignore damage in GOD mode, or with INVUL power.
+      // ignore damage in GOD mode.
       // killough 3/26/98: make god mode 100% god mode in non-compat mode
 
       if ((damage < 1000 || ((player->cheats&CF_GODMODE))) &&
-          (player->cheats&CF_GODMODE || player->powers[pw_invulnerability]))
+          (player->cheats&CF_GODMODE))
         return;
 
       if (player->armortype)
