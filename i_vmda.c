@@ -384,28 +384,28 @@ void V_DrawRawFullScreen(int16_t num)
 }
 
 
-void V_DrawCharacter(int16_t x, int16_t y, uint8_t color, char c)
+void V_DrawCharacter(int16_t x, int16_t y, uint16_t color, char c)
 {
 	_s_screen[y * PLANEWIDTH + x * 2 + 0] = c;
 	_s_screen[y * PLANEWIDTH + x * 2 + 1] = color;
 }
 
 
-void V_DrawSTCharacter(int16_t x, int16_t y, uint8_t color, char c)
+void V_DrawSTCharacter(int16_t x, int16_t y, uint16_t color, char c)
 {
 	UNUSED(color);
 	_s_screen[y * PLANEWIDTH + x * 2] = c;
 }
 
 
-void V_DrawCharacterForeground(int16_t x, int16_t y, uint8_t color, char c)
+void V_DrawCharacterForeground(int16_t x, int16_t y, uint16_t color, char c)
 {
 	_s_screen[y * PLANEWIDTH + x * 2 + 0] = c;
 	_s_screen[y * PLANEWIDTH + x * 2 + 1] = color;
 }
 
 
-void V_DrawString(int16_t x, int16_t y, uint8_t color, const char* s)
+void V_DrawString(int16_t x, int16_t y, uint16_t color, const char* s)
 {
 	uint8_t __far* dst = _s_screen + y * PLANEWIDTH + x * 2;
 
@@ -417,7 +417,7 @@ void V_DrawString(int16_t x, int16_t y, uint8_t color, const char* s)
 }
 
 
-void V_DrawSTString(int16_t x, int16_t y, uint8_t color, const char* s)
+void V_DrawSTString(int16_t x, int16_t y, uint16_t color, const char* s)
 {
 	UNUSED(color);
 

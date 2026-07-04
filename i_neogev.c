@@ -19,7 +19,7 @@
  *  02111-1307, USA.
  *
  * DESCRIPTION:
- *      Neo Geo video code
+ *      Neo Geo video code 38x28
  *
  *-----------------------------------------------------------------------------*/
 
@@ -354,53 +354,33 @@ void V_DrawRawFullScreen(int16_t num)
 }
 
 
-static const uint16_t colors[] =
+void V_DrawCharacter(int16_t x, int16_t y, uint16_t color, char c)
 {
-	0x0000,
-	0x0000,
-	0x0000,
-	0x0000,
-	0x2000, // 4 red
-	0x0000,
-	0x0000,
-	0x6000, // 7 light gray
-	0x9000, // 8 dark gray
-	0xc000, // 9 light blue
-	0x0000,
-	0x0000,
-	0xb000, // 12 light red
-	0x0000,
-	0xa000, // 14 yellow
-	0x3000  // 15 white
-};
-
-void V_DrawCharacter(int16_t x, int16_t y, uint8_t color, char c)
-{
-	_s_screen[y * VIEWWINDOWWIDTH + x] = colors[color] | c;
+	_s_screen[y * VIEWWINDOWWIDTH + x] = color | c;
 }
 
 
-void V_DrawSTCharacter(int16_t x, int16_t y, uint8_t color, char c)
+void V_DrawSTCharacter(int16_t x, int16_t y, uint16_t color, char c)
 {
 	V_DrawCharacter(x, y, color, c);
 }
 
 
-void V_DrawCharacterForeground(int16_t x, int16_t y, uint8_t color, char c)
+void V_DrawCharacterForeground(int16_t x, int16_t y, uint16_t color, char c)
 {
 	V_DrawCharacter(x, y, color, c);
 }
 
 
-void V_DrawString(int16_t x, int16_t y, uint8_t color, const char* s)
+void V_DrawString(int16_t x, int16_t y, uint16_t color, const char* s)
 {
 	uint16_t *dst = &_s_screen[y * VIEWWINDOWWIDTH + x];
 	while (*s)
-		*dst++ = colors[color] | (*s++);
+		*dst++ = color | (*s++);
 }
 
 
-void V_DrawSTString(int16_t x, int16_t y, uint8_t color, const char* s)
+void V_DrawSTString(int16_t x, int16_t y, uint16_t color, const char* s)
 {
 	V_DrawString(x, y, color, s);
 }
