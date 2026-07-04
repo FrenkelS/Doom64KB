@@ -129,7 +129,12 @@ static void ST_drawWidgets(void)
 		STlib_drawNum(VIEWWINDOWWIDTH - 4, VIEWWINDOWHEIGHT - 5 + i, D_YELLOW, _g_player.maxammo[i]);
 	}
 
-	int16_t healthcolor = _g_player.health < 40 ? D_LIGHT_RED : D_RED;
+	uint16_t healthcolor = D_RED;
+	if (_g_player.health < 40)
+		healthcolor = D_LIGHT_RED;
+	else if (_g_player.cheats & CF_GODMODE)
+		healthcolor = D_YELLOW;
+
 	STlib_drawNum(8, VIEWWINDOWHEIGHT - 4, healthcolor, _g_player.health);
 
 	STlib_drawNum(8, VIEWWINDOWHEIGHT - 3, D_RED, _g_player.armorpoints);

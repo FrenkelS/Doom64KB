@@ -33,16 +33,16 @@ It's based on [Doom8088](https://github.com/FrenkelS/Doom8088), a port of Doom f
 ## Cheats:
 |Effects                 |Code                                             |
 |------------------------|-------------------------------------------------|
-|Chainsaw                |C,    Up,   Up,   Left,  C,    A,    A,     Up   |
-|God mode                |Up,   Up,   Down, Down,  Left, Left, Right, Right|
-|Weapons & Keys          |C,    Left, D,    Right, A,    Up,   A,     Up   |
-|Weapons                 |D,    D,    A,    D,     A,    Up,   Up,    Left |
-|No Clipping             |Up,   Down, Left, Right, Up,   Down, Left,  Right|
-|Invisibility            |A,    A,    A,    B,     A,    A,    C,     B    |
-|Radiation shielding suit|B,    B,    D,    Up,    A,    A,    D,     B    |
-|Auto-map                |C,    A,    D,    B,     A,    D,    C,     Up   |
-|Lite-Amp Goggles        |Down, Left, D,    Left,  D,    C,    C,     A    |
-|Toggle FPS counter      |A,    B,    C,    Up,    Down, B,    Left,  Left |
+|Chainsaw                |C,    Up,   Up,   Left,  C,    A,     A,    Up   |
+|God mode                |Up,   Up,   Down, Down,  Left, Right, Left, Right|
+|Weapons & Keys          |C,    Left, D,    Right, A,    Up,    A,    Up   |
+|Weapons                 |D,    D,    A,    D,     A,    Up,    Up,   Left |
+|No Clipping             |Up,   Down, Left, Right, Up,   Down,  Left, Right|
+|Invisibility            |A,    A,    A,    B,     A,    A,     C,    B    |
+|Radiation shielding suit|B,    B,    D,    Up,    A,    A,     D,    B    |
+|Auto-map                |C,    A,    D,    B,     A,    D,     C,    Up   |
+|Lite-Amp Goggles        |Down, Left, D,    Left,  D,    C,     C,    A    |
+|Toggle FPS counter      |A,    B,    C,    Up,    Down, B,     Left, Left |
 
 ## Building:
 |Platform|Platform specific code    |Compiler                                        |Build script|Additional information                                                                                                       |
