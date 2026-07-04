@@ -19,14 +19,55 @@
  *  02111-1307, USA.
  *
  * DESCRIPTION:
- *      Lookup table of 0xffffffffu / v where 0 <= v <= 65535
+ *      Calculate 0xffffffffu / v
  *
  *-----------------------------------------------------------------------------*/
 
-#include <stdint.h>
+#include "m_fixed.h"
+
+
+#define USE_LOOKUP_TABLE
+
+
+static const uint32_t reciprocalTable[65536];
+
+
+fixed_t CONSTFUNC FixedReciprocal(fixed_t v)
+{
+#if defined USE_LOOKUP_TABLE
+	if (v <= 0xffffu)
+		return FixedReciprocalSmall(v);
+	else
+		return FixedReciprocalBig(v);
+#else
+	return 0xffffffffu / v;
+#endif
+}
+
+
+uint16_t CONSTFUNC FixedReciprocalBig(fixed_t v)
+{
+#if defined USE_LOOKUP_TABLE
+	int s = 31 - __builtin_clzl(v) - 15;
+	return reciprocalTable[v >> s] >> s;
+#else
+	return 0xffffffffu / v;
+#endif
+}
+
+
+fixed_t CONSTFUNC FixedReciprocalSmall(uint16_t v)
+{
+#if defined USE_LOOKUP_TABLE
+	return reciprocalTable[v];
+#else
+	return 0xffffffffu / v;
+#endif
+}
+
 
 __attribute__((section(".text2")))
-const uint32_t reciprocalTable[65536] = {
+static const uint32_t reciprocalTable[65536] = {
 0,
 4294967295,
 2147483647,
