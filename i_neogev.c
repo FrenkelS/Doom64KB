@@ -67,13 +67,16 @@ void I_ReloadPalette(void)
 static void I_UploadNewPalette(int8_t pal)
 {
 	const uint16_t *palette_lump = W_GetLumpByNum(palettelumpnum);
-	memcpy((uint8_t*)&MMAP_PALBANK1[0], &palette_lump[256 * pal], 256 * 2);
+	const uint16_t *palette = &palette_lump[256 * pal];
+	MMAP_PALBANK1[0xfff] = *palette++;
+	memcpy((uint8_t*)&MMAP_PALBANK1[1], palette, 255 * 2);
 }
 
 
 void I_InitGraphicsHardwareSpecificCode(void)
 {
 	*REG_VRAMMOD = 32;
+	MMAP_PALBANK1[0] = 0x8000;
 
 	I_ReloadPalette();
 	I_UploadNewPalette(0);
