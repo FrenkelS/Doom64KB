@@ -32,7 +32,7 @@ static const cheatseq_t cheat_def[] =
 {
 	{cheat_choppers,     CHEAT_SEQ(KEYD_L,    KEYD_UP,   KEYD_UP,   KEYD_LEFT,  KEYD_L,    KEYD_A,     KEYD_A,    KEYD_UP)},
 	{cheat_god,          CHEAT_SEQ(KEYD_UP,   KEYD_UP,   KEYD_DOWN, KEYD_DOWN,  KEYD_LEFT, KEYD_RIGHT, KEYD_LEFT, KEYD_RIGHT)},
-	{cheat_idkfa,        CHEAT_SEQ(KEYD_L,    KEYD_LEFT, KEYD_R,    KEYD_RIGHT, KEYD_A,    KEYD_UP,    KEYD_A,    KEYD_UP)},
+	{cheat_idkfa,        CHEAT_SEQ(KEYD_DOWN, KEYD_DOWN, KEYD_LEFT, KEYD_RIGHT, KEYD_LEFT, KEYD_RIGHT, KEYD_B,    KEYD_A)},
 	{cheat_ammo,         CHEAT_SEQ(KEYD_R,    KEYD_R,    KEYD_A,    KEYD_R,     KEYD_A,    KEYD_UP,    KEYD_UP,   KEYD_LEFT)},
 	{cheat_noclip,       CHEAT_SEQ(KEYD_UP,   KEYD_DOWN, KEYD_LEFT, KEYD_RIGHT, KEYD_UP,   KEYD_DOWN,  KEYD_LEFT, KEYD_RIGHT)},
 	{cheat_invisibility, CHEAT_SEQ(KEYD_A,    KEYD_A,    KEYD_A,    KEYD_B,     KEYD_A,    KEYD_A,     KEYD_L,    KEYD_B)},

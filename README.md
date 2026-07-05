@@ -35,7 +35,7 @@ It's based on [Doom8088](https://github.com/FrenkelS/Doom8088), a port of Doom f
 |------------------------|-------------------------------------------------|
 |Chainsaw                |C,    Up,   Up,   Left,  C,    A,     A,    Up   |
 |God mode                |Up,   Up,   Down, Down,  Left, Right, Left, Right|
-|Weapons & Keys          |C,    Left, D,    Right, A,    Up,    A,    Up   |
+|Weapons & Keys          |Down, Down, Left, Right, Left, Right, B,    A    |
 |Weapons                 |D,    D,    A,    D,     A,    Up,    Up,   Left |
 |No Clipping             |Up,   Down, Left, Right, Up,   Down,  Left, Right|
 |Invisibility            |A,    A,    A,    B,     A,    A,     C,    B    |
