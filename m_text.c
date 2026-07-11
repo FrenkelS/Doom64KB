@@ -979,7 +979,8 @@ void M_Drawer (void)
 	{
 		// Horiz. & Vertically center string and print it.
 
-		I_InitScreenPage();
+		if (_g_gamestate == GS_LEVEL)
+			I_InitScreenPage();
 
 		/* cph - strdup string to writable memory */
 		char __far* ms = Z_Strdup(messageString);
@@ -1004,7 +1005,8 @@ void M_Drawer (void)
 	{
 		int16_t x,y,max,i;
 
-		I_InitScreenPage();
+		if (_g_gamestate == GS_LEVEL)
+			I_InitScreenPage();
 
 		if (currentMenu->routine)
 			currentMenu->routine();     // call Draw routine

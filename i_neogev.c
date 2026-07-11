@@ -314,14 +314,14 @@ void V_DrawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint8_t color)
 
 void V_DrawBackground(int16_t backgroundnum)
 {
-	const uint8_t __far* lump = W_GetLumpByNum(backgroundnum);
+	const uint16_t *lump = W_GetLumpByNum(backgroundnum);
 
 	for (int16_t y = 0; y < VIEWWINDOWHEIGHT; y++)
 	{
 		uint16_t *dst = &_s_screen[y * VIEWWINDOWWIDTH + 0];
 		for (int16_t x = 0; x < VIEWWINDOWWIDTH; x++)
 		{
-			*dst++ = (lump[((y * 2) & 63) * 64 + ((x * 2) & 63)] << 8) | DITHER_CHARACTER;
+			*dst++ = lump[(y & 7) * 8 + (x & 7)];
 		}
 	}
 }
@@ -335,24 +335,7 @@ void V_DrawRawFullScreen(int16_t num)
 		for (int x = 0; x < 16; x++)
 			_s_screen[y * VIEWWINDOWWIDTH + x] = ((i++) << 8) | DITHER_CHARACTER;
 #else
-	const uint8_t *lump = W_GetLumpByNum(num);
-
-	static const fixed_t DXI = ((fixed_t)SCREENWIDTH  << FRACBITS) / VIEWWINDOWWIDTH;
-	static const fixed_t DYI = ((fixed_t)SCREENHEIGHT << FRACBITS) / VIEWWINDOWHEIGHT;
-
-	uint16_t *dst = &_s_screen[0];
-
-	fixed_t y = 0;
-	for (int h = 0; h < VIEWWINDOWHEIGHT; h++)
-	{
-		fixed_t x = 0;
-		for (int w = 0; w < VIEWWINDOWWIDTH; w++)
-		{
-			*dst++ = (lump[(y >> FRACBITS) * SCREENWIDTH + (x >> FRACBITS)] << 8) | DITHER_CHARACTER;
-			x += DXI;
-		}
-		y += DYI;
-	}
+	W_ReadLumpByNum(num, &_s_screen[0]);
 #endif
 }
 
