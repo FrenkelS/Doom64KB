@@ -143,9 +143,9 @@ static const int16_t key_use         = KEYD_A;
        const int16_t key_map_up      = KEYD_UP;
        const int16_t key_map_down    = KEYD_DOWN;
        const int16_t key_map         = KEYD_SELECT;
-       const int16_t key_map_follow  = 'f';
-       const int16_t key_map_zoomin  = KEYD_PLUS;
-       const int16_t key_map_zoomout = KEYD_MINUS;
+       const int16_t key_map_follow  = KEYD_A;
+       const int16_t key_map_zoomin  = KEYD_R;
+       const int16_t key_map_zoomout = KEYD_L;
 
 
 #define MAXPLMOVE   (forwardmove[1])

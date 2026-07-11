@@ -290,7 +290,7 @@ void R_DrawFuzzColumn(const draw_column_vars_t *dcvars)
 
 void V_ClearViewWindow(void)
 {
-	// TODO
+	memset(_s_screen, 0, VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT * sizeof(uint16_t));
 }
 
 
@@ -308,7 +308,36 @@ void V_ShutdownDrawLine(void)
 
 void V_DrawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint8_t color)
 {
-	// TODO
+	int16_t dx = abs(x1 - x0);
+	int16_t sx = x0 < x1 ? 1 : -1;
+
+	int16_t dy = -abs(y1 - y0);
+	int16_t sy = y0 < y1 ? 1 : -1;
+
+	int16_t err = dx + dy;
+
+	while (true)
+	{
+		uint8_t *dest = (uint8_t*)&_s_screen[y0 * VIEWWINDOWWIDTH + x0];
+		*dest = color;
+
+		if (x0 == x1 && y0 == y1)
+			break;
+
+		int16_t e2 = 2 * err;
+
+		if (e2 >= dy)
+		{
+			err += dy;
+			x0  += sx;
+		}
+
+		if (e2 <= dx)
+		{
+			err += dx;
+			y0  += sy;
+		}
+	}
 }
 
 

@@ -120,6 +120,18 @@ static const uint8_t mapcolor_tele = GREEN;
 static const uint8_t mapcolor_secr = LIGHT_MAGENTA;
 static const uint8_t mapcolor_unsn = DARK_GRAY;
 static const uint8_t mapcolor_sngl = WHITE;
+#elif defined __NGDEVKIT__
+static const uint8_t mapcolor_wall = 24;
+static const uint8_t mapcolor_fchg = 56;
+static const uint8_t mapcolor_cchg = 212;
+static const uint8_t mapcolor_clsd = 4;
+static const uint8_t mapcolor_rdor = 175;
+static const uint8_t mapcolor_bdor = 203;
+static const uint8_t mapcolor_ydor = 228;
+static const uint8_t mapcolor_tele = 118;
+static const uint8_t mapcolor_secr = 247;
+static const uint8_t mapcolor_unsn = 104;
+static const uint8_t mapcolor_sngl = 4;
 #else
 static const uint8_t mapcolor_wall = 23;    // normal 1s wall color
 static const uint8_t mapcolor_fchg = 55;    // line at floor height change color

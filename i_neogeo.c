@@ -24,6 +24,7 @@
  *-----------------------------------------------------------------------------*/
 
 #include <stdarg.h>
+#include <ngdevkit/bios-ram.h>
 #include <ngdevkit/registers.h>
 
 #include "doomdef.h"
@@ -97,17 +98,18 @@ void I_StartTic(void)
 
 	uint8_t diff;
 	diff = kb_matrix_prv[0] ^ kb_matrix_cur[0];
-	if (diff & (1 << 0)) I_PostEvent(kb_matrix_cur[0] & (1 << 0), KEYD_UP);		// Up
-	if (diff & (1 << 1)) I_PostEvent(kb_matrix_cur[0] & (1 << 1), KEYD_DOWN);	// Down
-	if (diff & (1 << 2)) I_PostEvent(kb_matrix_cur[0] & (1 << 2), KEYD_LEFT);	// Left
-	if (diff & (1 << 3)) I_PostEvent(kb_matrix_cur[0] & (1 << 3), KEYD_RIGHT);	// Right
-	if (diff & (1 << 4)) I_PostEvent(kb_matrix_cur[0] & (1 << 4), KEYD_A);		// A
-	if (diff & (1 << 5)) I_PostEvent(kb_matrix_cur[0] & (1 << 5), KEYD_B);		// S
-	if (diff & (1 << 6)) I_PostEvent(kb_matrix_cur[0] & (1 << 6), KEYD_L);		// Q
-	if (diff & (1 << 7)) I_PostEvent(kb_matrix_cur[0] & (1 << 7), KEYD_R);		// W
+	if (diff & CNT_UP)    I_PostEvent(kb_matrix_cur[0] & CNT_UP,    KEYD_UP);		// Up
+	if (diff & CNT_DOWN)  I_PostEvent(kb_matrix_cur[0] & CNT_DOWN,  KEYD_DOWN);		// Down
+	if (diff & CNT_LEFT)  I_PostEvent(kb_matrix_cur[0] & CNT_LEFT,  KEYD_LEFT);		// Left
+	if (diff & CNT_RIGHT) I_PostEvent(kb_matrix_cur[0] & CNT_RIGHT, KEYD_RIGHT);	// Right
+	if (diff & CNT_A)     I_PostEvent(kb_matrix_cur[0] & CNT_A,     KEYD_A);		// A
+	if (diff & CNT_B)     I_PostEvent(kb_matrix_cur[0] & CNT_B,     KEYD_B);		// S
+	if (diff & CNT_C)     I_PostEvent(kb_matrix_cur[0] & CNT_C,     KEYD_L);		// Q
+	if (diff & CNT_D)     I_PostEvent(kb_matrix_cur[0] & CNT_D,     KEYD_R);		// W
 
 	diff = kb_matrix_prv[1] ^ kb_matrix_cur[1];
-	if (diff & (1 << 0)) I_PostEvent(kb_matrix_cur[1] & (1 << 0), KEYD_START);	// 1
+	if (diff & CNT_START1) I_PostEvent(kb_matrix_cur[1] & CNT_START1, KEYD_START);	// 1
+	if (diff & CNT_START2) I_PostEvent(kb_matrix_cur[1] & CNT_START2, KEYD_SELECT);	// 2
 }
 
 

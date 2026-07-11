@@ -11,6 +11,7 @@ It's based on [Doom8088](https://github.com/FrenkelS/Doom8088), a port of Doom f
 
 **What's special?:**
  - Supports only Doom 1 E1M1 and E1M8
+ - Rotating overlaid automap
  - Digital sound effects
  - No music
  - No texture mapped floors and ceilings
@@ -20,15 +21,18 @@ It's based on [Doom8088](https://github.com/FrenkelS/Doom8088), a port of Doom f
  - No screen resizing
 
 ## Controls:
-|Action      |Neo Geo |
-|------------|--------|
-|Walk        |Joystick|
-|Fire        |B       |
-|Use / Sprint|A       |
-|Strafe      |C & D   |
-|Weapon up   |A + D   |
-|Weapon down |A + C   |
-|Menu        |Start   |
+|Action                 |Neo Geo       |
+|-----------------------|--------------|
+|Walk                   |Joystick      |
+|Fire                   |B             |
+|Use / Sprint           |A             |
+|Strafe                 |C & D         |
+|Weapon up              |A + D         |
+|Weapon down            |A + C         |
+|Menu                   |Start Player 1|
+|Automap                |Start Player 2|
+|Automap zoom in and out|C & D         |
+|Automap follow mode    |A             |
 
 ## Cheats:
 |Effects                 |Code                                             |
