@@ -246,10 +246,10 @@ void R_DrawColumnFlat(uint8_t color, const draw_column_vars_t *dcvars)
 }
 
 
-#define FUZZCOLOR1 106
-#define FUZZCOLOR2 107
-#define FUZZCOLOR3 108
-#define FUZZCOLOR4 109
+#define FUZZCOLOR1 34
+#define FUZZCOLOR2 4
+#define FUZZCOLOR3 212
+#define FUZZCOLOR4 100
 #define FUZZTABLE 50
 
 static const uint8_t fuzzcolors[FUZZTABLE] =

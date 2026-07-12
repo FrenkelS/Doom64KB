@@ -28,21 +28,21 @@
 
 
 #if defined __NGDEVKIT__
-#define D_RED        0x2000
-#define D_LIGHT_GRAY 0x6000
-#define D_DARK_GRAY  0x9000
-#define D_LIGHT_BLUE 0xc000
-#define D_LIGHT_RED  0xb000
-#define D_YELLOW     0xa000
-#define D_WHITE      0x3000
+#define D_RED        0x4000
+#define D_LIGHT_GRAY 0x7000
+#define D_DARK_GRAY  0x8000
+#define D_LIGHT_BLUE 0x9000
+#define D_LIGHT_RED  0xc000
+#define D_YELLOW     0xe000
+#define D_WHITE      0xf000
 #else
-#define D_RED         4
-#define D_LIGHT_GRAY  7
-#define D_DARK_GRAY   8
-#define D_LIGHT_BLUE  9
-#define D_LIGHT_RED  12
-#define D_YELLOW     14
-#define D_WHITE      15
+#define D_RED         4 /* #AA0000 */
+#define D_LIGHT_GRAY  7 /* #AAAAAA */
+#define D_DARK_GRAY   8 /* #555555 */
+#define D_LIGHT_BLUE  9 /* #5555FF */
+#define D_LIGHT_RED  12 /* #FF5555 */
+#define D_YELLOW     14 /* #FFFF55 */
+#define D_WHITE      15 /* #FFFFFF */
 #endif
 
 
