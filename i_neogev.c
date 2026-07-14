@@ -69,7 +69,8 @@ static void I_UploadNewPalette(int8_t pal)
 	const uint16_t *palette_lump = W_GetLumpByNum(palettelumpnum);
 	const uint16_t *palette = &palette_lump[256 * pal];
 	MMAP_PALBANK1[0xfff] = *palette++;
-	memcpy((uint8_t*)&MMAP_PALBANK1[1], palette, 255 * 2);
+	for (int i = 1; i < 256; i++)
+		MMAP_PALBANK1[i] = *palette++;
 }
 
 
