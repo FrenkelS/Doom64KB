@@ -22,6 +22,7 @@ set CFLAGS=%CFLAGS% -DFLAT_SPAN -DWAD_FILE=\"DOOM64TL.WAD\" -DC_ONLY
 @set GLOBOBJS=%GLOBOBJS% i_dummyt.c
 @set GLOBOBJS=%GLOBOBJS% info.c
 @set GLOBOBJS=%GLOBOBJS% m_cheat.c
+@set GLOBOBJS=%GLOBOBJS% m_fixed.c
 @set GLOBOBJS=%GLOBOBJS% m_text.c
 @set GLOBOBJS=%GLOBOBJS% m_random.c
 @set GLOBOBJS=%GLOBOBJS% p_doors.c

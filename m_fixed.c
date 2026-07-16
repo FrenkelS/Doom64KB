@@ -45,6 +45,20 @@ fixed_t CONSTFUNC FixedReciprocal(fixed_t v)
 }
 
 
+#if !defined __GNUC__
+static int __builtin_clzl(uint32_t v)
+{
+	const int bits = sizeof(v) * CHAR_BIT;
+	
+	for (int i = 0; i < bits; i++)
+		if ((v >> (bits - 1 - i)) & 1)
+			return i;
+
+	return bits;
+}
+#endif
+
+
 uint16_t CONSTFUNC FixedReciprocalBig(fixed_t v)
 {
 #if defined USE_LOOKUP_TABLE
@@ -66,7 +80,9 @@ fixed_t CONSTFUNC FixedReciprocalSmall(uint16_t v)
 }
 
 
+#if defined __NGDEVKIT__
 __attribute__((section(".text2")))
+#endif
 static const uint32_t reciprocalTable[65536] = {
 0,
 4294967295,
