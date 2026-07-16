@@ -249,6 +249,7 @@ static void ng_printf(const char *text)
 	int x = 0;
 	int y = 0;
 	MMAP_PALBANK1[1]     = 0x7FFF;
+	MMAP_PALBANK1[2]     = 0x8BBB;
 	MMAP_PALBANK1[0xfff] = 0x8000;
 	*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
 	*REG_VRAMMOD = 32;
