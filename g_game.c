@@ -606,10 +606,6 @@ static void G_DoCompleted (void)
     // wminfo.next is 0 biased, unlike gamemap
     if (secretexit)           // go to secret level
         _g_wminfo.next = 8;
-#if defined LOW_MEMORY
-    else if (_g_gamemap == 1)
-        _g_wminfo.next = 7;
-#endif
     else if (_g_gamemap == 9) // returning from secret level
         _g_wminfo.next = 3;
     else                      // go to next level
@@ -1004,6 +1000,9 @@ static const byte __far* G_ReadDemoHeader(const byte __far* demo_p)
     skill = *demo_p++;
     demo_p++;
     map = *demo_p++;
+#if defined LOW_MEMORY
+    map = 1;
+#endif
     demo_p++;
     demo_p++;
     demo_p++;

@@ -80,9 +80,6 @@ fixed_t CONSTFUNC FixedReciprocalSmall(uint16_t v)
 }
 
 
-#if defined __NGDEVKIT__
-__attribute__((section(".text2")))
-#endif
 static const uint32_t reciprocalTable[65536] = {
 0,
 4294967295,

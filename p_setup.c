@@ -140,7 +140,7 @@ enum {
 
 static void P_LoadSegs (int16_t lump)
 {
-    _g_segs = (const seg_t __far*)W_GetLumpByNum(lump);
+    _g_segs = (const seg_t __far*)W_GetMapLumpByNum(lump);
 }
 
 //
@@ -151,8 +151,8 @@ static void P_LoadSegs (int16_t lump)
 
 static void P_LoadSubsectors (int16_t lump)
 {
-  numsubsectors = W_LumpLength (lump) / sizeof(mapsubsector_t);
-  _g_mapsubsectors = W_GetLumpByNum(lump);
+  numsubsectors = W_MapLumpLength (lump) / sizeof(mapsubsector_t);
+  _g_mapsubsectors = W_GetMapLumpByNum(lump);
   _g_subsectors = Z_CallocLevel(numsubsectors * sizeof(subsector_t));
 }
 
@@ -189,8 +189,8 @@ static void P_LoadSectors (int16_t lump)
 {
   int16_t  i;
 
-  _g_numsectors = W_LumpLength (lump) / sizeof(mapsector_t);
-  _g_mapsectors = W_GetLumpByNum(lump);
+  _g_numsectors = W_MapLumpLength (lump) / sizeof(mapsector_t);
+  _g_mapsectors = W_GetMapLumpByNum(lump);
   _g_sectors = Z_CallocLevel(_g_numsectors * sizeof(sector_t));
 
   for (i=0; i<_g_numsectors; i++)
@@ -219,8 +219,8 @@ static void P_LoadSectors (int16_t lump)
 
 static void P_LoadNodes (int16_t lump)
 {
-  numnodes = W_LumpLength (lump) / sizeof(mapnode_t);
-  nodes = W_GetLumpByNum(lump);
+  numnodes = W_MapLumpLength (lump) / sizeof(mapnode_t);
+  nodes = W_GetMapLumpByNum(lump);
 }
 
 
@@ -229,27 +229,71 @@ static void P_LoadNodes (int16_t lump)
  *
  */
 
-static void P_LoadThings(int16_t lump)
+static void P_LoadThings(int16_t lump, int16_t map)
 {
-	_g_thingPoolSize = W_LumpLength(lump) / sizeof(mapthing_t);
-	_g_thingPool     = Z_CallocLevel(_g_thingPoolSize * sizeof(mobj_t));
+	int16_t mapThingCount = W_MapLumpLength(lump) / sizeof(mapthing_t);
 
+#if defined LOW_MEMORY
+	if (map == 1 || map == 8)
+	{
+		_g_thingPoolSize = mapThingCount;
+	}
+	else
+	{
+		const mapthing_t *data = W_GetMapLumpByNum(lump);
+
+		_g_thingPoolSize = 0;
+		for (int16_t i = 0; i < mapThingCount; i++)
+		{
+			const mapthing_t *mt = &data[i];
+			if (mt->type == 1	// start spot player 1
+			 || mt->type == 5	// blue keycard
+			 || mt->type == 6	// yellow keycard
+			 || mt->type == 13)	// red keycard
+			 {
+				 _g_thingPoolSize++;
+			 }
+		}
+	}
+#else
+	_g_thingPoolSize = mapThingCount;
+#endif
+
+	_g_thingPool = Z_CallocLevel(_g_thingPoolSize * sizeof(mobj_t));
 	for (int16_t i = 0; i < _g_thingPoolSize; i++)
 		_g_thingPool[i].type = MT_NOTHING;
 }
 
 
-static void P_LoadThings2(int16_t lump)
+static void P_LoadThings2(int16_t lump, int16_t map)
 {
-    const mapthing_t __far* data = W_GetLumpByNum(lump);
+	int16_t mapThingCount = W_MapLumpLength(lump) / sizeof(mapthing_t);
+	const mapthing_t __far* data = W_GetMapLumpByNum(lump);
 
-    for (int16_t i = 0; i < _g_thingPoolSize; i++)
-    {
-        const mapthing_t __far* mt = &data[i];
+	for (int16_t i = 0; i < mapThingCount; i++)
+	{
+		const mapthing_t __far* mt = &data[i];
 
-        // Do spawn all other stuff.
-        P_SpawnMapThing(mt);
-    }
+#if defined LOW_MEMORY
+		if (map == 1 || map == 8)
+		{
+			P_SpawnMapThing(mt);
+		}
+		else
+		{
+			if (mt->type == 1	// start spot player 1
+			 || mt->type == 5	// blue keycard
+			 || mt->type == 6	// yellow keycard
+			 || mt->type == 13)	// red keycard
+			 {
+				 P_SpawnMapThing(mt);
+			 }
+		}
+#else
+		// Do spawn all other stuff.
+		P_SpawnMapThing(mt);
+#endif
+	}
 }
 
 //
@@ -262,8 +306,8 @@ static void P_LoadThings2(int16_t lump)
 
 static void P_LoadLineDefs (int16_t lump)
 {
-	_g_numlines = W_LumpLength(lump) / sizeof(line_t);
-	_g_maplines = W_GetLumpByNum(lump);
+	_g_numlines = W_MapLumpLength(lump) / sizeof(line_t);
+	_g_maplines = W_GetMapLumpByNum(lump);
 	_g_lines    = Z_MallocLevel(_g_numlines * sizeof(linedata_t), NULL);
 
 	for (int16_t i = 0; i < _g_numlines; i++)
@@ -282,8 +326,8 @@ static void P_LoadLineDefs (int16_t lump)
 
 static void P_LoadSideDefs (int16_t lump)
 {
-  numsides = W_LumpLength(lump) / sizeof(mapsidedef_t);
-  _g_mapsides = W_GetLumpByNum(lump);
+  numsides = W_MapLumpLength(lump) / sizeof(mapsidedef_t);
+  _g_mapsides = W_GetMapLumpByNum(lump);
   _g_sides = Z_CallocLevel(numsides * sizeof(side_t));
 
     for (int16_t i = 0; i < numsides; i++)
@@ -316,7 +360,7 @@ static void P_LoadSideDefs (int16_t lump)
 
 static void P_LoadBlockMap (int16_t lump)
 {
-    _g_blockmaplump = W_GetLumpByNum(lump);
+    _g_blockmaplump = W_GetMapLumpByNum(lump);
 
     _g_bmaporgx = ((int32_t)_g_blockmaplump[0])<<FRACBITS;
     _g_bmaporgy = ((int32_t)_g_blockmaplump[1])<<FRACBITS;
@@ -336,7 +380,7 @@ static void P_LoadBlockMap (int16_t lump)
 
 static void P_LoadReject(int16_t lump)
 {
-  _g_rejectmatrix = W_GetLumpByNum(lump);
+  _g_rejectmatrix = W_GetMapLumpByNum(lump);
 }
 
 //
@@ -483,11 +527,15 @@ void P_SetupLevel(int16_t map)
     _g_totallive = 0;
 
     // find map name
+#if defined LOW_MEMORY
+    if (map == 6)
+        map = 1;
+#endif
     sprintf(lumpname, "E1M%d", map);   // killough 1/24/98: simplify
 
-    lumpnum = W_GetNumForName(lumpname);
+    lumpnum = W_GetMapNumForName(lumpname);
 
-    P_LoadThings    (lumpnum + ML_THINGS);
+    P_LoadThings    (lumpnum + ML_THINGS, map);
     P_LoadSectors   (lumpnum + ML_SECTORS);
     P_LoadLineDefs  (lumpnum + ML_LINEDEFS);
     P_LoadSegs      (lumpnum + ML_SEGS);
@@ -505,7 +553,7 @@ void P_SetupLevel(int16_t map)
     for (i = 0; i < MAXPLAYERS; i++)
         _g_player.mo = NULL;
 
-    P_LoadThings2(lumpnum + ML_THINGS);
+    P_LoadThings2(lumpnum + ML_THINGS, map);
 
     // set up world state
     P_SpawnSpecials();

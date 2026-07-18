@@ -48,6 +48,10 @@ uint16_t          PUREFUNC W_LumpLength(   int16_t num);
 const void __far* PUREFUNC W_GetLumpByNum( int16_t num);
 void                       W_ReadLumpByNum(int16_t num, void __far* ptr);
 
+int16_t           PUREFUNC W_GetMapNumForName(const char *name);
+uint16_t          PUREFUNC W_MapLumpLength(   int16_t num);
+const void __far* PUREFUNC W_GetMapLumpByNum( int16_t num);
+
 #define W_GetLumpByName(x)    W_GetLumpByNum(W_GetNumForName(x))
 
 #endif

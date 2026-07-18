@@ -77,6 +77,7 @@ static unsigned char doom_iwad[2 * 1014 * 1024];
 #include "doom64kl.h"
 #elif defined __NGDEVKIT__
 #include "doom64ng.h"
+#include "doommapb.h"
 #else
 #error unsupported compiler
 #endif
@@ -136,6 +137,14 @@ uint16_t PUREFUNC W_LumpLength(int16_t num)
 }
 
 
+uint16_t PUREFUNC W_MapLumpLength(int16_t num)
+{
+	wadinfo_t *mapheader = (wadinfo_t*)&doom_iwad_maps[0];
+	filelump_t *mapfileinfo = (filelump_t *)&doom_iwad_maps[mapheader->infotableofs];
+	return mapfileinfo[num].size;
+}
+
+
 // W_GetNumForName
 // bombs out if not found.
 //
@@ -159,6 +168,27 @@ int16_t PUREFUNC W_GetNumForName(const char *name)
 }
 
 
+int16_t PUREFUNC W_GetMapNumForName(const char *name)
+{
+	char name8[8];
+	strncpy(name8, name, sizeof(name8));
+
+	wadinfo_t *mapheader = (wadinfo_t*)&doom_iwad_maps[0];
+	filelump_t *mapfileinfo = (filelump_t *)&doom_iwad_maps[mapheader->infotableofs];
+
+	for (int16_t i = 0; i < mapheader->numlumps; i++)
+	{
+		if (Z_EqualNames(mapfileinfo[i].name, name8))
+		{
+			return i;
+		}
+	}
+
+	I_Error("W_GetMapNumForName: %.8s not found", name);
+	return -1;
+}
+
+
 void W_ReadLumpByNum(int16_t num, void __far* ptr)
 {
 	const filelump_t __far* lump = &fileinfo[num];
@@ -170,4 +200,13 @@ const void __far* PUREFUNC W_GetLumpByNum(int16_t num)
 {
 	const filelump_t __far* lump = &fileinfo[num];
 	return &doom_iwad[lump->filepos];
+}
+
+
+const void __far* PUREFUNC W_GetMapLumpByNum(int16_t num)
+{
+	wadinfo_t *mapheader = (wadinfo_t*)&doom_iwad_maps[0];
+	filelump_t *mapfileinfo = (filelump_t *)&doom_iwad_maps[mapheader->infotableofs];
+	const filelump_t *lump = &mapfileinfo[num];
+	return &doom_iwad_maps[lump->filepos];
 }
