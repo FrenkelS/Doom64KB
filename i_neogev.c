@@ -88,25 +88,12 @@ extern const int16_t CENTERY;
 #define FIX_WIPE_Y_OFFSET 2
 #define FIX_WIPE_CHAR 0x00u
 
-static const uint16_t colors[] =
+typedef enum
 {
-	0x0000,
-	0x0000,
-	0x0000,
-	0x0000,
-	0x2000, // 4 red
-	0x0000,
-	0x0000,
-	0x6000, // 7 light gray
-	0x9000, // 8 dark gray
-	0xc000, // 9 light blue
-	0x0000,
-	0x0000,
-	0xb000, // 12 light red
-	0x0000,
-	0xa000, // 14 yellow
-	0x3000  // 15 white
-};
+	FIX_TARGET_NONE,
+	FIX_TARGET_PAGE,
+	FIX_TARGET_TILED_BACKGROUND
+} fix_target_kind_t;
 
 #if (VIEWWINDOWHEIGHT % MICROFB_COLUMN_CHUNKS) != 0
 #error Neo Geo sprite microframebuffer requires VIEWWINDOWHEIGHT divisible by MICROFB_COLUMN_CHUNKS
@@ -143,6 +130,10 @@ static uint8_t _s_screen[VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT];
 static uint8_t _s_color_to_tile_slot[256];
 static uint8_t _s_color_to_palette[256];
 static uint8_t _s_visible_sprite_set;
+static uint8_t _s_fix_page_active;
+static uint8_t _s_fix_wipe_active;
+static fix_target_kind_t _s_fix_target_kind;
+static const uint16_t *_s_fix_target;
 
 static int16_t palettelumpnum;
 static int8_t newpal = 100;
@@ -223,7 +214,9 @@ static void I_UploadNewPalette(int8_t pal)
 	const uint16_t *palette_lump = W_GetLumpByNum(palettelumpnum);
 	const uint16_t *src = &palette_lump[256 * pal];
 
-	memcpy((uint8_t*)&MMAP_PALBANK1[0], src, 256 * 2);
+	MMAP_PALBANK1[0xfff] = src[0];
+	for (uint16_t i = 1; i < 256; i++)
+		MMAP_PALBANK1[i] = src[i];
 
 	NG_BuildSpritePalettes(src);
 }
@@ -238,6 +231,46 @@ static void NG_ClearFixOverlay(void)
 		for (uint16_t x = 0; x < 40; x++)
 			*REG_VRAMRW = FIX_CLEAR_CHAR;
 	}
+	_s_fix_page_active = false;
+}
+
+
+static uint16_t NG_FixTargetEntry(uint16_t x, uint16_t y)
+{
+	if (_s_fix_target_kind == FIX_TARGET_TILED_BACKGROUND)
+		return _s_fix_target[(y & 7u) * 8u + (x & 7u)];
+
+	return _s_fix_target[y * FIX_OVERLAY_WIDTH + x];
+}
+
+
+static void NG_UploadFixTarget(void)
+{
+	if (!_s_fix_target)
+		return;
+
+	if (!_s_fix_page_active)
+		NG_ClearFixOverlay();
+
+	*REG_VRAMMOD = 32;
+	for (uint16_t y = 0; y < FIX_OVERLAY_HEIGHT; y++)
+	{
+		*REG_VRAMADDR = ADDR_FIXMAP + 32u + 2u + y;
+		for (uint16_t x = 0; x < FIX_OVERLAY_WIDTH; x++)
+			*REG_VRAMRW = NG_FixTargetEntry(x, y);
+	}
+
+	_s_fix_page_active = true;
+}
+
+
+static void NG_SetFixTarget(const uint16_t *target, fix_target_kind_t kind)
+{
+	_s_fix_target = target;
+	_s_fix_target_kind = kind;
+
+	if (!_s_fix_wipe_active)
+		NG_UploadFixTarget();
 }
 
 
@@ -329,6 +362,9 @@ static void NG_InitMicroSprites(void)
 
 void I_InitGraphicsHardwareSpecificCode(void)
 {
+	*REG_VRAMMOD = 32;
+	MMAP_PALBANK1[0] = 0x8000;
+
 	I_ReloadPalette();
 	I_UploadNewPalette(0);
 
@@ -469,10 +505,10 @@ void R_DrawColumnFlat(uint8_t color, const draw_column_vars_t *dcvars)
 }
 
 
-#define FUZZCOLOR1 106
-#define FUZZCOLOR2 107
-#define FUZZCOLOR3 108
-#define FUZZCOLOR4 109
+#define FUZZCOLOR1 34
+#define FUZZCOLOR2 148
+#define FUZZCOLOR3 212
+#define FUZZCOLOR4 246
 #define FUZZTABLE 50
 
 static const uint8_t fuzzcolors[FUZZTABLE] =
@@ -566,14 +602,20 @@ void V_DrawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint8_t color)
 
 void V_DrawBackground(int16_t backgroundnum)
 {
-	UNUSED(backgroundnum);
 	memset(_s_screen, 0, sizeof(_s_screen));
-	NG_ClearFixOverlay();
+	NG_SetFixTarget(W_GetLumpByNum(backgroundnum), FIX_TARGET_TILED_BACKGROUND);
 }
 
 
 void V_DrawRawFullScreen(int16_t num)
 {
+	if (W_LumpLength(num) == FIX_OVERLAY_WIDTH * FIX_OVERLAY_HEIGHT * sizeof(uint16_t))
+	{
+		memset(_s_screen, 0, sizeof(_s_screen));
+		NG_SetFixTarget(W_GetLumpByNum(num), FIX_TARGET_PAGE);
+		return;
+	}
+
 #if defined SHOW_PALETTE
 	int i = 0;
 	for (int y = 0; y < 16; y++)
@@ -599,7 +641,8 @@ void V_DrawRawFullScreen(int16_t num)
 		y += DYI;
 	}
 #endif
-	NG_ClearFixOverlay();
+	if (!_s_fix_wipe_active)
+		NG_ClearFixOverlay();
 }
 
 
@@ -633,36 +676,36 @@ static int16_t NG_TextY(int16_t y)
 }
 
 
-static void NG_DrawFixCharacter(int16_t x, int16_t y, uint8_t color, uint8_t c)
+static void NG_DrawFixCharacter(int16_t x, int16_t y, uint16_t color, uint8_t c)
 {
 	if ((uint16_t)x >= FIX_OVERLAY_WIDTH || (uint16_t)y >= FIX_OVERLAY_HEIGHT)
 		return;
 
 	*REG_VRAMMOD = 32;
 	*REG_VRAMADDR = ADDR_FIXMAP + ((0 + 1) * 32) + y + 2 + ((uint16_t)x * 32);
-	*REG_VRAMRW = colors[color & 0x0f] | c;
+	*REG_VRAMRW = color | c;
 }
 
 
-void V_DrawCharacter(int16_t x, int16_t y, uint8_t color, char c)
+void V_DrawCharacter(int16_t x, int16_t y, uint16_t color, char c)
 {
 	NG_DrawFixCharacter(NG_TextX(x), NG_TextY(y), color, (uint8_t)c);
 }
 
 
-void V_DrawSTCharacter(int16_t x, int16_t y, uint8_t color, char c)
+void V_DrawSTCharacter(int16_t x, int16_t y, uint16_t color, char c)
 {
 	V_DrawCharacter(x, y, color, c);
 }
 
 
-void V_DrawCharacterForeground(int16_t x, int16_t y, uint8_t color, char c)
+void V_DrawCharacterForeground(int16_t x, int16_t y, uint16_t color, char c)
 {
 	V_DrawCharacter(x, y, color, c);
 }
 
 
-void V_DrawString(int16_t x, int16_t y, uint8_t color, const char* s)
+void V_DrawString(int16_t x, int16_t y, uint16_t color, const char* s)
 {
 	int16_t fx = NG_TextX(x);
 	int16_t fy = NG_TextY(y);
@@ -676,7 +719,7 @@ void V_DrawString(int16_t x, int16_t y, uint8_t color, const char* s)
 }
 
 
-void V_DrawSTString(int16_t x, int16_t y, uint8_t color, const char* s)
+void V_DrawSTString(int16_t x, int16_t y, uint16_t color, const char* s)
 {
 	V_DrawString(x, y, color, s);
 }
@@ -699,12 +742,16 @@ void V_ClearString(int16_t y, size_t len)
 void I_InitScreenPage(void)
 {
 	NG_ClearFixOverlay();
+	_s_fix_target = NULL;
+	_s_fix_target_kind = FIX_TARGET_NONE;
 }
 
 
 void I_InitScreenPages(void)
 {
 	NG_ClearFixOverlay();
+	_s_fix_target = NULL;
+	_s_fix_target_kind = FIX_TARGET_NONE;
 }
 
 
@@ -722,12 +769,18 @@ static void NG_DrawFixWipeMask(void)
 			*REG_VRAMRW = ((uint16_t)color << 8) | FIX_WIPE_CHAR;
 		}
 	}
+	_s_fix_page_active = true;
 }
 
 
 void wipe_StartScreen(void)
 {
-	NG_DrawFixWipeMask();
+	_s_fix_wipe_active = true;
+	_s_fix_target = NULL;
+	_s_fix_target_kind = FIX_TARGET_NONE;
+
+	if (!_s_fix_page_active)
+		NG_DrawFixWipeMask();
 }
 
 
@@ -775,7 +828,12 @@ static boolean wipe_ScreenWipe(int16_t ticks)
 
 				*REG_VRAMADDR = ADDR_FIXMAP + column + FIX_WIPE_Y_OFFSET + (uint16_t)wipe_y_lookup[i];
 				for (int16_t j = 0; j < dy; j++)
-					*REG_VRAMRW = FIX_CLEAR_CHAR;
+				{
+					uint16_t entry = FIX_CLEAR_CHAR;
+					if (_s_fix_target && i > 0 && i <= FIX_OVERLAY_WIDTH)
+						entry = NG_FixTargetEntry(i - 1, wipe_y_lookup[i] + j);
+					*REG_VRAMRW = entry;
+				}
 
 				wipe_y_lookup[i] += dy;
 				done = false;
@@ -808,7 +866,14 @@ void D_Wipe(void)
 {
 	wipe_y_lookup = Z_TryMallocStatic(FIX_WIPE_WIDTH * sizeof(int16_t));
 	if (!wipe_y_lookup)
+	{
+		if (_s_fix_target)
+			NG_UploadFixTarget();
+		else
+			NG_ClearFixOverlay();
+		_s_fix_wipe_active = false;
 		return;
+	}
 
 	I_FinishUpdate();
 
@@ -836,6 +901,13 @@ void D_Wipe(void)
 
 	} while (!done);
 
-	NG_ClearFixOverlay();
+	if (_s_fix_target)
+		_s_fix_page_active = true;
+	else
+		NG_ClearFixOverlay();
+
+	_s_fix_wipe_active = false;
+	_s_fix_target = NULL;
+	_s_fix_target_kind = FIX_TARGET_NONE;
 	Z_Free(wipe_y_lookup);
 }

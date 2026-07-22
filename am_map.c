@@ -120,18 +120,30 @@ static const uint8_t mapcolor_tele = GREEN;
 static const uint8_t mapcolor_secr = LIGHT_MAGENTA;
 static const uint8_t mapcolor_unsn = DARK_GRAY;
 static const uint8_t mapcolor_sngl = WHITE;
+#elif defined __NGDEVKIT__
+static const uint8_t mapcolor_wall =  92;
+static const uint8_t mapcolor_fchg = 189;
+static const uint8_t mapcolor_cchg =  56;
+static const uint8_t mapcolor_clsd = 111;
+static const uint8_t mapcolor_rdor =  38;
+static const uint8_t mapcolor_bdor = 196;
+static const uint8_t mapcolor_ydor = 191;
+static const uint8_t mapcolor_tele =  39;
+static const uint8_t mapcolor_secr =  52;
+static const uint8_t mapcolor_unsn =  24;
+static const uint8_t mapcolor_sngl = 111;
 #else
-static const uint8_t mapcolor_wall = 23;    // normal 1s wall color
-static const uint8_t mapcolor_fchg = 55;    // line at floor height change color
-static const uint8_t mapcolor_cchg = 215;    // line at ceiling height change color
-static const uint8_t mapcolor_clsd = 208;    // line at sector with floor=ceiling color
-static const uint8_t mapcolor_rdor = 175;    // red door color  (diff from keys to allow option)
-static const uint8_t mapcolor_bdor = 204;    // blue door color (of enabling one but not other )
-static const uint8_t mapcolor_ydor = 231;    // yellow door color
-static const uint8_t mapcolor_tele = 119;    // teleporter line color
-static const uint8_t mapcolor_secr = 252;    // secret sector boundary color
-static const uint8_t mapcolor_unsn = 104;    // computer map unseen line color
-static const uint8_t mapcolor_sngl = 208;    // single player arrow color
+static const uint8_t mapcolor_wall =  23;    // 211 115 115 normal 1s wall color
+static const uint8_t mapcolor_fchg =  55;    // 255 187 147 line at floor height change color
+static const uint8_t mapcolor_cchg = 215;    // 255 127  27 line at ceiling height change color
+static const uint8_t mapcolor_clsd = 208;    // 255 255 255 line at sector with floor=ceiling color
+static const uint8_t mapcolor_rdor = 175;    // 255  31  31 red door color  (diff from keys to allow option)
+static const uint8_t mapcolor_bdor = 204;    //   0   0 155 blue door color (of enabling one but not other )
+static const uint8_t mapcolor_ydor = 231;    // 255 255   0 yellow door color
+static const uint8_t mapcolor_tele = 119;    //  67 147  55 teleporter line color
+static const uint8_t mapcolor_secr = 252;    // 207   0 207 secret sector boundary color
+static const uint8_t mapcolor_unsn = 104;    //  79  79  79 computer map unseen line color
+static const uint8_t mapcolor_sngl = 208;    // 255 255 255 single player arrow color
 #endif
 
 

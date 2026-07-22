@@ -25,6 +25,7 @@
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <ngdevkit/bios-ram.h>
 #include <ngdevkit/registers.h>
 
 #include "doomdef.h"
@@ -98,17 +99,18 @@ void I_StartTic(void)
 
 	uint8_t diff;
 	diff = kb_matrix_prv[0] ^ kb_matrix_cur[0];
-	if (diff & (1 << 0)) I_PostEvent(kb_matrix_cur[0] & (1 << 0), KEYD_UP);		// Up
-	if (diff & (1 << 1)) I_PostEvent(kb_matrix_cur[0] & (1 << 1), KEYD_DOWN);	// Down
-	if (diff & (1 << 2)) I_PostEvent(kb_matrix_cur[0] & (1 << 2), KEYD_LEFT);	// Left
-	if (diff & (1 << 3)) I_PostEvent(kb_matrix_cur[0] & (1 << 3), KEYD_RIGHT);	// Right
-	if (diff & (1 << 4)) I_PostEvent(kb_matrix_cur[0] & (1 << 4), KEYD_A);		// A
-	if (diff & (1 << 5)) I_PostEvent(kb_matrix_cur[0] & (1 << 5), KEYD_B);		// S
-	if (diff & (1 << 6)) I_PostEvent(kb_matrix_cur[0] & (1 << 6), KEYD_L);		// Q
-	if (diff & (1 << 7)) I_PostEvent(kb_matrix_cur[0] & (1 << 7), KEYD_R);		// W
+	if (diff & CNT_UP)    I_PostEvent(kb_matrix_cur[0] & CNT_UP,    KEYD_UP);		// Up
+	if (diff & CNT_DOWN)  I_PostEvent(kb_matrix_cur[0] & CNT_DOWN,  KEYD_DOWN);		// Down
+	if (diff & CNT_LEFT)  I_PostEvent(kb_matrix_cur[0] & CNT_LEFT,  KEYD_LEFT);		// Left
+	if (diff & CNT_RIGHT) I_PostEvent(kb_matrix_cur[0] & CNT_RIGHT, KEYD_RIGHT);	// Right
+	if (diff & CNT_A)     I_PostEvent(kb_matrix_cur[0] & CNT_A,     KEYD_A);		// A
+	if (diff & CNT_B)     I_PostEvent(kb_matrix_cur[0] & CNT_B,     KEYD_B);		// S
+	if (diff & CNT_C)     I_PostEvent(kb_matrix_cur[0] & CNT_C,     KEYD_L);		// Q
+	if (diff & CNT_D)     I_PostEvent(kb_matrix_cur[0] & CNT_D,     KEYD_R);		// W
 
 	diff = kb_matrix_prv[1] ^ kb_matrix_cur[1];
-	if (diff & (1 << 0)) I_PostEvent(kb_matrix_cur[1] & (1 << 0), KEYD_START);	// 1
+	if (diff & CNT_START1) I_PostEvent(kb_matrix_cur[1] & CNT_START1, KEYD_START);	// 1
+	if (diff & CNT_START2) I_PostEvent(kb_matrix_cur[1] & CNT_START2, KEYD_SELECT);	// 2
 }
 
 
@@ -191,9 +193,9 @@ static void I_ShutdownTimer(void)
 #if defined NEOGEO_SPRITE_MICROFB
 #define NEOGEO_HEAP_SIZE 44000
 #else
-// 53016 is the maximum value with which this program can still be compiled.
+// 53012 is the maximum value with which this program can still be compiled.
 // Leave 2 KB for the stack.
-#define NEOGEO_HEAP_SIZE (53016-2*1024)
+#define NEOGEO_HEAP_SIZE (53012-2*1024)
 #endif
 #endif
 
@@ -255,8 +257,9 @@ static void ng_printf(const char *text)
 {
 	int x = 0;
 	int y = 0;
-	MMAP_PALBANK1[0] = 0x8000;
-	MMAP_PALBANK1[1] = 0x7FFF;
+	MMAP_PALBANK1[1]     = 0x7FFF;
+	MMAP_PALBANK1[2]     = 0x8BBB;
+	MMAP_PALBANK1[0xfff] = 0x8000;
 
 	*REG_VRAMMOD = 0x200;
 	for (int i = 0; i < 381; i++)
@@ -274,7 +277,6 @@ static void ng_printf(const char *text)
 		for (int cx = 0; cx < 38; cx++)
 			*REG_VRAMRW = 0x3000 | ' ';
 	}
-
 	*REG_VRAMADDR = ADDR_FIXMAP + ((x + 1) * 32) + y + 2;
 	*REG_VRAMMOD = 32;
 	while (*text)
