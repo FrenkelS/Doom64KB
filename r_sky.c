@@ -32,6 +32,14 @@
 
 #define COLEXTRABITS (8 - 1)
 
+#if defined NEOGEO_SPRITE_MICROFB
+#define R_SKY_VIEWHEIGHT() R_RenderViewHeight()
+#define R_SKY_XTOVIEWANGLE(x) R_RenderXToViewAngle(x)
+#else
+#define R_SKY_VIEWHEIGHT() VIEWWINDOWHEIGHT
+#define R_SKY_XTOVIEWANGLE(x) xtoviewangleTable[(x)]
+#endif
+
 
 #if defined FLAT_SPAN
 const int16_t skyflatnum = -2;
@@ -66,10 +74,10 @@ void R_DrawSky(draw_column_vars_t *dcvars)
 	if (!(dcvars->colormap = fixedcolormap))
 		dcvars->colormap = fullcolormap;
 
-	dcvars->fracstep = ((FRACUNIT * SCREENHEIGHT_VGA) / (VIEWWINDOWHEIGHT + 16)) >> COLEXTRABITS;
+	dcvars->fracstep = ((FRACUNIT * SCREENHEIGHT_VGA) / (R_SKY_VIEWHEIGHT() + 16)) >> COLEXTRABITS;
 
 	int16_t xc = viewangle >> FRACBITS;
-	xc += xtoviewangleTable[dcvars->x];
+	xc += R_SKY_XTOVIEWANGLE(dcvars->x);
 	xc >>= ANGLETOSKYSHIFT - FRACBITS;
 	xc &= skywidthmask;
 
@@ -96,14 +104,14 @@ void R_DrawSky(visplane_t __far* pl)
 	if (!(dcvars.colormap = fixedcolormap))
 		dcvars.colormap = fullcolormap;
 
-	dcvars.fracstep = ((FRACUNIT * SCREENHEIGHT_VGA) / (VIEWWINDOWHEIGHT + 16)) >> COLEXTRABITS;
+	dcvars.fracstep = ((FRACUNIT * SCREENHEIGHT_VGA) / (R_SKY_VIEWHEIGHT() + 16)) >> COLEXTRABITS;
 
 	for (int16_t x = pl->minx; (dcvars.x = x) <= pl->maxx; x++)
 	{
 		if ((dcvars.yl = pl->top[x]) != -1 && dcvars.yl <= (dcvars.yh = pl->bottom[x])) // dropoff overflow
 		{
 			int16_t xc = viewangle >> FRACBITS;
-			xc += xtoviewangleTable[x];
+			xc += R_SKY_XTOVIEWANGLE(x);
 			xc >>= ANGLETOSKYSHIFT - FRACBITS;
 			xc &= skywidthmask;
 

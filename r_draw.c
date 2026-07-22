@@ -124,6 +124,16 @@ static height_t* lastopening;
 #endif
 static const uint8_t viewangletoxTable[4096 - 1023 - VIEWANGLETOXMAX];
 
+#if defined NEOGEO_SPRITE_MICROFB
+static uint8_t render_viewwidth = VIEWWINDOWWIDTH;
+static uint8_t render_viewheight = VIEWWINDOWHEIGHT;
+#define R_VIEWWIDTH render_viewwidth
+#define R_VIEWHEIGHT render_viewheight
+#else
+#define R_VIEWWIDTH VIEWWINDOWWIDTH
+#define R_VIEWHEIGHT VIEWWINDOWHEIGHT
+#endif
+
 
 static uint8_t viewangletox(int16_t va)
 {
@@ -135,14 +145,28 @@ static uint8_t viewangletox(int16_t va)
 #endif
 
 #if VIEWANGLETOXMAX == -1023
-	return viewangletoxTable[va];
+	{
+		const uint16_t x = viewangletoxTable[va];
+#if defined NEOGEO_SPRITE_MICROFB
+		return (uint8_t)((x * R_VIEWWIDTH) / VIEWWINDOWWIDTH);
+#else
+		return x;
+#endif
+	}
 #else
 	if (va < VIEWANGLETOXMAX)	//               0 <= va < VIEWANGLETOXMAX
-		return VIEWWINDOWWIDTH;
+		return R_VIEWWIDTH;
 	else if (3073 <= va)		//            3073 <= va < 4096
 		return 0;
 	else						// VIEWANGLETOXMAX <= va < 3073
-		return viewangletoxTable[va - VIEWANGLETOXMAX];
+	{
+		const uint16_t x = viewangletoxTable[va - VIEWANGLETOXMAX];
+#if defined NEOGEO_SPRITE_MICROFB
+		return (uint8_t)((x * R_VIEWWIDTH) / VIEWWINDOWWIDTH);
+#else
+		return x;
+#endif
+	}
 #endif
 }
 
@@ -567,6 +591,22 @@ uint16_t validcount = 1;         // increment every time a check is made
 
 #define COLEXTRABITS (8 - 1)
 
+#if defined NEOGEO_SPRITE_MICROFB
+static angle16_t render_xtoviewangle[VIEWWINDOWWIDTH + 1];
+
+static int16_t CENTERX = VIEWWINDOWWIDTH  / 2;
+       int16_t CENTERY = VIEWWINDOWHEIGHT / 2;
+
+static fixed_t PROJECTION = (VIEWWINDOWWIDTH / 2L) << FRACBITS;
+
+static uint16_t PSPRITESCALE  = FRACUNIT * VIEWWINDOWWIDTH / SCREENWIDTH_VGA;
+static fixed_t  PSPRITEISCALE = FRACUNIT * SCREENWIDTH_VGA / VIEWWINDOWWIDTH; // = FixedReciprocal(PSPRITESCALE)
+
+static uint16_t PSPRITEYSCALE = FRACUNIT * (VIEWWINDOWHEIGHT * 5 / 4) / SCREENHEIGHT_VGA;
+static uint16_t PSPRITEYFRACSTEP = (FRACUNIT * SCREENHEIGHT_VGA / (VIEWWINDOWHEIGHT * 5 / 4)) >> COLEXTRABITS; // = FixedReciprocal(PSPRITEYSCALE) >> COLEXTRABITS
+
+#define R_XTOVIEWANGLE(x) render_xtoviewangle[(x)]
+#else
 static const int16_t CENTERX = VIEWWINDOWWIDTH  / 2;
        const int16_t CENTERY = VIEWWINDOWHEIGHT / 2;
 
@@ -578,7 +618,71 @@ static const fixed_t  PSPRITEISCALE = FRACUNIT * SCREENWIDTH_VGA / VIEWWINDOWWID
 static const uint16_t PSPRITEYSCALE = FRACUNIT * (VIEWWINDOWHEIGHT * 5 / 4) / SCREENHEIGHT_VGA;
 static const uint16_t PSPRITEYFRACSTEP = (FRACUNIT * SCREENHEIGHT_VGA / (VIEWWINDOWHEIGHT * 5 / 4)) >> COLEXTRABITS; // = FixedReciprocal(PSPRITEYSCALE) >> COLEXTRABITS
 
+#define R_XTOVIEWANGLE(x) xtoviewangleTable[(x)]
+#endif
+
 static const angle16_t clipangle = 0x2008; // = xtoviewangleTable[0]
+
+
+#if defined NEOGEO_SPRITE_MICROFB
+void R_SetRenderSize(uint16_t width, uint16_t height)
+{
+	if (width < 1)
+		width = 1;
+	else if (width > VIEWWINDOWWIDTH)
+		width = VIEWWINDOWWIDTH;
+
+	if (height < 1)
+		height = 1;
+	else if (height > VIEWWINDOWHEIGHT)
+		height = VIEWWINDOWHEIGHT;
+
+	render_viewwidth = (uint8_t)width;
+	render_viewheight = (uint8_t)height;
+	CENTERX = render_viewwidth / 2;
+	CENTERY = render_viewheight / 2;
+	PROJECTION = ((fixed_t)render_viewwidth / 2L) << FRACBITS;
+	PSPRITESCALE = FRACUNIT * render_viewwidth / SCREENWIDTH_VGA;
+	PSPRITEISCALE = FRACUNIT * SCREENWIDTH_VGA / render_viewwidth;
+	PSPRITEYSCALE = FRACUNIT * (render_viewheight * 5 / 4) / SCREENHEIGHT_VGA;
+	PSPRITEYFRACSTEP = (FRACUNIT * SCREENHEIGHT_VGA / (render_viewheight * 5 / 4)) >> COLEXTRABITS;
+
+	for (uint16_t x = 0; x <= render_viewwidth; x++)
+	{
+		uint16_t src_x = (x * VIEWWINDOWWIDTH) / render_viewwidth;
+		if (src_x > VIEWWINDOWWIDTH)
+			src_x = VIEWWINDOWWIDTH;
+		render_xtoviewangle[x] = xtoviewangleTable[src_x];
+	}
+
+	for (uint16_t x = render_viewwidth + 1u; x <= VIEWWINDOWWIDTH; x++)
+		render_xtoviewangle[x] = xtoviewangleTable[VIEWWINDOWWIDTH];
+
+	for (uint16_t x = 0; x < VIEWWINDOWWIDTH; x++)
+		screenheightarray[x] = render_viewheight;
+}
+
+
+uint8_t R_RenderViewWidth(void)
+{
+	return render_viewwidth;
+}
+
+
+uint8_t R_RenderViewHeight(void)
+{
+	return render_viewheight;
+}
+
+
+uint16_t R_RenderXToViewAngle(uint16_t x)
+{
+	if (x > render_viewwidth)
+		x = render_viewwidth;
+
+	return R_XTOVIEWANGLE(x);
+}
+#endif
 
 
 // Emits a mulu.w instruction. It's quite difficult to get gcc to do that :-)
@@ -1109,7 +1213,7 @@ static void R_DrawMaskedColumn(R_DrawColumn_f colfunc, draw_column_vars_t *dcvar
             yl = cclip_x + 1;
 
         // killough 3/2/98, 3/27/98: Failsafe against overflow/crash:
-        if (yl <= yh && yh < VIEWWINDOWHEIGHT)
+        if (yl <= yh && yh < R_VIEWHEIGHT)
         {
             dcvars->source =  (const byte __far*)column + 3;
 
@@ -1198,7 +1302,7 @@ static void R_DrawVisSprite(const vissprite_t *vis)
 
     dcvars.x = vis->x1;
 
-    while (dcvars.x < VIEWWINDOWWIDTH)
+    while (dcvars.x < R_VIEWWIDTH)
     {
         const column_t __far* column = (const column_t __far*) ((const byte __far*)patch + patch->columnofs[frac >> FRACBITS]);
         R_DrawMaskedColumn(colfunc, &dcvars, column);
@@ -1359,7 +1463,7 @@ static void R_DrawSprite (const vissprite_t* spr)
 
     for (int16_t x = spr->x1; x <= spr->x2; x++)
     {
-        clipbot[x] = VIEWWINDOWHEIGHT;
+        clipbot[x] = R_VIEWHEIGHT;
         cliptop[x] = -1;
     }
 
@@ -1411,7 +1515,7 @@ static void R_DrawSprite (const vissprite_t* spr)
         {
             for (int16_t x = r1; x <= r2; x++)
             {
-                if (clipbot[x] == VIEWWINDOWHEIGHT)
+                if (clipbot[x] == R_VIEWHEIGHT)
                     clipbot[x] = ds->sprbottomclip[x];
 
                 if (cliptop[x] == -1)
@@ -1422,7 +1526,7 @@ static void R_DrawSprite (const vissprite_t* spr)
         {
             for (int16_t x = r1; x <= r2; x++)
             {
-                if (clipbot[x] == VIEWWINDOWHEIGHT)
+                if (clipbot[x] == R_VIEWHEIGHT)
                     clipbot[x] = ds->sprbottomclip[x];
             }
         }
@@ -1487,7 +1591,7 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
     x2 = CENTERX + (hl >> FRACBITS) - 1;
 
     // off the side
-    if (x2 < 0 || x1 > VIEWWINDOWWIDTH)
+    if (x2 < 0 || x1 > R_VIEWWIDTH)
     {
         return;
     }
@@ -1500,7 +1604,7 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
     vis->texturemid = (BASEYCENTER<<FRACBITS) /* +  FRACUNIT/2 */ -
             (psp->sy-topoffset);
     vis->x1 = x1 < 0 ? 0 : x1;
-    vis->x2 = x2 >= VIEWWINDOWWIDTH ? VIEWWINDOWWIDTH - 1 : x2;
+    vis->x2 = x2 >= R_VIEWWIDTH ? R_VIEWWIDTH - 1 : x2;
     // proff 11/06/98: Added for high-res
     vis->scale = PSPRITEYSCALE;
     vis->fracstep = PSPRITEYFRACSTEP;
@@ -1652,13 +1756,13 @@ static void R_ClearSprites(void)
 
 static fixed_t R_ScaleFromGlobalAngle(int16_t x)
 {
-  int16_t anglea = ANG90_16 + xtoviewangleTable[x];
+  int16_t anglea = ANG90_16 + R_XTOVIEWANGLE(x);
   int16_t angleb = anglea + viewangle16 - rw_normalangle;
 
   fixed_t den = rw_distance * finesineapprox(anglea >> ANGLETOFINESHIFT_16);
 
 // proff 11/06/98: Changed for high-res
-  fixed_t num = VIEWWINDOWHEIGHT * finesineapprox(angleb >> ANGLETOFINESHIFT_16);
+  fixed_t num = R_VIEWHEIGHT * finesineapprox(angleb >> ANGLETOFINESHIFT_16);
 
   return den > num>>16 ? (num = FixedApproxDiv(num, den)) > 64*FRACUNIT ?
     64*FRACUNIT : num < 256 ? 256 : num : 64*FRACUNIT;
@@ -1735,7 +1839,7 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
     const int16_t x1 = (xl >> FRACBITS);
 
     // off the side?
-    if (x1 > VIEWWINDOWWIDTH)
+    if (x1 > R_VIEWWIDTH)
     {
         return;
     }
@@ -1766,8 +1870,8 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
     }
 
     //vis->scale           = FixedDiv(PROJECTIONY, tz);
-    vis->scale           = (VIEWWINDOWHEIGHT * FRACUNIT) / (tz >> FRACBITS);
-    vis->fracstep        = tz / (VIEWWINDOWHEIGHT << COLEXTRABITS);
+    vis->scale           = (R_VIEWHEIGHT * FRACUNIT) / (tz >> FRACBITS);
+    vis->fracstep        = tz / (R_VIEWHEIGHT << COLEXTRABITS);
     vis->lump_num        = sprframe->lump[rot];
     vis->patch_topoffset = patch->topoffset;
     vis->gx              = fx;
@@ -1775,7 +1879,7 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
     vis->gz              = fz;
     vis->texturemid      = (fz + (((int32_t)patch->topoffset) << FRACBITS)) - viewz;
     vis->x1              = x1 < 0 ? 0 : x1;
-    vis->x2              = x2 >= VIEWWINDOWWIDTH ? VIEWWINDOWWIDTH - 1 : x2;
+    vis->x2              = x2 >= R_VIEWWIDTH ? R_VIEWWIDTH - 1 : x2;
 
 
     const fixed_t iscale = FixedReciprocal(xscale);
@@ -2074,7 +2178,7 @@ static void R_RenderSegLoop(int16_t rw_x, boolean segtextured, boolean markfloor
             // calculate texture offset
 #if !defined FLAT_WALL
 			texturecolumn = rw_offset;
-			int16_t ang = (angle16_t)(rw_centerangle + xtoviewangleTable[rw_x]) >> ANGLETOFINESHIFT_16;
+			int16_t ang = (angle16_t)(rw_centerangle + R_XTOVIEWANGLE(rw_x)) >> ANGLETOFINESHIFT_16;
 			if (ang < 1024) {			//    0 <= ang < 1024
 				fixed_t tan = finetangentTable_part_4[1023 - ang];
 				texturecolumn += (rw_distance * tan) >> FRACBITS;
@@ -2104,7 +2208,7 @@ static void R_RenderSegLoop(int16_t rw_x, boolean segtextured, boolean markfloor
 
             R_DrawSegTextureColumn(texmidtexture, midtexture, texturecolumn, &dcvars);
 
-            cc_rwx = VIEWWINDOWHEIGHT;
+            cc_rwx = R_VIEWHEIGHT;
             fc_rwx = -1;
         }
         else
@@ -2207,8 +2311,8 @@ static boolean R_CheckOpenings(const int16_t start)
 static void R_ClearOpeningClippingDetermination(void)
 {
 	// opening / clipping determination
-	for (uint8_t i = 0; i < VIEWWINDOWWIDTH; i++)
-		floorclip[i] = VIEWWINDOWHEIGHT, ceilingclip[i] = -1;
+	for (uint8_t i = 0; i < R_VIEWWIDTH; i++)
+		floorclip[i] = R_VIEWHEIGHT, ceilingclip[i] = -1;
 }
 
 
@@ -2999,7 +3103,7 @@ static void R_ClearDrawSegs(void)
 
 static void R_ClearClipSegs (void)
 {
-    memset(solidcol, 0, VIEWWINDOWWIDTH);
+    memset(solidcol, 0, R_VIEWWIDTH);
 }
 
 
