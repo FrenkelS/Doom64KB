@@ -873,8 +873,21 @@ void R_DrawColumnFlat(uint8_t color, const draw_column_vars_t *dcvars)
 		return;
 
 	uint8_t *dest = MICROFB_COLUMN(dcvars->x) + dcvars->yl;
+#if defined __GNUC__ && defined __mc68000__
+	uint16_t iterations = (uint16_t)count - 1u;
+	__asm__ volatile (
+		"1:\n\t"
+		"move.b %[color],(%[dest])+\n\t"
+		"dbra %[iterations],1b"
+		: [dest] "+&a" (dest),
+		  [iterations] "+&d" (iterations)
+		: [color] "d" (color)
+		: "cc", "memory"
+	);
+#else
 	while (count--)
 		*dest++ = color;
+#endif
 }
 
 

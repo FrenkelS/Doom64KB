@@ -2430,6 +2430,31 @@ inline static int16_t CONSTFUNC Mod(uint8_t a, int16_t b)
 }
 
 
+static inline int32_t R_DivScaleStep(int32_t delta, uint16_t span)
+{
+#if defined __GNUC__ && defined __mc68000__
+	const uint32_t magnitude =
+		delta < 0 ? 0u - (uint32_t)delta : (uint32_t)delta;
+
+	if (magnitude < ((uint32_t)span << 15))
+	{
+		int32_t quotient = delta;
+
+		__asm__ (
+			"divs.w %1,%0\n\t"
+			"ext.l %0"
+			: "+d" (quotient)
+			: "d" (span)
+			: "cc"
+		);
+		return quotient;
+	}
+#endif
+
+	return delta / span;
+}
+
+
 //
 // R_StoreWallRange
 // A wall segment will be drawn
@@ -2487,7 +2512,8 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
     if (stop > start)
     {
         ds_p->scale2 = R_ScaleFromGlobalAngle(stop);
-        ds_p->scalestep = rw_scalestep = (ds_p->scale2 - rw_scale) / (stop - start);
+        ds_p->scalestep = rw_scalestep =
+			R_DivScaleStep(ds_p->scale2 - rw_scale, stop - start);
     }
     else
         ds_p->scale2 = ds_p->scale1;
@@ -2818,6 +2844,33 @@ static void R_RecalcLineFlags(void)
 // Replaces the old R_Clip*WallSegment functions. It draws bits of walls in those
 // columns which aren't solid, and updates the solidcol[] array appropriately
 
+static inline byte *R_FindClipValue(byte *p, byte value, int16_t count)
+{
+	while (count-- > 0)
+	{
+		if (*p == value)
+			return p;
+		p++;
+	}
+
+	return NULL;
+}
+
+
+static inline void R_FillSolidColumns(byte *p, int16_t count)
+{
+	if (count < 16)
+	{
+		while (count-- > 0)
+			*p++ = 1;
+	}
+	else
+	{
+		memset(p, 1, count);
+	}
+}
+
+
 static void R_ClipWallSegment(int16_t first, int16_t last, const boolean solid)
 {
     byte *p;
@@ -2825,7 +2878,7 @@ static void R_ClipWallSegment(int16_t first, int16_t last, const boolean solid)
     {
         if (solidcol[first])
         {
-            if (!(p = memchr(solidcol+first, 0, last-first)))
+            if (!(p = R_FindClipValue(solidcol + first, 0, last - first)))
                 return; // All solid
 
             first = p - solidcol;
@@ -2833,7 +2886,7 @@ static void R_ClipWallSegment(int16_t first, int16_t last, const boolean solid)
         else
         {
             int16_t to;
-            if (!(p = memchr(solidcol+first, 1, last-first)))
+            if (!(p = R_FindClipValue(solidcol + first, 1, last - first)))
                 to = last;
             else
                 to = p - solidcol;
@@ -2842,7 +2895,7 @@ static void R_ClipWallSegment(int16_t first, int16_t last, const boolean solid)
 
             if (solid)
             {
-                memset(solidcol + first, 1, to - first);
+                R_FillSolidColumns(solidcol + first, to - first);
             }
 
             first = to;
