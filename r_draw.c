@@ -792,6 +792,21 @@ static uint16_t divu(uint32_t dividend, uint16_t divisor)
 }
 
 
+/* The 68000 traps when DIVU.W's quotient exceeds 16 bits.  Keep the generic
+ * division unless this comparison proves that the exact quotient is smaller
+ * than 65536.
+ */
+static uint32_t divu_guarded(uint32_t dividend, uint16_t divisor)
+{
+#if defined __GNUC__ && defined __mc68000__
+	if (dividend < ((uint32_t)divisor << 16))
+		return divu(dividend, divisor);
+#endif
+
+	return dividend / divisor;
+}
+
+
 #if defined __WATCOMC__
 //
 #else
@@ -1019,7 +1034,13 @@ static CONSTFUNC int16_t SlopeDiv(uint32_t num, uint32_t den)
     if (den == 0)
         return SLOPERANGE;
 
-    const uint16_t ans = (num << 3) / den;//FixedApproxDiv(num << 3, den) >> FRACBITS;
+    /* R_PointToAngle3 passes the smaller magnitude as num.  If the shifted
+     * denominator fits in a word, num <= original den proves that this
+     * quotient is at most ((256 + 255) * 8) / 1 == 4088.
+     */
+    const uint16_t ans = den <= UINT16_MAX
+        ? divu(num << 3, (uint16_t)den)
+        : (num << 3) / den;
 
     return (ans <= SLOPERANGE) ? ans : SLOPERANGE;
 }
@@ -1925,7 +1946,8 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
         tx -= ((int32_t)patch->leftoffset) << FRACBITS;
 
     //const fixed_t xscale = FixedDiv(PROJECTION, tz);
-    const fixed_t xscale = PROJECTION / (tz >> FRACBITS);
+    const uint16_t distance = tz >> FRACBITS;
+    const fixed_t xscale = divu_guarded(PROJECTION, distance);
 
     fixed_t xl = CENTERX * FRACUNIT + FixedMul(tx,xscale);
     const int16_t x1 = (xl >> FRACBITS);
@@ -1962,8 +1984,14 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
     }
 
     //vis->scale           = FixedDiv(PROJECTIONY, tz);
-    vis->scale           = (R_VIEWHEIGHT * FRACUNIT) / (tz >> FRACBITS);
-    vis->fracstep        = tz / (R_VIEWHEIGHT << COLEXTRABITS);
+    vis->scale           =
+        divu_guarded(R_VIEWHEIGHT * FRACUNIT, distance);
+    /* tz is already constrained to 4..1280 map units.  The largest quotient
+     * is Low mode's (1280 << 16) / (28 << 7) == 23405, so DIVU.W is exact in
+     * every supported render mode.
+     */
+    vis->fracstep        =
+        divu((uint32_t)tz, R_VIEWHEIGHT << COLEXTRABITS);
     vis->lump_num        = sprframe->lump[rot];
     vis->patch_topoffset = patch->topoffset;
     vis->gx              = fx;
