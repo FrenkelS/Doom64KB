@@ -86,6 +86,7 @@ extern int16_t CENTERY;
 #define MICROFB_SPRITE_BASE 1u
 #define MICROFB_X_WORD(x) (((uint16_t)(x)) << 7)
 #define MICROFB_PALETTE_ATTR(pal) ((uint16_t)(pal) << 8)
+#define MICROFB_STICKY_BIT 0x0040u
 
 #define FIX_OVERLAY_WIDTH 38
 #define FIX_OVERLAY_HEIGHT 28
@@ -505,7 +506,7 @@ static void NG_ConfigureMicroSpriteSet(uint16_t set)
 
 			*REG_VRAMADDR = ADDR_SCB2 + sprite;
 			*REG_VRAMRW = mode->shrink_word;
-			*REG_VRAMRW = 0u;
+			*REG_VRAMRW = active && x ? MICROFB_STICKY_BIT : 0u;
 			*REG_VRAMRW = active ? MICROFB_X_WORD(mode->x_offset + x * mode->cell_px) : 0u;
 		}
 	}
@@ -526,8 +527,7 @@ static void NG_SetMicroSpriteSetVisible(uint16_t set, uint8_t visible)
 		const uint16_t height_word = visible && chunk_rows ? NG_SpriteYWord(y, chunk_rows) : 0u;
 
 		*REG_VRAMADDR = ADDR_SCB3 + NG_MicroSpriteIndex(set, chunk, 0);
-		for (uint16_t x = 0; x < VIEWWINDOWWIDTH; x++)
-			*REG_VRAMRW = x < mode->cols ? height_word : 0u;
+		*REG_VRAMRW = height_word;
 	}
 }
 
