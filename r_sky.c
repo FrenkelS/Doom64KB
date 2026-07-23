@@ -35,9 +35,11 @@
 #if defined NEOGEO_SPRITE_MICROFB
 #define R_SKY_VIEWHEIGHT() R_RenderViewHeight()
 #define R_SKY_XTOVIEWANGLE(x) R_RenderXToViewAngle(x)
+#define R_SKY_FRACSTEP() R_RenderSkyFracStep()
 #else
 #define R_SKY_VIEWHEIGHT() VIEWWINDOWHEIGHT
 #define R_SKY_XTOVIEWANGLE(x) xtoviewangleTable[(x)]
+#define R_SKY_FRACSTEP() (((FRACUNIT * SCREENHEIGHT_VGA) / (R_SKY_VIEWHEIGHT() + 16)) >> COLEXTRABITS)
 #endif
 
 
@@ -74,7 +76,7 @@ void R_DrawSky(draw_column_vars_t *dcvars)
 	if (!(dcvars->colormap = fixedcolormap))
 		dcvars->colormap = fullcolormap;
 
-	dcvars->fracstep = ((FRACUNIT * SCREENHEIGHT_VGA) / (R_SKY_VIEWHEIGHT() + 16)) >> COLEXTRABITS;
+	dcvars->fracstep = R_SKY_FRACSTEP();
 
 	int16_t xc = viewangle >> FRACBITS;
 	xc += R_SKY_XTOVIEWANGLE(dcvars->x);
@@ -104,7 +106,7 @@ void R_DrawSky(visplane_t __far* pl)
 	if (!(dcvars.colormap = fixedcolormap))
 		dcvars.colormap = fullcolormap;
 
-	dcvars.fracstep = ((FRACUNIT * SCREENHEIGHT_VGA) / (R_SKY_VIEWHEIGHT() + 16)) >> COLEXTRABITS;
+	dcvars.fracstep = R_SKY_FRACSTEP();
 
 	for (int16_t x = pl->minx; (dcvars.x = x) <= pl->maxx; x++)
 	{

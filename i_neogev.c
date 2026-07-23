@@ -176,6 +176,8 @@ static const microfb_mode_t microfb_modes[] =
 
 
 static uint8_t _s_screen[VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT];
+#define MICROFB_COLUMN(x) (&_s_screen[(uint16_t)(x) * VIEWWINDOWHEIGHT])
+#define MICROFB_PIXEL(x, y) (MICROFB_COLUMN(x)[(uint16_t)(y)])
 static uint8_t _s_color_to_tile_slot[256];
 static uint8_t _s_color_to_palette[256];
 static uint8_t _s_visible_sprite_set;
@@ -242,25 +244,25 @@ static void NG_RescaleMicroFramebuffer(const microfb_mode_t *old_mode, const mic
 {
 	if (new_mode->cols >= old_mode->cols)
 	{
-		for (int16_t y = new_mode->rows - 1; y >= 0; y--)
+		for (int16_t x = new_mode->cols - 1; x >= 0; x--)
 		{
-			const uint16_t src_y = ((uint16_t)y * old_mode->rows) / new_mode->rows;
-			for (int16_t x = new_mode->cols - 1; x >= 0; x--)
+			const uint16_t src_x = ((uint16_t)x * old_mode->cols) / new_mode->cols;
+			for (int16_t y = new_mode->rows - 1; y >= 0; y--)
 			{
-				const uint16_t src_x = ((uint16_t)x * old_mode->cols) / new_mode->cols;
-				_s_screen[y * VIEWWINDOWWIDTH + x] = _s_screen[src_y * VIEWWINDOWWIDTH + src_x];
+				const uint16_t src_y = ((uint16_t)y * old_mode->rows) / new_mode->rows;
+				MICROFB_PIXEL(x, y) = MICROFB_PIXEL(src_x, src_y);
 			}
 		}
 	}
 	else
 	{
-		for (uint16_t y = 0; y < new_mode->rows; y++)
+		for (uint16_t x = 0; x < new_mode->cols; x++)
 		{
-			const uint16_t src_y = (y * old_mode->rows) / new_mode->rows;
-			for (uint16_t x = 0; x < new_mode->cols; x++)
+			const uint16_t src_x = (x * old_mode->cols) / new_mode->cols;
+			for (uint16_t y = 0; y < new_mode->rows; y++)
 			{
-				const uint16_t src_x = (x * old_mode->cols) / new_mode->cols;
-				_s_screen[y * VIEWWINDOWWIDTH + x] = _s_screen[src_y * VIEWWINDOWWIDTH + src_x];
+				const uint16_t src_y = (y * old_mode->rows) / new_mode->rows;
+				MICROFB_PIXEL(x, y) = MICROFB_PIXEL(src_x, src_y);
 			}
 		}
 	}
@@ -658,11 +660,12 @@ static void NG_UploadMicroFramebuffer(uint8_t set)
 		for (uint16_t x = 0; x < mode->cols; x++)
 		{
 			const uint16_t sprite = NG_MicroSpriteIndex(set, chunk, x);
+			const uint8_t *src = MICROFB_COLUMN(x) + row_base;
 
 			*REG_VRAMADDR = ADDR_SCB1 + (sprite * 64u);
 			for (uint16_t row = 0; row < chunk_rows; row++)
 			{
-				const uint8_t color = _s_screen[(row_base + row) * VIEWWINDOWWIDTH + x];
+				const uint8_t color = *src++;
 				*REG_VRAMRW = MICROFB_TILE_BASE + _s_color_to_tile_slot[color];
 				*REG_VRAMRW = MICROFB_PALETTE_ATTR(_s_color_to_palette[color]);
 			}
@@ -755,24 +758,6 @@ boolean I_NeoGeoFixWipeActive(void)
 }
 
 
-static const int LUTY[VIEWWINDOWHEIGHT] = {
-	 0 * VIEWWINDOWWIDTH,  1 * VIEWWINDOWWIDTH,  2 * VIEWWINDOWWIDTH,  3 * VIEWWINDOWWIDTH,
-	 4 * VIEWWINDOWWIDTH,  5 * VIEWWINDOWWIDTH,  6 * VIEWWINDOWWIDTH,  7 * VIEWWINDOWWIDTH,
-	 8 * VIEWWINDOWWIDTH,  9 * VIEWWINDOWWIDTH, 10 * VIEWWINDOWWIDTH, 11 * VIEWWINDOWWIDTH,
-	12 * VIEWWINDOWWIDTH, 13 * VIEWWINDOWWIDTH, 14 * VIEWWINDOWWIDTH, 15 * VIEWWINDOWWIDTH,
-	16 * VIEWWINDOWWIDTH, 17 * VIEWWINDOWWIDTH, 18 * VIEWWINDOWWIDTH, 19 * VIEWWINDOWWIDTH,
-	20 * VIEWWINDOWWIDTH, 21 * VIEWWINDOWWIDTH, 22 * VIEWWINDOWWIDTH, 23 * VIEWWINDOWWIDTH,
-	24 * VIEWWINDOWWIDTH, 25 * VIEWWINDOWWIDTH, 26 * VIEWWINDOWWIDTH, 27 * VIEWWINDOWWIDTH,
-	28 * VIEWWINDOWWIDTH, 29 * VIEWWINDOWWIDTH, 30 * VIEWWINDOWWIDTH, 31 * VIEWWINDOWWIDTH,
-	32 * VIEWWINDOWWIDTH, 33 * VIEWWINDOWWIDTH, 34 * VIEWWINDOWWIDTH, 35 * VIEWWINDOWWIDTH,
-	36 * VIEWWINDOWWIDTH, 37 * VIEWWINDOWWIDTH, 38 * VIEWWINDOWWIDTH, 39 * VIEWWINDOWWIDTH,
-	40 * VIEWWINDOWWIDTH, 41 * VIEWWINDOWWIDTH, 42 * VIEWWINDOWWIDTH, 43 * VIEWWINDOWWIDTH,
-	44 * VIEWWINDOWWIDTH, 45 * VIEWWINDOWWIDTH, 46 * VIEWWINDOWWIDTH, 47 * VIEWWINDOWWIDTH,
-	48 * VIEWWINDOWWIDTH, 49 * VIEWWINDOWWIDTH, 50 * VIEWWINDOWWIDTH, 51 * VIEWWINDOWWIDTH,
-	52 * VIEWWINDOWWIDTH, 53 * VIEWWINDOWWIDTH, 54 * VIEWWINDOWWIDTH, 55 * VIEWWINDOWWIDTH
-};
-
-
 #define COLEXTRABITS (8 - 1)
 #define COLBITS (8 + 1)
 
@@ -786,7 +771,7 @@ void R_DrawColumnSprite(const draw_column_vars_t *dcvars)
 
 	const uint8_t *source = dcvars->source;
 	const uint8_t *colormap = dcvars->colormap;
-	uint8_t *dest = (uint8_t*)&_s_screen[LUTY[dcvars->yl] + dcvars->x];
+	uint8_t *dest = MICROFB_COLUMN(dcvars->x) + dcvars->yl;
 
 	const uint16_t fracstep = dcvars->fracstep;
 	uint16_t frac = (dcvars->texturemid >> COLEXTRABITS) + (dcvars->yl - CENTERY) * fracstep;
@@ -794,7 +779,7 @@ void R_DrawColumnSprite(const draw_column_vars_t *dcvars)
 	while (count--)
 	{
 		*dest = colormap[source[frac >> COLBITS]];
-		dest += VIEWWINDOWWIDTH;
+		dest++;
 		frac += fracstep;
 	}
 }
@@ -813,12 +798,9 @@ void R_DrawColumnFlat(uint8_t color, const draw_column_vars_t *dcvars)
 	if (count <= 0)
 		return;
 
-	uint8_t *dest = (uint8_t*)&_s_screen[LUTY[dcvars->yl] + dcvars->x];
+	uint8_t *dest = MICROFB_COLUMN(dcvars->x) + dcvars->yl;
 	while (count--)
-	{
-		*dest = color;
-		dest += VIEWWINDOWWIDTH;
-	}
+		*dest++ = color;
 }
 
 
@@ -847,14 +829,14 @@ void R_DrawFuzzColumn(const draw_column_vars_t *dcvars)
 	if (count <= 0)
 		return;
 
-	uint8_t *dest = (uint8_t*)&_s_screen[LUTY[dcvars->yl] + dcvars->x];
+	uint8_t *dest = MICROFB_COLUMN(dcvars->x) + dcvars->yl;
 
 	static int16_t fuzzpos = 0;
 
 	do
 	{
 		*dest = fuzzcolors[fuzzpos];
-		dest += VIEWWINDOWWIDTH;
+		dest++;
 
 		fuzzpos++;
 		if (fuzzpos >= FUZZTABLE)
@@ -885,7 +867,7 @@ void V_ShutdownDrawLine(void)
 static void NG_PutPixel(int16_t x, int16_t y, uint8_t color)
 {
 	if ((uint16_t)x < VIEWWINDOWWIDTH && (uint16_t)y < VIEWWINDOWHEIGHT)
-		_s_screen[y * VIEWWINDOWWIDTH + x] = color;
+		MICROFB_PIXEL(x, y) = color;
 }
 
 
@@ -962,7 +944,7 @@ void V_DrawRawFullScreen(int16_t num)
 	for (int y = 0; y < 16; y++)
 		for (int x = 0; x < 16; x++)
 			if ((uint16_t)x < mode->cols && (uint16_t)y < mode->rows)
-				_s_screen[y * VIEWWINDOWWIDTH + x] = i++;
+				MICROFB_PIXEL(x, y) = i++;
 #else
 	const uint8_t *lump = W_GetLumpByNum(num);
 
@@ -973,10 +955,9 @@ void V_DrawRawFullScreen(int16_t num)
 	for (uint16_t h = 0; h < mode->rows; h++)
 	{
 		fixed_t x = 0;
-		uint8_t *dst = &_s_screen[h * VIEWWINDOWWIDTH];
 		for (uint16_t w = 0; w < mode->cols; w++)
 		{
-			*dst++ = lump[(y >> FRACBITS) * SCREENWIDTH + (x >> FRACBITS)];
+			MICROFB_PIXEL(w, h) = lump[(y >> FRACBITS) * SCREENWIDTH + (x >> FRACBITS)];
 			x += dxi;
 		}
 		y += dyi;
@@ -1158,7 +1139,7 @@ static void NG_DrawFixWipeMask(void)
 		{
 			const uint16_t sx = (x * mode->cols) / FIX_WIPE_WIDTH;
 			const uint16_t sy = (y * mode->rows) / FIX_WIPE_HEIGHT;
-			uint8_t color = _s_screen[sy * VIEWWINDOWWIDTH + sx];
+			uint8_t color = MICROFB_PIXEL(sx, sy);
 			if ((color & 0x0fu) == 0)
 				color = doom_fix_wipe_zero_pen_map[color >> 4];
 			*REG_VRAMRW = (uint16_t)color << 8;

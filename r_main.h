@@ -96,6 +96,7 @@ void R_SetRenderSize(uint16_t width, uint16_t height);
 uint8_t R_RenderViewWidth(void);
 uint8_t R_RenderViewHeight(void);
 uint16_t R_RenderXToViewAngle(uint16_t x);
+uint16_t R_RenderSkyFracStep(void);
 #endif
 
 void R_DrawColumnSprite(const draw_column_vars_t *dcvars);

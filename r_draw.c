@@ -127,8 +127,45 @@ static const uint8_t viewangletoxTable[4096 - 1023 - VIEWANGLETOXMAX];
 #if defined NEOGEO_SPRITE_MICROFB
 static uint8_t render_viewwidth = VIEWWINDOWWIDTH;
 static uint8_t render_viewheight = VIEWWINDOWHEIGHT;
+static uint8_t render_scale_mode = 2;
 #define R_VIEWWIDTH render_viewwidth
 #define R_VIEWHEIGHT render_viewheight
+
+enum
+{
+	RENDER_SCALE_LOW,
+	RENDER_SCALE_MEDIUM,
+	RENDER_SCALE_HIGH,
+	RENDER_SCALE_CUSTOM
+};
+
+static const uint8_t render_base_to_medium[VIEWWINDOWWIDTH + 1] =
+{
+	0, 0, 1, 1, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 9, 9,
+	10, 11, 11, 12, 13, 13, 14, 15, 15, 16, 17, 17, 18, 19, 19, 20,
+	21, 21, 22, 23, 23, 24, 25, 25, 26, 27, 27, 28, 29, 29, 30, 31,
+	31, 32, 33, 33, 34, 35, 35, 36, 37, 37, 38, 39, 39, 40, 41, 41,
+	42, 43, 43, 44, 45, 45, 46, 47, 47, 48, 49, 49, 50, 51, 51, 52,
+	53
+};
+
+static uint8_t R_ScaleProjectionX(uint16_t x)
+{
+	if (x > VIEWWINDOWWIDTH)
+		x = VIEWWINDOWWIDTH;
+
+	switch (render_scale_mode)
+	{
+	case RENDER_SCALE_LOW:
+		return x >> 1;
+	case RENDER_SCALE_MEDIUM:
+		return render_base_to_medium[x];
+	case RENDER_SCALE_HIGH:
+		return x;
+	default:
+		return (uint8_t)((x * R_VIEWWIDTH) / VIEWWINDOWWIDTH);
+	}
+}
 #else
 #define R_VIEWWIDTH VIEWWINDOWWIDTH
 #define R_VIEWHEIGHT VIEWWINDOWHEIGHT
@@ -148,7 +185,7 @@ static uint8_t viewangletox(int16_t va)
 	{
 		const uint16_t x = viewangletoxTable[va];
 #if defined NEOGEO_SPRITE_MICROFB
-		return (uint8_t)((x * R_VIEWWIDTH) / VIEWWINDOWWIDTH);
+		return R_ScaleProjectionX(x);
 #else
 		return x;
 #endif
@@ -162,7 +199,7 @@ static uint8_t viewangletox(int16_t va)
 	{
 		const uint16_t x = viewangletoxTable[va - VIEWANGLETOXMAX];
 #if defined NEOGEO_SPRITE_MICROFB
-		return (uint8_t)((x * R_VIEWWIDTH) / VIEWWINDOWWIDTH);
+		return R_ScaleProjectionX(x);
 #else
 		return x;
 #endif
@@ -604,6 +641,7 @@ static fixed_t  PSPRITEISCALE = FRACUNIT * SCREENWIDTH_VGA / VIEWWINDOWWIDTH; //
 
 static uint16_t PSPRITEYSCALE = FRACUNIT * (VIEWWINDOWHEIGHT * 5 / 4) / SCREENHEIGHT_VGA;
 static uint16_t PSPRITEYFRACSTEP = (FRACUNIT * SCREENHEIGHT_VGA / (VIEWWINDOWHEIGHT * 5 / 4)) >> COLEXTRABITS; // = FixedReciprocal(PSPRITEYSCALE) >> COLEXTRABITS
+static uint16_t render_sky_fracstep = ((FRACUNIT * SCREENHEIGHT_VGA) / (VIEWWINDOWHEIGHT + 16)) >> COLEXTRABITS;
 
 #define R_XTOVIEWANGLE(x) render_xtoviewangle[(x)]
 #else
@@ -639,6 +677,16 @@ void R_SetRenderSize(uint16_t width, uint16_t height)
 
 	render_viewwidth = (uint8_t)width;
 	render_viewheight = (uint8_t)height;
+
+	if (width == 40 && height == 28)
+		render_scale_mode = RENDER_SCALE_LOW;
+	else if (width == 53 && height == 37)
+		render_scale_mode = RENDER_SCALE_MEDIUM;
+	else if (width == VIEWWINDOWWIDTH && height == VIEWWINDOWHEIGHT)
+		render_scale_mode = RENDER_SCALE_HIGH;
+	else
+		render_scale_mode = RENDER_SCALE_CUSTOM;
+
 	CENTERX = render_viewwidth / 2;
 	CENTERY = render_viewheight / 2;
 	PROJECTION = ((fixed_t)render_viewwidth / 2L) << FRACBITS;
@@ -646,6 +694,7 @@ void R_SetRenderSize(uint16_t width, uint16_t height)
 	PSPRITEISCALE = FRACUNIT * SCREENWIDTH_VGA / render_viewwidth;
 	PSPRITEYSCALE = FRACUNIT * (render_viewheight * 5 / 4) / SCREENHEIGHT_VGA;
 	PSPRITEYFRACSTEP = (FRACUNIT * SCREENHEIGHT_VGA / (render_viewheight * 5 / 4)) >> COLEXTRABITS;
+	render_sky_fracstep = ((FRACUNIT * SCREENHEIGHT_VGA) / (render_viewheight + 16)) >> COLEXTRABITS;
 
 	for (uint16_t x = 0; x <= render_viewwidth; x++)
 	{
@@ -682,6 +731,12 @@ uint16_t R_RenderXToViewAngle(uint16_t x)
 
 	return R_XTOVIEWANGLE(x);
 }
+
+
+uint16_t R_RenderSkyFracStep(void)
+{
+	return render_sky_fracstep;
+}
 #endif
 
 
@@ -697,6 +752,22 @@ static uint32_t mulu(uint16_t a, uint16_t b) {
 		: "d" (b)
 	);
 	return result;
+#endif
+}
+
+
+/* Exact 32-by-16 unsigned division for values whose quotient fits in 16 bits. */
+static uint16_t divu(uint32_t dividend, uint16_t divisor)
+{
+#if C_ONLY
+	return dividend / divisor;
+#else
+	__asm__ (
+		"divu.w %1, %0"
+		: "+d" (dividend)
+		: "d" (divisor)
+	);
+	return dividend;
 #endif
 }
 
@@ -939,7 +1010,7 @@ static CONSTFUNC int16_t SlopeDiv16(uint16_t n, uint16_t d)
 	if (d == 0)
 		return SLOPERANGE;
 
-	const uint16_t ans = ((uint32_t)n * SLOPERANGE) / d;
+	const uint16_t ans = divu((uint32_t)n * SLOPERANGE, d);
 
 	return (ans <= SLOPERANGE) ? ans : SLOPERANGE;
 }
@@ -1138,7 +1209,8 @@ static CONSTFUNC int16_t R_PointToDist(int16_t x, int16_t y)
         dy = t;
     }
 
-    return dx / finecosineapprox((FixedApproxDiv(dy,dx) >> DBITS) / 2);
+    const uint16_t cosine = finecosineapprox((FixedApproxDiv(dy,dx) >> DBITS) / 2);
+    return divu(dx, cosine);
 }
 
 
