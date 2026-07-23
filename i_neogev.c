@@ -783,6 +783,9 @@ boolean I_NeoGeoFixWipeActive(void)
 
 void R_DrawColumnSprite(const draw_column_vars_t *dcvars)
 {
+#if defined __GNUC__ && defined __mc68000__
+	R_DrawColumnWall(dcvars);
+#else
 	int16_t count = (dcvars->yh - dcvars->yl) + 1;
 
 	if (count <= 0)
@@ -801,12 +804,64 @@ void R_DrawColumnSprite(const draw_column_vars_t *dcvars)
 		dest++;
 		frac += fracstep;
 	}
+#endif
 }
 
 
+#if defined __GNUC__ && defined __mc68000__
+__attribute__((noipa, hot))
+#endif
 void R_DrawColumnWall(const draw_column_vars_t *dcvars)
 {
+#if defined __GNUC__ && defined __mc68000__
+	int16_t count = (dcvars->yh - dcvars->yl) + 1;
+
+	if (count <= 0)
+		return;
+
+	const uint8_t *source = dcvars->source;
+	const uint8_t *colormap = dcvars->colormap;
+	uint8_t *dest = MICROFB_COLUMN(dcvars->x) + dcvars->yl;
+
+	const uint16_t fracstep = dcvars->fracstep;
+	const uint16_t frac = (dcvars->texturemid >> COLEXTRABITS)
+		+ (dcvars->yl - CENTERY) * fracstep;
+	uint16_t frac_lo = (uint8_t)frac;
+	uint16_t frac_hi = frac >> 8;
+	const uint16_t step_lo = (uint8_t)fracstep;
+	const uint16_t step_hi = fracstep >> 8;
+	uint16_t texel;
+	uint16_t iterations = (uint16_t)count - 1u;
+
+	/*
+	 * Keep the 16-bit phase in two low register bytes. On a 68000 this
+	 * replaces the per-pixel variable shift and long masks with byte
+	 * arithmetic; ADDX carries the low-byte phase into the high byte.
+	 */
+	__asm__ volatile (
+		"moveq #0,%[texel]\n\t"
+		"1:\n\t"
+		"move.b %[frac_hi],%[texel]\n\t"
+		"lsr.b #1,%[texel]\n\t"
+		"move.b (%[source],%[texel].w),%[texel]\n\t"
+		"move.b (%[colormap],%[texel].w),(%[dest])+\n\t"
+		"add.b %[step_lo],%[frac_lo]\n\t"
+		"addx.b %[step_hi],%[frac_hi]\n\t"
+		"dbra %[iterations],1b"
+		: [dest] "+&a" (dest),
+		  [frac_lo] "+&d" (frac_lo),
+		  [frac_hi] "+&d" (frac_hi),
+		  [iterations] "+&d" (iterations),
+		  [texel] "=&d" (texel)
+		: [source] "a" (source),
+		  [colormap] "a" (colormap),
+		  [step_lo] "d" (step_lo),
+		  [step_hi] "d" (step_hi)
+		: "cc", "memory"
+	);
+#else
 	R_DrawColumnSprite(dcvars);
+#endif
 }
 
 
