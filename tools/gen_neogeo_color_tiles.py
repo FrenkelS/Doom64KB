@@ -22,6 +22,7 @@ from pathlib import Path
 VISIBLE_COLOR_SLOTS = 15
 TILE_HALF_SIZE = 64       # bytes per C-ROM half per 16x16 tile
 START_TILE = 256          # keep the BIOS/ngdevkit eyecatcher area intact
+TITLE_TILE = START_TILE + VISIBLE_COLOR_SLOTS + 1
 DEFAULT_CROM_SIZE = 2 * 1024 * 1024
 
 
@@ -62,7 +63,15 @@ def load_base(path: Path) -> bytearray:
     return data
 
 
-def generate(base_c1: Path, base_c2: Path, out_c1: Path, out_c2: Path, crom_size: int) -> None:
+def generate(
+    base_c1: Path,
+    base_c2: Path,
+    title_c1: Path,
+    title_c2: Path,
+    out_c1: Path,
+    out_c2: Path,
+    crom_size: int,
+) -> None:
     c1 = load_base(base_c1)
     c2 = load_base(base_c2)
 
@@ -72,6 +81,16 @@ def generate(base_c1: Path, base_c2: Path, out_c1: Path, out_c2: Path, crom_size
         tile_c1, tile_c2 = encode_tile(color_index)
         c1.extend(tile_c1)
         c2.extend(tile_c2)
+
+    if len(c1) != TITLE_TILE * TILE_HALF_SIZE or len(c2) != TITLE_TILE * TILE_HALF_SIZE:
+        raise ValueError("solid microtile layout no longer ends at the TITLEPIC tile base")
+
+    title_data_c1 = title_c1.read_bytes()
+    title_data_c2 = title_c2.read_bytes()
+    if len(title_data_c1) != len(title_data_c2) or len(title_data_c1) % TILE_HALF_SIZE:
+        raise ValueError("TITLEPIC C-ROM halves must contain the same number of complete tiles")
+    c1.extend(title_data_c1)
+    c2.extend(title_data_c2)
 
     if len(c1) > crom_size or len(c2) > crom_size:
         raise ValueError(
@@ -97,12 +116,22 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-c1", type=Path, required=True)
     parser.add_argument("--base-c2", type=Path, required=True)
+    parser.add_argument("--title-c1", type=Path, required=True)
+    parser.add_argument("--title-c2", type=Path, required=True)
     parser.add_argument("--out-c1", type=Path, required=True)
     parser.add_argument("--out-c2", type=Path, required=True)
     parser.add_argument("--crom-size", type=int, default=DEFAULT_CROM_SIZE)
     args = parser.parse_args()
 
-    generate(args.base_c1, args.base_c2, args.out_c1, args.out_c2, args.crom_size)
+    generate(
+        args.base_c1,
+        args.base_c2,
+        args.title_c1,
+        args.title_c2,
+        args.out_c1,
+        args.out_c2,
+        args.crom_size,
+    )
 
 
 if __name__ == "__main__":

@@ -120,12 +120,15 @@ z80-neogeo-ihx-sdobjcopy -I ihex -O binary neogeo/assets/demo_driver.ihx neogeo/
 python3 tools/gen_neogeo_color_tiles.py \
   --base-c1 neogeo/assets/base-crom-logo.c1 \
   --base-c2 neogeo/assets/base-crom-logo.c2 \
+  --title-c1 neogeo/assets/doom-title.c1 \
+  --title-c2 neogeo/assets/doom-title.c2 \
   --out-c1 neogeo/assets/generated/doom_color_microfb.c1 \
   --out-c2 neogeo/assets/generated/doom_color_microfb.c2 \
   --crom-size "$CROM_FILE_BYTES"
 cp neogeo/assets/generated/doom_color_microfb.c1 neogeo/rom/doom64kb-c1.c1 && truncate -s "$CROM_FILE_BYTES" neogeo/rom/doom64kb-c1.c1
 cp neogeo/assets/generated/doom_color_microfb.c2 neogeo/rom/doom64kb-c2.c2 && truncate -s "$CROM_FILE_BYTES" neogeo/rom/doom64kb-c2.c2
 cp neogeo/assets/doom64kb.fix neogeo/rom/doom64kb-s1.s1
+dd if=neogeo/assets/doom-menu.fix of=neogeo/rom/doom64kb-s1.s1 bs=32 seek=3525 conv=notrunc status=none
 cp neogeo/assets/samples.v1 neogeo/rom/doom64kb-v1.v1
 truncate -s 131072 neogeo/rom/doom64kb-s1.s1
 truncate -s 524288 neogeo/rom/doom64kb-v1.v1

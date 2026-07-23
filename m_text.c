@@ -52,6 +52,10 @@
 
 #include "globdata.h"
 
+#if defined __NGDEVKIT__
+#include "neogeo/doom_fix_menu_assets.h"
+#endif
+
 
 #define DISABLE_QUIT_DOOM
 #define DISABLE_SAVE_GAME
@@ -167,6 +171,51 @@ static void M_StartMessage(const char *string,void (*routine)(boolean));
 static void M_ClearMenus (void);
 
 
+#if defined __NGDEVKIT__
+#define NEO_FIX_MENU_WIDTH 38
+
+static int16_t M_NeoGeoTextWidth(const char *text)
+{
+	int16_t width = 0;
+	while (*text)
+	{
+		text++;
+		width++;
+	}
+	return width;
+}
+
+
+static void M_DrawNeoGeoText(int16_t x, int16_t y, const char *text)
+{
+	while (*text && x < NEO_FIX_MENU_WIDTH)
+	{
+		uint8_t c = (uint8_t)*text++;
+		if (c >= 'a' && c <= 'z')
+			c -= 'a' - 'A';
+
+		if (c >= DOOM_MENU_FONT_FIRST && c < DOOM_MENU_FONT_FIRST + DOOM_MENU_FONT_COUNT)
+			V_DrawFixEntry(x++, y, doom_menu_font[c - DOOM_MENU_FONT_FIRST]);
+		else
+			x++;
+	}
+}
+
+
+static void M_DrawNeoGeoPatchCentered(int16_t y, const uint16_t *patch, uint16_t cols, uint16_t rows)
+{
+	V_DrawFixPatch((NEO_FIX_MENU_WIDTH - (int16_t)cols) / 2, y, patch, cols, rows);
+}
+
+
+static void M_DrawNeoGeoSkull(int16_t x, int16_t y)
+{
+	const uint16_t *skull = whichSkull ? doom_menu_skull2 : doom_menu_skull1;
+	V_DrawFixPatch(x, y, skull, DOOM_MENU_SKULL1_COLS, DOOM_MENU_SKULL1_ROWS);
+}
+#endif
+
+
 // end of prototypes added to support Setup Menus and Extended HELP screens
 
 /////////////////////////////////////////////////////////////////////////////
@@ -230,7 +279,14 @@ static const menu_t MainDef =
 
 static void M_DrawMainMenu(void)
 {
+#if defined __NGDEVKIT__
+	static const uint8_t item_rows[] = {17, 21};
+	M_DrawNeoGeoPatchCentered(item_rows[0], doom_menu_ngame, DOOM_MENU_NGAME_COLS, DOOM_MENU_NGAME_ROWS);
+	M_DrawNeoGeoPatchCentered(item_rows[1], doom_menu_option, DOOM_MENU_OPTION_COLS, DOOM_MENU_OPTION_ROWS);
+	M_DrawNeoGeoSkull(8, item_rows[itemOn]);
+#else
 	V_DrawString((VIEWWINDOWWIDTH - 4) / 2, 1, D_YELLOW, "DOOM");
+#endif
 }
 
 
@@ -273,8 +329,28 @@ static const menu_t NewDef =
 
 static void M_DrawNewGame(void)
 {
+#if defined __NGDEVKIT__
+	static const uint8_t item_rows[] = {5, 9, 13, 17, 21};
+	static const uint16_t * const patches[] = {
+		doom_menu_jkill, doom_menu_rough, doom_menu_hurt, doom_menu_ultra, doom_menu_nmare
+	};
+	static const uint8_t cols[] = {
+		DOOM_MENU_JKILL_COLS, DOOM_MENU_ROUGH_COLS, DOOM_MENU_HURT_COLS,
+		DOOM_MENU_ULTRA_COLS, DOOM_MENU_NMARE_COLS
+	};
+	static const uint8_t rows[] = {
+		DOOM_MENU_JKILL_ROWS, DOOM_MENU_ROUGH_ROWS, DOOM_MENU_HURT_ROWS,
+		DOOM_MENU_ULTRA_ROWS, DOOM_MENU_NMARE_ROWS
+	};
+
+	M_DrawNeoGeoPatchCentered(1, doom_menu_skill, DOOM_MENU_SKILL_COLS, DOOM_MENU_SKILL_ROWS);
+	for (uint16_t i = 0; i < newg_end; i++)
+		M_DrawNeoGeoPatchCentered(item_rows[i], patches[i], cols[i], rows[i]);
+	M_DrawNeoGeoSkull(1, item_rows[itemOn]);
+#else
 	V_DrawString((VIEWWINDOWWIDTH -  8) / 2, 2, D_LIGHT_RED, "NEW GAME");
 	V_DrawString((VIEWWINDOWWIDTH - 19) / 2, 4, D_LIGHT_RED, "Choose Skill Level:");
+#endif
 }
 
 static void M_NewGame(int16_t choice)
@@ -558,6 +634,38 @@ static const char msgNames[2][4]  = {"Off","On"};
 
 static void M_DrawOptions(void)
 {
+#if defined __NGDEVKIT__
+	static const uint8_t item_rows[] = {3, 7, 11, 15, 19};
+	const uint16_t *message_patch = showMessages ? doom_menu_msgon : doom_menu_msgoff;
+	const uint16_t message_cols = showMessages ? DOOM_MENU_MSGON_COLS : DOOM_MENU_MSGOFF_COLS;
+	const char *quality = I_NeoGeoSpriteQualityName();
+	char gamma_value[2] = {(char)('0' + _g_gamma), 0};
+
+	M_DrawNeoGeoPatchCentered(0, doom_menu_optttl, DOOM_MENU_OPTTTL_COLS, DOOM_MENU_OPTTTL_ROWS);
+	V_DrawFixPatch(4, item_rows[endgame], doom_menu_endgam, DOOM_MENU_ENDGAM_COLS, DOOM_MENU_ENDGAM_ROWS);
+	V_DrawFixPatch(4, item_rows[messages], doom_menu_messg, DOOM_MENU_MESSG_COLS, DOOM_MENU_MESSG_ROWS);
+	V_DrawFixPatch(NEO_FIX_MENU_WIDTH - message_cols - 1, item_rows[messages], message_patch,
+		message_cols, DOOM_MENU_MSGON_ROWS);
+
+	M_DrawNeoGeoText(4, item_rows[alwaysrun], "ALWAYS RUN");
+	M_DrawNeoGeoText(NEO_FIX_MENU_WIDTH - M_NeoGeoTextWidth(msgNames[_g_alwaysRun]) - 1,
+		item_rows[alwaysrun], msgNames[_g_alwaysRun]);
+
+	V_DrawFixPatch(4, item_rows[spritesize], doom_menu_detail, DOOM_MENU_DETAIL_COLS, DOOM_MENU_DETAIL_ROWS);
+	if (quality[0] == 'H')
+		V_DrawFixPatch(NEO_FIX_MENU_WIDTH - DOOM_MENU_GDHIGH_COLS - 1, item_rows[spritesize],
+			doom_menu_gdhigh, DOOM_MENU_GDHIGH_COLS, DOOM_MENU_GDHIGH_ROWS);
+	else if (quality[0] == 'L')
+		V_DrawFixPatch(NEO_FIX_MENU_WIDTH - DOOM_MENU_GDLOW_COLS - 1, item_rows[spritesize],
+			doom_menu_gdlow, DOOM_MENU_GDLOW_COLS, DOOM_MENU_GDLOW_ROWS);
+	else
+		M_DrawNeoGeoText(NEO_FIX_MENU_WIDTH - M_NeoGeoTextWidth("MEDIUM") - 1,
+			item_rows[spritesize], "MEDIUM");
+
+	M_DrawNeoGeoText(4, item_rows[gamma], "GAMMA BOOST");
+	M_DrawNeoGeoText(NEO_FIX_MENU_WIDTH - 2, item_rows[gamma], gamma_value);
+	M_DrawNeoGeoSkull(0, item_rows[itemOn]);
+#else
 	V_DrawString((VIEWWINDOWWIDTH - 7) / 2, 2, D_LIGHT_RED, "OPTIONS");
 
 	V_DrawString(OPTIONS_VALUE_X, OptionsDef.y + LINEHEIGHT * messages,  D_LIGHT_RED, msgNames[showMessages]);
@@ -569,6 +677,7 @@ static void M_DrawOptions(void)
 #endif
 
 	M_DrawThermo(OPTIONS_VALUE_X, OptionsDef.y + LINEHEIGHT * gamma, 6, _g_gamma);
+#endif
 }
 
 static void M_Options(int16_t choice)
@@ -1032,6 +1141,7 @@ void M_Drawer (void)
 		if (currentMenu->routine)
 			currentMenu->routine();     // call Draw routine
 
+#if !defined __NGDEVKIT__
 		// DRAW MENU
 
 		x = currentMenu->x;
@@ -1047,6 +1157,12 @@ void M_Drawer (void)
 
 		// DRAW SKULL
 		V_DrawCharacter(x + SKULLXOFF, currentMenu->y + itemOn*LINEHEIGHT, D_LIGHT_RED, skullName[whichSkull]);
+#else
+		UNUSED(x);
+		UNUSED(y);
+		UNUSED(max);
+		UNUSED(i);
+#endif
 	}
 }
 

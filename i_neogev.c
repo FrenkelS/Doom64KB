@@ -112,12 +112,24 @@ typedef enum
 #define MICROFB_SPRITES_PER_SET (VIEWWINDOWWIDTH * MICROFB_COLUMN_CHUNKS)
 #define MICROFB_SPRITE_COUNT (MICROFB_SPRITES_PER_SET * MICROFB_FRAMEBUFFER_SETS)
 
+#define TITLE_TILE_BASE (MICROFB_TILE_BASE + 16u)
+#define TITLE_FIX_WIDTH 38u
+#define TITLE_FIX_HEIGHT 28u
+#define TITLE_SPRITE_BASE (MICROFB_SPRITE_BASE + MICROFB_SPRITE_COUNT)
+#define TITLE_SPRITE_COUNT TITLE_FIX_WIDTH
+#define TITLE_X_OFFSET 8u
+#define TITLE_SHRINK_WORD 0x077fu
+
 #if MICROFB_CHUNK_CELLS > 32
 #error Neo Geo sprite microframebuffer chunk cannot exceed 32 source tiles
 #endif
 
 #if (MICROFB_SPRITE_BASE + MICROFB_SPRITE_COUNT) > 381
 #error Neo Geo sprite microframebuffer double buffer exceeds displayable sprite budget
+#endif
+
+#if (TITLE_SPRITE_BASE + TITLE_SPRITE_COUNT) > 381
+#error Neo Geo TITLEPIC sprites exceed displayable sprite budget
 #endif
 
 #if (MICROFB_SPRITE_PALETTE_BASE + MICROFB_SPRITE_PALETTES) > 256
@@ -156,6 +168,11 @@ static fix_target_kind_t _s_fix_target_kind;
 static const uint16_t *_s_fix_target;
 static uint8_t _s_microfb_mode_index;
 static uint8_t _s_pending_microfb_mode_index;
+static uint8_t _s_configured_microfb_mode[2];
+static uint8_t _s_title_sprites_initialized;
+static uint8_t _s_title_sprite_active;
+static uint8_t _s_title_sprite_requested;
+static const uint16_t *_s_title_fix_source;
 
 static int16_t palettelumpnum;
 static int8_t newpal = 100;
@@ -270,14 +287,18 @@ static void NG_BuildSpritePalettes(const uint16_t *src)
 		}
 	}
 
-	for (uint16_t color = 0; color < 256u; color++)
-	{
-		const uint16_t pal = color / MICROFB_VISIBLE_COLOR_SLOTS;
-		const uint16_t slot = (color % MICROFB_VISIBLE_COLOR_SLOTS) + 1u;
+}
 
-		_s_color_to_tile_slot[color] = slot;
-		_s_color_to_palette[color] = MICROFB_SPRITE_PALETTE_BASE + pal;
-	}
+
+static void NG_InitColorTileMap(void)
+{
+	uint16_t color = 0;
+	for (uint16_t palette = 0; palette < MICROFB_SPRITE_PALETTES; palette++)
+		for (uint16_t slot = 1; slot <= MICROFB_VISIBLE_COLOR_SLOTS && color < 256u; slot++, color++)
+		{
+			_s_color_to_tile_slot[color] = slot;
+			_s_color_to_palette[color] = MICROFB_SPRITE_PALETTE_BASE + palette;
+		}
 }
 
 
@@ -382,11 +403,35 @@ static void NG_ClearSpriteState(void)
 }
 
 
-static void NG_SetMicroSpriteSetVisible(uint16_t set, uint8_t visible)
+static void NG_ConfigureMicroSpriteSet(uint16_t set)
 {
 	const microfb_mode_t *mode = NG_MicroFramebufferMode();
 
 	*REG_VRAMMOD = 0x200;
+	for (uint16_t chunk = 0; chunk < MICROFB_COLUMN_CHUNKS; chunk++)
+	{
+		const uint16_t chunk_rows = NG_MicroFramebufferChunkRows(mode, chunk);
+
+		for (uint16_t x = 0; x < VIEWWINDOWWIDTH; x++)
+		{
+			const uint16_t sprite = NG_MicroSpriteIndex(set, chunk, x);
+			const uint8_t active = x < mode->cols && chunk_rows != 0u;
+
+			*REG_VRAMADDR = ADDR_SCB2 + sprite;
+			*REG_VRAMRW = mode->shrink_word;
+			*REG_VRAMRW = 0u;
+			*REG_VRAMRW = active ? MICROFB_X_WORD(mode->x_offset + x * mode->cell_px) : 0u;
+		}
+	}
+	_s_configured_microfb_mode[set] = _s_microfb_mode_index;
+}
+
+
+static void NG_SetMicroSpriteSetVisible(uint16_t set, uint8_t visible)
+{
+	const microfb_mode_t *mode = NG_MicroFramebufferMode();
+
+	*REG_VRAMMOD = 1;
 	for (uint16_t chunk = 0; chunk < MICROFB_COLUMN_CHUNKS; chunk++)
 	{
 		const uint16_t row_base = chunk * MICROFB_CHUNK_CELLS;
@@ -394,16 +439,9 @@ static void NG_SetMicroSpriteSetVisible(uint16_t set, uint8_t visible)
 		const uint16_t y = mode->y_offset + row_base * mode->cell_px;
 		const uint16_t height_word = visible && chunk_rows ? NG_SpriteYWord(y, chunk_rows) : 0u;
 
+		*REG_VRAMADDR = ADDR_SCB3 + NG_MicroSpriteIndex(set, chunk, 0);
 		for (uint16_t x = 0; x < VIEWWINDOWWIDTH; x++)
-		{
-			const uint16_t sprite = NG_MicroSpriteIndex(set, chunk, x);
-			const uint8_t active = x < mode->cols && height_word != 0u;
-
-			*REG_VRAMADDR = ADDR_SCB2 + sprite;
-			*REG_VRAMRW = mode->shrink_word;
-			*REG_VRAMRW = active ? height_word : 0u;
-			*REG_VRAMRW = active ? MICROFB_X_WORD(mode->x_offset + x * mode->cell_px) : 0u;
-		}
+			*REG_VRAMRW = x < mode->cols ? height_word : 0u;
 	}
 }
 
@@ -428,8 +466,54 @@ static void NG_InitMicroSprites(void)
 	}
 
 	_s_visible_sprite_set = 0;
+	NG_ConfigureMicroSpriteSet(0);
+	NG_ConfigureMicroSpriteSet(1);
 	NG_SetMicroSpriteSetVisible(0, true);
 	NG_SetMicroSpriteSetVisible(1, false);
+}
+
+
+static void NG_InitTitleSprites(const uint16_t *tilemap)
+{
+	if (_s_title_sprites_initialized)
+		return;
+
+	*REG_VRAMMOD = 1;
+	for (uint16_t col = 0; col < TITLE_FIX_WIDTH; col++)
+	{
+		const uint16_t sprite = TITLE_SPRITE_BASE + col;
+		*REG_VRAMADDR = ADDR_SCB1 + (sprite * 64u);
+		for (uint16_t row = 0; row < TITLE_FIX_HEIGHT; row++)
+		{
+			const uint16_t entry = tilemap[row * TITLE_FIX_WIDTH + col];
+			*REG_VRAMRW = TITLE_TILE_BASE + row * TITLE_FIX_WIDTH + col;
+			*REG_VRAMRW = (entry & 0xf000u) >> 4;
+		}
+		for (uint16_t row = TITLE_FIX_HEIGHT; row < 32; row++)
+		{
+			*REG_VRAMRW = MICROFB_TILE_BLANK;
+			*REG_VRAMRW = 0;
+		}
+
+		*REG_VRAMMOD = 0x200;
+		*REG_VRAMADDR = ADDR_SCB2 + sprite;
+		*REG_VRAMRW = TITLE_SHRINK_WORD;
+		*REG_VRAMRW = 0;
+		*REG_VRAMRW = MICROFB_X_WORD(TITLE_X_OFFSET + col * 8u);
+		*REG_VRAMMOD = 1;
+	}
+
+	_s_title_sprites_initialized = true;
+}
+
+
+static void NG_SetTitleSpritesVisible(uint8_t visible)
+{
+	const uint16_t height_word = visible ? NG_SpriteYWord(0, TITLE_FIX_HEIGHT) : 0;
+	*REG_VRAMMOD = 1;
+	*REG_VRAMADDR = ADDR_SCB3 + TITLE_SPRITE_BASE;
+	for (uint16_t col = 0; col < TITLE_SPRITE_COUNT; col++)
+		*REG_VRAMRW = height_word;
 }
 
 
@@ -439,6 +523,7 @@ void I_InitGraphicsHardwareSpecificCode(void)
 	MMAP_PALBANK1[0] = 0x8000;
 
 	I_ReloadPalette();
+	NG_InitColorTileMap();
 	I_UploadNewPalette(0);
 
 	_s_microfb_mode_index = MICROFB_DEFAULT_MODE_INDEX;
@@ -447,6 +532,10 @@ void I_InitGraphicsHardwareSpecificCode(void)
 	memset(_s_screen, 0, sizeof(_s_screen));
 	NG_ClearFixOverlay();
 	NG_InitMicroSprites();
+	_s_title_sprites_initialized = false;
+	_s_title_sprite_active = false;
+	_s_title_sprite_requested = false;
+	_s_title_fix_source = NULL;
 	NG_UploadFixOverlay();
 }
 
@@ -528,10 +617,35 @@ void I_FinishUpdate(void)
 		newpal = NO_PALETTE_CHANGE;
 	}
 
+	if (_s_title_sprite_requested)
+	{
+		NG_WaitVBlankStart();
+		if (!_s_title_sprite_active)
+		{
+			NG_SetMicroSpriteSetVisible(_s_visible_sprite_set, false);
+			NG_SetTitleSpritesVisible(true);
+			_s_title_sprite_active = true;
+		}
+		NG_UploadFixOverlay();
+		_s_title_sprite_requested = false;
+		NG_ApplyMicroFramebufferMode(_s_pending_microfb_mode_index);
+		return;
+	}
+
 	const uint8_t next_sprite_set = _s_visible_sprite_set ^ 1u;
 	NG_UploadMicroFramebuffer(next_sprite_set);
+	if (_s_configured_microfb_mode[next_sprite_set] != _s_microfb_mode_index)
+		NG_ConfigureMicroSpriteSet(next_sprite_set);
 	NG_WaitVBlankStart();
-	NG_SetMicroSpriteSetVisible(_s_visible_sprite_set, false);
+	if (_s_title_sprite_active)
+	{
+		NG_SetTitleSpritesVisible(false);
+		_s_title_sprite_active = false;
+	}
+	else
+	{
+		NG_SetMicroSpriteSetVisible(_s_visible_sprite_set, false);
+	}
 	NG_SetMicroSpriteSetVisible(next_sprite_set, true);
 	_s_visible_sprite_set = next_sprite_set;
 	NG_UploadFixOverlay();
@@ -711,6 +825,20 @@ void V_DrawBackground(int16_t backgroundnum)
 
 void V_DrawRawFullScreen(int16_t num)
 {
+	static int16_t titlepicnum = -1;
+	if (titlepicnum < 0)
+		titlepicnum = W_GetNumForName("TITLEPIC");
+
+	if (num == titlepicnum)
+	{
+		_s_title_fix_source = W_GetLumpByNum(num);
+		NG_InitTitleSprites(_s_title_fix_source);
+		_s_title_sprite_requested = true;
+		if (!_s_fix_wipe_active)
+			NG_ClearFixOverlay();
+		return;
+	}
+
 	if (W_LumpLength(num) == FIX_OVERLAY_WIDTH * FIX_OVERLAY_HEIGHT * sizeof(uint16_t))
 	{
 		memset(_s_screen, 0, sizeof(_s_screen));
@@ -792,6 +920,44 @@ static void NG_DrawFixCharacter(int16_t x, int16_t y, uint16_t color, uint8_t c)
 }
 
 
+void V_DrawFixEntry(int16_t x, int16_t y, uint16_t entry)
+{
+	if ((uint16_t)x >= FIX_OVERLAY_WIDTH || (uint16_t)y >= FIX_OVERLAY_HEIGHT)
+		return;
+
+	*REG_VRAMMOD = 32;
+	*REG_VRAMADDR = ADDR_FIXMAP + 32u + 2u + (uint16_t)y + ((uint16_t)x * 32u);
+	*REG_VRAMRW = entry;
+}
+
+
+void V_DrawFixPatch(int16_t x, int16_t y, const uint16_t *entries, uint16_t cols, uint16_t rows)
+{
+	if (x >= FIX_OVERLAY_WIDTH || x + (int16_t)cols <= 0)
+		return;
+
+	for (uint16_t row = 0; row < rows; row++)
+	{
+		const int16_t draw_y = y + (int16_t)row;
+		if ((uint16_t)draw_y >= FIX_OVERLAY_HEIGHT)
+			continue;
+
+		uint16_t first_col = x < 0 ? (uint16_t)-x : 0u;
+		uint16_t last_col = cols;
+		if (x + (int16_t)last_col > FIX_OVERLAY_WIDTH)
+			last_col = FIX_OVERLAY_WIDTH - x;
+		if (first_col >= last_col)
+			continue;
+
+		*REG_VRAMMOD = 32;
+		*REG_VRAMADDR = ADDR_FIXMAP + 32u + 2u + (uint16_t)draw_y
+			+ ((uint16_t)(x + (int16_t)first_col) * 32u);
+		for (uint16_t col = first_col; col < last_col; col++)
+			*REG_VRAMRW = entries[row * cols + col];
+	}
+}
+
+
 void V_DrawCharacter(int16_t x, int16_t y, uint16_t color, char c)
 {
 	NG_DrawFixCharacter(NG_TextX(x), NG_TextY(y), color, (uint8_t)c);
@@ -814,12 +980,22 @@ void V_DrawString(int16_t x, int16_t y, uint16_t color, const char* s)
 {
 	int16_t fx = NG_TextX(x);
 	int16_t fy = NG_TextY(y);
+	if ((uint16_t)fy >= FIX_OVERLAY_HEIGHT || fx >= FIX_OVERLAY_WIDTH)
+		return;
 
-	while (*s)
+	while (fx < 0 && *s)
 	{
-		NG_DrawFixCharacter(fx++, fy, color, (uint8_t)*s++);
-		if (fx >= FIX_OVERLAY_WIDTH)
-			break;
+		fx++;
+		s++;
+	}
+	if (!*s)
+		return;
+
+	*REG_VRAMMOD = 32;
+	*REG_VRAMADDR = ADDR_FIXMAP + 32u + 2u + (uint16_t)fy + ((uint16_t)fx * 32u);
+	while (*s && fx++ < FIX_OVERLAY_WIDTH)
+	{
+		*REG_VRAMRW = color | (uint8_t)*s++;
 	}
 }
 
@@ -839,8 +1015,10 @@ void V_ClearString(int16_t y, size_t len)
 	if (len > FIX_OVERLAY_WIDTH)
 		len = FIX_OVERLAY_WIDTH;
 
+	*REG_VRAMMOD = 32;
+	*REG_VRAMADDR = ADDR_FIXMAP + 32u + 2u + (uint16_t)fy;
 	for (size_t x = 0; x < len; x++)
-		NG_DrawFixCharacter((int16_t)x, fy, 0, FIX_CLEAR_CHAR);
+		*REG_VRAMRW = FIX_CLEAR_CHAR;
 }
 
 
@@ -883,6 +1061,14 @@ static void NG_DrawFixWipeMask(void)
 void wipe_StartScreen(void)
 {
 	_s_fix_wipe_active = true;
+
+	if (_s_title_sprite_active && _s_title_fix_source)
+	{
+		_s_fix_target = _s_title_fix_source;
+		_s_fix_target_kind = FIX_TARGET_PAGE;
+		NG_UploadFixTarget();
+	}
+
 	_s_fix_target = NULL;
 	_s_fix_target_kind = FIX_TARGET_NONE;
 
