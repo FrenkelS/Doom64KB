@@ -202,7 +202,13 @@ def menu_patch(iwad: Wad, name: str) -> list[list[int]]:
     if name in COMPACT_PATCHES:
         patch = compact_patch(patch)
 
-    if name == "M_THERMM":
+    if name == "M_THERML":
+        middle = decode_patch(iwad.get("M_THERMM"))
+        patch = [
+            row + middle[y][:2]
+            for y, row in enumerate(patch)
+        ]
+    elif name == "M_THERMM":
         # Vanilla draws the 9-pixel middle patch every 8 pixels. Cropping the
         # overlapping column preserves that pitch when each FIX cell is 8px.
         patch = [row[:8] for row in patch]
