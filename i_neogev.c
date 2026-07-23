@@ -184,7 +184,10 @@ static uint16_t _s_color_to_scb1[256];
 _Static_assert(sizeof(_s_color_to_scb1) == 512u, "Neo Geo color map must stay 512 bytes");
 _Static_assert((MICROFB_TILE_BASE & 0x00ffu) == 0u,
 	"packed SCB1 upload requires a tile-page-aligned base");
-static uint8_t _s_visible_sprite_set;
+static volatile uint8_t _s_visible_sprite_set;
+static volatile uint8_t _s_swap_pending;
+static volatile uint8_t _s_swap_target_set;
+static volatile uint8_t _s_main_vram_write_depth;
 static uint8_t _s_fix_page_active;
 static uint8_t _s_fix_wipe_active;
 static fix_target_kind_t _s_fix_target_kind;
@@ -229,6 +232,28 @@ static uint8_t NG_WaitVBlankStart(void)
 	{
 	}
 	return overrun;
+}
+
+
+static void NG_BeginMainVramWrite(void)
+{
+	_s_main_vram_write_depth++;
+	__asm__ volatile ("" ::: "memory");
+}
+
+
+static void NG_EndMainVramWrite(void)
+{
+	__asm__ volatile ("" ::: "memory");
+	_s_main_vram_write_depth--;
+}
+
+
+static void NG_WaitPendingSpriteSwap(void)
+{
+	while (_s_swap_pending)
+	{
+	}
 }
 
 
@@ -532,6 +557,20 @@ static void NG_SetMicroSpriteSetVisible(uint16_t set, uint8_t visible)
 }
 
 
+void I_NeoGeoVBlank(void)
+{
+	if (!_s_swap_pending || _s_main_vram_write_depth)
+		return;
+
+	const uint8_t next_sprite_set = _s_swap_target_set;
+	NG_SetMicroSpriteSetVisible(_s_visible_sprite_set, false);
+	NG_SetMicroSpriteSetVisible(next_sprite_set, true);
+	_s_visible_sprite_set = next_sprite_set;
+	__asm__ volatile ("" ::: "memory");
+	_s_swap_pending = false;
+}
+
+
 static void NG_InitMicroSprites(void)
 {
 	NG_ClearSpriteState();
@@ -610,6 +649,9 @@ static void NG_SetStaticBackgroundSpritesVisible(uint8_t visible)
 
 void I_InitGraphicsHardwareSpecificCode(void)
 {
+	_s_swap_pending = false;
+	_s_main_vram_write_depth = 0;
+	NG_BeginMainVramWrite();
 	*REG_VRAMMOD = 32;
 	MMAP_PALBANK1[0] = 0x8000;
 
@@ -630,6 +672,7 @@ void I_InitGraphicsHardwareSpecificCode(void)
 	_s_static_background_requested = STATIC_BACKGROUND_NONE;
 	_s_static_background_wipe_source = NULL;
 	NG_UploadFixOverlay();
+	NG_EndMainVramWrite();
 }
 
 
@@ -715,6 +758,13 @@ const char *I_NeoGeoSpriteQualityName(void)
 
 void I_FinishUpdate(void)
 {
+	/*
+	 * A fast timedemo can reach the next frame before VBlank.  Drain that
+	 * request before reusing its now-visible set as the next upload target.
+	 */
+	NG_WaitPendingSpriteSwap();
+	NG_BeginMainVramWrite();
+
 	if (_s_static_background_requested != STATIC_BACKGROUND_NONE)
 	{
 		NG_WaitVBlankStart();
@@ -736,6 +786,7 @@ void I_FinishUpdate(void)
 		NG_UploadFixOverlay();
 		_s_static_background_requested = STATIC_BACKGROUND_NONE;
 		NG_ApplyMicroFramebufferMode(_s_pending_microfb_mode_index);
+		NG_EndMainVramWrite();
 		return;
 	}
 
@@ -743,22 +794,45 @@ void I_FinishUpdate(void)
 	NG_UploadMicroFramebuffer(next_sprite_set);
 	if (_s_configured_microfb_mode[next_sprite_set] != _s_microfb_mode_index)
 		NG_ConfigureMicroSpriteSet(next_sprite_set);
-	NG_WaitVBlankStart();
-	NG_ApplyPendingPalettes();
-	if (_s_static_background_active != STATIC_BACKGROUND_NONE)
+
+	const uint8_t synchronous =
+		_s_fix_wipe_active
+		|| _s_static_background_active != STATIC_BACKGROUND_NONE
+		|| newpal != NO_PALETTE_CHANGE
+		|| _s_fix_menu_palette_requested != _s_fix_menu_palette_applied
+		|| _s_pending_microfb_mode_index != _s_microfb_mode_index;
+
+	if (synchronous)
 	{
-		NG_SetStaticBackgroundSpritesVisible(false);
-		_s_static_background_active = STATIC_BACKGROUND_NONE;
+		NG_WaitVBlankStart();
+		NG_ApplyPendingPalettes();
+		if (_s_static_background_active != STATIC_BACKGROUND_NONE)
+		{
+			NG_SetStaticBackgroundSpritesVisible(false);
+			_s_static_background_active = STATIC_BACKGROUND_NONE;
+		}
+		else
+		{
+			NG_SetMicroSpriteSetVisible(_s_visible_sprite_set, false);
+		}
+		NG_SetMicroSpriteSetVisible(next_sprite_set, true);
+		_s_visible_sprite_set = next_sprite_set;
+		NG_UploadFixOverlay();
+		NG_ApplyMicroFramebufferMode(_s_pending_microfb_mode_index);
+		NG_EndMainVramWrite();
+		return;
 	}
-	else
-	{
-		NG_SetMicroSpriteSetVisible(_s_visible_sprite_set, false);
-	}
-	NG_SetMicroSpriteSetVisible(next_sprite_set, true);
-	_s_visible_sprite_set = next_sprite_set;
+
 	NG_UploadFixOverlay();
 
-	NG_ApplyMicroFramebufferMode(_s_pending_microfb_mode_index);
+	/*
+	 * Publish only after every main-thread VRAM access is complete.  The
+	 * VBlank callback owns the two SCB3 visibility writes for this request.
+	 */
+	_s_swap_target_set = next_sprite_set;
+	NG_EndMainVramWrite();
+	__asm__ volatile ("" ::: "memory");
+	_s_swap_pending = true;
 }
 
 
@@ -989,7 +1063,9 @@ void V_DrawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint8_t color)
 void V_DrawBackground(int16_t backgroundnum)
 {
 	memset(_s_screen, 0, sizeof(_s_screen));
+	NG_BeginMainVramWrite();
 	NG_SetFixTarget(W_GetLumpByNum(backgroundnum), FIX_TARGET_TILED_BACKGROUND);
+	NG_EndMainVramWrite();
 }
 
 
@@ -1012,14 +1088,20 @@ void V_DrawRawFullScreen(int16_t num)
 			? STATIC_BACKGROUND_TITLE
 			: STATIC_BACKGROUND_WIMAP;
 		if (!_s_fix_wipe_active && _s_static_background_active == STATIC_BACKGROUND_NONE)
+		{
+			NG_BeginMainVramWrite();
 			NG_ClearFixOverlay();
+			NG_EndMainVramWrite();
+		}
 		return;
 	}
 
 	if (W_LumpLength(num) == FIX_OVERLAY_WIDTH * FIX_OVERLAY_HEIGHT * sizeof(uint16_t))
 	{
 		memset(_s_screen, 0, sizeof(_s_screen));
+		NG_BeginMainVramWrite();
 		NG_SetFixTarget(W_GetLumpByNum(num), FIX_TARGET_PAGE);
+		NG_EndMainVramWrite();
 		return;
 	}
 
@@ -1051,7 +1133,11 @@ void V_DrawRawFullScreen(int16_t num)
 	}
 #endif
 	if (!_s_fix_wipe_active)
+	{
+		NG_BeginMainVramWrite();
 		NG_ClearFixOverlay();
+		NG_EndMainVramWrite();
+	}
 }
 
 
@@ -1090,9 +1176,11 @@ static void NG_DrawFixCharacter(int16_t x, int16_t y, uint16_t color, uint8_t c)
 	if ((uint16_t)x >= FIX_OVERLAY_WIDTH || (uint16_t)y >= FIX_OVERLAY_HEIGHT)
 		return;
 
+	NG_BeginMainVramWrite();
 	*REG_VRAMMOD = 32;
 	*REG_VRAMADDR = ADDR_FIXMAP + ((0 + 1) * 32) + y + 2 + ((uint16_t)x * 32);
 	*REG_VRAMRW = color | c;
+	NG_EndMainVramWrite();
 }
 
 
@@ -1101,9 +1189,11 @@ void V_DrawFixEntry(int16_t x, int16_t y, uint16_t entry)
 	if ((uint16_t)x >= FIX_OVERLAY_WIDTH || (uint16_t)y >= FIX_OVERLAY_HEIGHT)
 		return;
 
+	NG_BeginMainVramWrite();
 	*REG_VRAMMOD = 32;
 	*REG_VRAMADDR = ADDR_FIXMAP + 32u + 2u + (uint16_t)y + ((uint16_t)x * 32u);
 	*REG_VRAMRW = entry;
+	NG_EndMainVramWrite();
 }
 
 
@@ -1112,6 +1202,7 @@ void V_DrawFixPatch(int16_t x, int16_t y, const uint16_t *entries, uint16_t cols
 	if (x >= FIX_OVERLAY_WIDTH || x + (int16_t)cols <= 0)
 		return;
 
+	NG_BeginMainVramWrite();
 	for (uint16_t row = 0; row < rows; row++)
 	{
 		const int16_t draw_y = y + (int16_t)row;
@@ -1131,6 +1222,7 @@ void V_DrawFixPatch(int16_t x, int16_t y, const uint16_t *entries, uint16_t cols
 		for (uint16_t col = first_col; col < last_col; col++)
 			*REG_VRAMRW = entries[row * cols + col];
 	}
+	NG_EndMainVramWrite();
 }
 
 
@@ -1167,12 +1259,14 @@ void V_DrawString(int16_t x, int16_t y, uint16_t color, const char* s)
 	if (!*s)
 		return;
 
+	NG_BeginMainVramWrite();
 	*REG_VRAMMOD = 32;
 	*REG_VRAMADDR = ADDR_FIXMAP + 32u + 2u + (uint16_t)fy + ((uint16_t)fx * 32u);
 	while (*s && fx++ < FIX_OVERLAY_WIDTH)
 	{
 		*REG_VRAMRW = color | (uint8_t)*s++;
 	}
+	NG_EndMainVramWrite();
 }
 
 
@@ -1191,10 +1285,12 @@ void V_ClearString(int16_t y, size_t len)
 	if (len > FIX_OVERLAY_WIDTH)
 		len = FIX_OVERLAY_WIDTH;
 
+	NG_BeginMainVramWrite();
 	*REG_VRAMMOD = 32;
 	*REG_VRAMADDR = ADDR_FIXMAP + 32u + 2u + (uint16_t)fy;
 	for (size_t x = 0; x < len; x++)
 		*REG_VRAMRW = FIX_CLEAR_CHAR;
+	NG_EndMainVramWrite();
 }
 
 
@@ -1222,30 +1318,40 @@ void I_NeoGeoShowLoadingScreen(int16_t map)
 	if (_s_fix_wipe_active)
 		return;
 
+	NG_WaitPendingSpriteSwap();
+	NG_BeginMainVramWrite();
 	NG_ClearFixOverlay();
+	NG_EndMainVramWrite();
 	I_FinishUpdate();
+	NG_WaitPendingSpriteSwap();
+	NG_BeginMainVramWrite();
 	NG_ClearFixOverlay();
 
 	NG_DrawFixedString(15, 12, D_WHITE, "LOADING");
 	char map_name[] = "E1M1";
 	map_name[3] = '0' + map;
 	NG_DrawFixedString(17, 14, D_LIGHT_RED, map_name);
+	NG_EndMainVramWrite();
 }
 
 
 void I_InitScreenPage(void)
 {
+	NG_BeginMainVramWrite();
 	NG_ClearFixOverlay();
 	_s_fix_target = NULL;
 	_s_fix_target_kind = FIX_TARGET_NONE;
+	NG_EndMainVramWrite();
 }
 
 
 void I_InitScreenPages(void)
 {
+	NG_BeginMainVramWrite();
 	NG_ClearFixOverlay();
 	_s_fix_target = NULL;
 	_s_fix_target_kind = FIX_TARGET_NONE;
+	NG_EndMainVramWrite();
 }
 
 
@@ -1292,7 +1398,9 @@ void wipe_StartScreen(void)
 	_s_fix_wipe_active = true;
 	_s_fix_wipe_restore_menu_palette = _s_fix_menu_palette_requested;
 	_s_fix_menu_palette_requested = false;
+	NG_WaitPendingSpriteSwap();
 	NG_WaitVBlankStart();
+	NG_BeginMainVramWrite();
 	NG_ApplyPendingPalettes();
 
 	if (_s_static_background_active != STATIC_BACKGROUND_NONE
@@ -1303,6 +1411,7 @@ void wipe_StartScreen(void)
 
 	_s_fix_target = NULL;
 	_s_fix_target_kind = FIX_TARGET_NONE;
+	NG_EndMainVramWrite();
 }
 
 
@@ -1387,8 +1496,11 @@ static void wipe_initMelt()
 static void NG_FinishFixWipe(void)
 {
 	_s_fix_menu_palette_requested = _s_fix_wipe_restore_menu_palette;
+	NG_WaitPendingSpriteSwap();
 	NG_WaitVBlankStart();
+	NG_BeginMainVramWrite();
 	NG_ApplyPendingPalettes();
+	NG_EndMainVramWrite();
 	_s_fix_wipe_active = false;
 	M_NeoGeoInvalidateMenu();
 	M_Drawer();
@@ -1400,16 +1512,20 @@ void D_Wipe(void)
 	wipe_y_lookup = Z_TryMallocStatic(FIX_WIPE_WIDTH * sizeof(int16_t));
 	if (!wipe_y_lookup)
 	{
+		NG_WaitPendingSpriteSwap();
+		NG_BeginMainVramWrite();
 		if (_s_fix_target)
 			NG_UploadFixTarget();
 		else
 			NG_ClearFixOverlay();
+		NG_EndMainVramWrite();
 		NG_FinishFixWipe();
 		return;
 	}
 
 	_s_fix_menu_palette_requested = false;
 	I_FinishUpdate();
+	NG_WaitPendingSpriteSwap();
 
 	wipe_initMelt();
 
@@ -1427,17 +1543,21 @@ void D_Wipe(void)
 		} while (!tics);
 
 		wipestart = nowtime;
+		NG_BeginMainVramWrite();
 		done = wipe_ScreenWipe(tics);
+		NG_EndMainVramWrite();
 
 		NG_WaitVBlankStart();
 		NG_UploadFixOverlay();
 
 	} while (!done);
 
+	NG_BeginMainVramWrite();
 	if (_s_fix_target)
 		_s_fix_page_active = true;
 	else
 		NG_ClearFixOverlay();
+	NG_EndMainVramWrite();
 
 	_s_fix_target = NULL;
 	_s_fix_target_kind = FIX_TARGET_NONE;

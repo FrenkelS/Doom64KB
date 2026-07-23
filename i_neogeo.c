@@ -33,6 +33,7 @@
 #include "compiler.h"
 #include "d_main.h"
 #include "i_system.h"
+#include "i_video.h"
 
 #include "neogeo/assets/generated/audio/doom_audio_generated.h"
 
@@ -201,6 +202,9 @@ static boolean isTimerSet;
 
 void rom_callback_VBlank() {
 	ticcount++;
+#if defined NEOGEO_SPRITE_MICROFB
+	I_NeoGeoVBlank();
+#endif
 }
 
 

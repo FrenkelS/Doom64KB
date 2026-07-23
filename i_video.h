@@ -36,6 +36,7 @@ void I_SetPalette(int8_t pal);
 void I_FinishUpdate(void);
 
 #if defined NEOGEO_SPRITE_MICROFB
+void I_NeoGeoVBlank(void);
 void I_NeoGeoChangeSpriteQuality(int16_t direction);
 const char *I_NeoGeoSpriteQualityName(void);
 void I_NeoGeoSetFixMenuPalette(boolean active);
