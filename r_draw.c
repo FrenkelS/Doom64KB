@@ -756,6 +756,26 @@ static uint32_t mulu(uint16_t a, uint16_t b) {
 }
 
 
+/* Exact high word of a 16x32 product.  Wall distance is non-negative and the
+ * tangent tables hold positive quadrant magnitudes, so texture projection does
+ * not need the generic three-multiply 32x32 helper on a 68000.
+ */
+static uint16_t mulu16x32hi(uint16_t a, uint32_t b)
+{
+	const uint32_t low = mulu(a, (uint16_t)b);
+	return (uint16_t)((low >> 16) + mulu(a, (uint16_t)(b >> 16)));
+}
+
+
+static int32_t mulu16xSignedFrac(uint16_t a, fixed_t b)
+{
+	if (b < 0)
+		return -(int32_t)mulu(a, (uint16_t)-b);
+
+	return mulu(a, (uint16_t)b);
+}
+
+
 /* Exact 32-by-16 unsigned division for values whose quotient fits in 16 bits. */
 static uint16_t divu(uint32_t dividend, uint16_t divisor)
 {
@@ -1831,10 +1851,10 @@ static fixed_t R_ScaleFromGlobalAngle(int16_t x)
   int16_t anglea = ANG90_16 + R_XTOVIEWANGLE(x);
   int16_t angleb = anglea + viewangle16 - rw_normalangle;
 
-  fixed_t den = rw_distance * finesineapprox(anglea >> ANGLETOFINESHIFT_16);
+  fixed_t den = mulu16xSignedFrac(rw_distance, finesineapprox(anglea >> ANGLETOFINESHIFT_16));
 
 // proff 11/06/98: Changed for high-res
-  fixed_t num = R_VIEWHEIGHT * finesineapprox(angleb >> ANGLETOFINESHIFT_16);
+  fixed_t num = mulu16xSignedFrac(R_VIEWHEIGHT, finesineapprox(angleb >> ANGLETOFINESHIFT_16));
 
   return den > num>>16 ? (num = FixedApproxDiv(num, den)) > 64*FRACUNIT ?
     64*FRACUNIT : num < 256 ? 256 : num : 64*FRACUNIT;
@@ -2252,17 +2272,13 @@ static void R_RenderSegLoop(int16_t rw_x, boolean segtextured, boolean markfloor
 			texturecolumn = rw_offset;
 			int16_t ang = (angle16_t)(rw_centerangle + R_XTOVIEWANGLE(rw_x)) >> ANGLETOFINESHIFT_16;
 			if (ang < 1024) {			//    0 <= ang < 1024
-				fixed_t tan = finetangentTable_part_4[1023 - ang];
-				texturecolumn += (rw_distance * tan) >> FRACBITS;
+				texturecolumn += mulu16x32hi(rw_distance, finetangentTable_part_4[1023 - ang]);
 			} else if (ang < 2048) {	// 1024 <= ang < 2048
-				fixed_t tan = finetangentTable_part_3[1023 - (ang - 1024)];
-				texturecolumn += (rw_distance * tan) >> FRACBITS;
+				texturecolumn += mulu(rw_distance, finetangentTable_part_3[1023 - (ang - 1024)]) >> FRACBITS;
 			} else if (ang < 3072) {	// 2048 <= ang < 3072
-				fixed_t tan = finetangentTable_part_3[ang - 2048];
-				texturecolumn -= (rw_distance * tan) >> FRACBITS;
+				texturecolumn -= mulu(rw_distance, finetangentTable_part_3[ang - 2048]) >> FRACBITS;
 			} else {					// 3072 <= ang < 4096
-				fixed_t tan = finetangentTable_part_4[ang - 3072];
-				texturecolumn -= (rw_distance * tan) >> FRACBITS;
+				texturecolumn -= mulu16x32hi(rw_distance, finetangentTable_part_4[ang - 3072]);
 			}
 #endif
 
@@ -2454,7 +2470,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
 
     int16_t hyp = R_PointToDist(curline->v1.x, curline->v1.y);
 
-    rw_distance = (hyp * finecosineapprox(offsetangle >> ANGLETOFINESHIFT_16)) >> FRACBITS;
+    rw_distance = mulu(hyp, (uint16_t)finecosineapprox(offsetangle >> ANGLETOFINESHIFT_16)) >> FRACBITS;
 
     int16_t rw_x = ds_p->x1 = start;
     ds_p->x2 = stop;
@@ -2614,7 +2630,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
 
     if (segtextured)
     {
-        fixed_t rw_offset32 = hyp * -finesineapprox(offsetangle >> ANGLETOFINESHIFT_16);
+        fixed_t rw_offset32 = mulu16xSignedFrac(hyp, -finesineapprox(offsetangle >> ANGLETOFINESHIFT_16));
         rw_offset = rw_offset32 >> FRACBITS;
         rw_offset += sidedef->textureoffset + curline->offset;
 
