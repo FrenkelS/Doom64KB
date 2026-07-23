@@ -1363,6 +1363,15 @@ void R_InitColormaps(void)
 typedef struct vissprite_s
 {
   int16_t x1, x2;
+#if defined NEOGEO_COMPACT_BLOCKMAP
+  fixed_t startfrac;           // horizontal position of x1
+  fixed_t scale;
+  fixed_t xiscale;             // negative if flipped
+  uint16_t fracstep;
+  int16_t lump_num;
+  mobjindex_t thing_index;
+  uint8_t colormap_index;
+#else
   fixed_t gx, gy;              // for line side calculation
   fixed_t gz;                   // global bottom for silhouette clipping
   fixed_t startfrac;           // horizontal position of x1
@@ -1376,8 +1385,34 @@ typedef struct vissprite_s
 
   // for color translation and shadow draw, maxbright frames as well
   const uint8_t* colormap;
+#endif
 
 } vissprite_t;
+
+#if defined NEOGEO_COMPACT_BLOCKMAP
+_Static_assert(sizeof(vissprite_t) == 22u,
+               "compact Neo Geo vissprite must stay 22 bytes");
+#define VIS_COLORMAP_SHADOW UINT8_MAX
+
+static const mobj_t __far* R_VisSpriteThing(const vissprite_t *vis)
+{
+    return &_g_thingPool[vis->thing_index];
+}
+
+static uint8_t R_EncodeVisColormap(const uint8_t *colormap)
+{
+    if (!colormap)
+        return VIS_COLORMAP_SHADOW;
+
+    return (uint8_t)((colormap - fullcolormap) / 256);
+}
+
+static const uint8_t* R_DecodeVisColormap(uint8_t colormap_index)
+{
+    return colormap_index == VIS_COLORMAP_SHADOW
+        ? NULL : fullcolormap + (uint16_t)colormap_index * 256u;
+}
+#endif
 
 
 void R_DrawFuzzColumn (const draw_column_vars_t *dcvars);
@@ -1388,13 +1423,16 @@ void R_DrawFuzzColumn (const draw_column_vars_t *dcvars);
 //  mfloorclip and mceilingclip should also be set.
 //
 // CPhipps - new wad lump handling, *'s to const*'s
-static void R_DrawVisSprite(const vissprite_t *vis)
+static void R_DrawVisSprite(const vissprite_t *vis,
+                            fixed_t texturemid,
+                            const uint8_t *colormap,
+                            const patch_t __far* patch)
 {
     fixed_t  frac;
 
     R_DrawColumn_f colfunc = R_DrawColumnSprite;
     draw_column_vars_t dcvars;
-    dcvars.colormap = vis->colormap;
+    dcvars.colormap = colormap;
 
     // killough 4/11/98: rearrange and handle translucent sprites
     // mixed with translucent/non-translucenct 2s normals
@@ -1404,14 +1442,11 @@ static void R_DrawVisSprite(const vissprite_t *vis)
 
     // proff 11/06/98: Changed for high-res
     dcvars.fracstep = vis->fracstep;
-    dcvars.texturemid = vis->texturemid;
+    dcvars.texturemid = texturemid;
     frac = vis->startfrac;
 
     spryscale = vis->scale;
     sprtopscreen = CENTERY * FRACUNIT - FixedMul(dcvars.texturemid, spryscale);
-
-
-    const patch_t __far* patch = W_GetLumpByNum(vis->lump_num);
 
     dcvars.x = vis->x1;
 
@@ -1573,6 +1608,25 @@ static void R_DrawSprite (const vissprite_t* spr)
 
     fixed_t scale;
     fixed_t lowscale;
+#if defined NEOGEO_COMPACT_BLOCKMAP
+    const mobj_t __far* thing = R_VisSpriteThing(spr);
+    const fixed_t gx = thing->x;
+    const fixed_t gy = thing->y;
+    const fixed_t gz = thing->z;
+    const patch_t __far* patch = W_GetLumpByNum(spr->lump_num);
+    const int16_t patch_topoffset = patch->topoffset;
+    const fixed_t texturemid =
+        gz + (((int32_t)patch_topoffset) << FRACBITS) - viewz;
+    const uint8_t *colormap = R_DecodeVisColormap(spr->colormap_index);
+#else
+    const fixed_t gx = spr->gx;
+    const fixed_t gy = spr->gy;
+    const fixed_t gz = spr->gz;
+    const patch_t __far* patch = W_GetLumpByNum(spr->lump_num);
+    const int16_t patch_topoffset = spr->patch_topoffset;
+    const fixed_t texturemid = spr->texturemid;
+    const uint8_t *colormap = spr->colormap;
+#endif
 
     for (int16_t x = spr->x1; x <= spr->x2; x++)
     {
@@ -1610,7 +1664,7 @@ static void R_DrawSprite (const vissprite_t* spr)
             scale    = ds->scale2;
         }
 
-        if (scale < spr->scale || (lowscale < spr->scale && !R_PointOnSegSide (spr->gx, spr->gy, ds->curline)))
+        if (scale < spr->scale || (lowscale < spr->scale && !R_PointOnSegSide (gx, gy, ds->curline)))
         {
             if (ds->maskedtexturecol)       // masked mid texture?
                 R_RenderMaskedSegRange(ds, r1, r2);
@@ -1621,9 +1675,9 @@ static void R_DrawSprite (const vissprite_t* spr)
         // clip this piece of the sprite
         // killough 3/27/98: optimized and made much shorter
 
-        fixed_t gzt = spr->gz + (((int32_t)spr->patch_topoffset) << FRACBITS);
+        fixed_t gzt = gz + (((int32_t)patch_topoffset) << FRACBITS);
 
-        if ((ds->silhouette & SIL_BOTTOM && spr->gz < ds->bsilheight)  // bottom sil
+        if ((ds->silhouette & SIL_BOTTOM && gz < ds->bsilheight)  // bottom sil
          && (ds->silhouette & SIL_TOP    && gzt     > ds->tsilheight)) // top sil
         {
             for (int16_t x = r1; x <= r2; x++)
@@ -1635,7 +1689,7 @@ static void R_DrawSprite (const vissprite_t* spr)
                     cliptop[x] = ds->sprtopclip[x];
             }
         }
-        else if (ds->silhouette & SIL_BOTTOM && spr->gz < ds->bsilheight) // bottom sil
+        else if (ds->silhouette & SIL_BOTTOM && gz < ds->bsilheight) // bottom sil
         {
             for (int16_t x = r1; x <= r2; x++)
             {
@@ -1656,7 +1710,7 @@ static void R_DrawSprite (const vissprite_t* spr)
     // all clipping has been performed, so draw the sprite
     mfloorclip   = clipbot;
     mceilingclip = cliptop;
-    R_DrawVisSprite (spr);
+    R_DrawVisSprite(spr, texturemid, colormap, patch);
 }
 
 
@@ -1685,6 +1739,8 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
     vissprite_t   *vis;
     vissprite_t   avis;
     fixed_t       topoffset;
+    fixed_t       texturemid;
+    const uint8_t *colormap;
 
     // decide which patch to use
     sprdef = &sprites[psp->state->sprite];
@@ -1714,8 +1770,8 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
     // store information in a vissprite
     vis = &avis;
     // killough 12/98: fix psprite positioning problem
-    vis->texturemid = (BASEYCENTER<<FRACBITS) /* +  FRACUNIT/2 */ -
-            (psp->sy-topoffset);
+    texturemid = (BASEYCENTER<<FRACBITS) /* +  FRACUNIT/2 */ -
+        (psp->sy-topoffset);
     vis->x1 = x1 < 0 ? 0 : x1;
     vis->x2 = x2 >= R_VIEWWIDTH ? R_VIEWWIDTH - 1 : x2;
     // proff 11/06/98: Added for high-res
@@ -1731,15 +1787,15 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
     vis->lump_num = sprframe->lump[0];
 
     if (_g_player.powers[pw_invisibility] > 4*32 || _g_player.powers[pw_invisibility] & 8)
-        vis->colormap = NULL;                    // shadow draw
+        colormap = NULL;                    // shadow draw
     else if (fixedcolormap)
-        vis->colormap = fixedcolormap;           // fixed color
+        colormap = fixedcolormap;           // fixed color
     else if (psp->state->frame & FF_FULLBRIGHT)
-        vis->colormap = fullcolormap;            // full bright // killough 3/20/98
+        colormap = fullcolormap;            // full bright // killough 3/20/98
     else
-        vis->colormap = R_LoadColorMap(lightlevel);  // local light
+        colormap = R_LoadColorMap(lightlevel);  // local light
 
-    R_DrawVisSprite(vis);
+    R_DrawVisSprite(vis, texturemid, colormap, patch);
 }
 
 
@@ -1769,7 +1825,39 @@ static void R_DrawPlayerSprites(void)
 // R_SortVisSprites
 //
 
+#if defined NEOGEO_COMPACT_BLOCKMAP
+#define MAXVISSPRITES 16
+#else
+#define MAXVISSPRITES 8
+#endif
+
+static int16_t num_vissprite;
+static vissprite_t vissprites[MAXVISSPRITES];
+#if defined NEOGEO_COMPACT_BLOCKMAP
+static uint8_t vissprite_order[MAXVISSPRITES];
+#else
+static vissprite_t* vissprite_ptrs[MAXVISSPRITES];
+#endif
+
 // insertion sort
+#if defined NEOGEO_COMPACT_BLOCKMAP
+static void isort(uint8_t *s, int16_t n)
+{
+    for (int16_t i = 1; i < n; i++)
+    {
+        const uint8_t temp = s[i];
+        int16_t j = i;
+
+        while (j > 0
+            && vissprites[s[j - 1]].scale < vissprites[temp].scale)
+        {
+            s[j] = s[j - 1];
+            j--;
+        }
+        s[j] = temp;
+    }
+}
+#else
 static void isort(vissprite_t **s, int16_t n)
 {
 	for (int16_t i = 1; i < n; i++)
@@ -1784,11 +1872,7 @@ static void isort(vissprite_t **s, int16_t n)
 		}
 	}
 }
-
-#define MAXVISSPRITES 8
-static int16_t num_vissprite;
-static vissprite_t vissprites[MAXVISSPRITES];
-static vissprite_t* vissprite_ptrs[MAXVISSPRITES];
+#endif
 
 static void R_SortVisSprites (void)
 {
@@ -1797,9 +1881,15 @@ static void R_SortVisSprites (void)
     if (i)
     {
         while (--i >= 0)
+#if defined NEOGEO_COMPACT_BLOCKMAP
+            vissprite_order[i] = i;
+
+        isort(vissprite_order, num_vissprite);
+#else
             vissprite_ptrs[i] = vissprites + i;
 
         isort(vissprite_ptrs, num_vissprite);
+#endif
     }
 }
 
@@ -1817,7 +1907,11 @@ static void R_DrawMasked(void)
 
     // draw all vissprites back to front
     for (int16_t i = num_vissprite; --i >= 0; )
+#if defined NEOGEO_COMPACT_BLOCKMAP
+        R_DrawSprite(&vissprites[vissprite_order[i]]);
+#else
         R_DrawSprite(vissprite_ptrs[i]);
+#endif
 
     // render any remaining masked mid textures
 
@@ -1832,8 +1926,71 @@ static void R_DrawMasked(void)
 //
 // R_NewVisSprite
 //
-static vissprite_t *R_NewVisSprite(void)
+#if defined NEOGEO_COMPACT_BLOCKMAP
+static uint8_t R_VisSpritePriority(const mobj_t __far* thing)
 {
+    if (thing->flags & (MF_MISSILE | MF_COUNTKILL | MF_SPECIAL))
+        return 2;
+    if (thing->flags & MF_SHOOTABLE)
+        return 1;
+    return 0;
+}
+
+static int16_t R_CompareVisSpritePriority(const mobj_t __far* a,
+                                          fixed_t a_scale,
+                                          mobjindex_t a_index,
+                                          const mobj_t __far* b,
+                                          fixed_t b_scale,
+                                          mobjindex_t b_index)
+{
+    const uint8_t a_priority = R_VisSpritePriority(a);
+    const uint8_t b_priority = R_VisSpritePriority(b);
+
+    if (a_priority != b_priority)
+        return a_priority > b_priority ? 1 : -1;
+    if (a_scale != b_scale)
+        return a_scale > b_scale ? 1 : -1;
+    if (a_index != b_index)
+        return a_index < b_index ? 1 : -1;
+    return 0;
+}
+
+static vissprite_t *R_NewVisSprite(mobj_t __far* thing, fixed_t scale)
+{
+    const mobjindex_t thing_index = thing - _g_thingPool;
+
+    if (num_vissprite < MAXVISSPRITES)
+        return vissprites + num_vissprite++;
+
+    int16_t weakest = 0;
+    for (int16_t i = 1; i < MAXVISSPRITES; i++)
+    {
+        const vissprite_t *current = &vissprites[i];
+        const vissprite_t *weakest_sprite = &vissprites[weakest];
+
+        if (R_CompareVisSpritePriority(
+                R_VisSpriteThing(current), current->scale,
+                current->thing_index,
+                R_VisSpriteThing(weakest_sprite), weakest_sprite->scale,
+                weakest_sprite->thing_index) < 0)
+            weakest = i;
+    }
+
+    const vissprite_t *weakest_sprite = &vissprites[weakest];
+    if (R_CompareVisSpritePriority(
+            thing, scale, thing_index,
+            R_VisSpriteThing(weakest_sprite), weakest_sprite->scale,
+            weakest_sprite->thing_index) <= 0)
+        return NULL;
+
+    return &vissprites[weakest];
+}
+#else
+static vissprite_t *R_NewVisSprite(mobj_t __far* thing, fixed_t scale)
+{
+    (void)thing;
+    (void)scale;
+
     if (num_vissprite >= MAXVISSPRITES)
     {
 #ifdef RANGECHECK
@@ -1844,6 +2001,7 @@ static vissprite_t *R_NewVisSprite(void)
 
     return vissprites + num_vissprite++;
 }
+#endif
 
 
 //
@@ -1973,9 +2131,12 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
         return;
     }
 
+    //vis->scale           = FixedDiv(PROJECTIONY, tz);
+    const fixed_t scale =
+        divu_guarded(R_VIEWHEIGHT * FRACUNIT, distance);
 
     // store information in a vissprite
-    vissprite_t* vis = R_NewVisSprite ();
+    vissprite_t* vis = R_NewVisSprite(thing, scale);
 
     //No more vissprites.
     if(!vis)
@@ -1983,9 +2144,7 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
         return;
     }
 
-    //vis->scale           = FixedDiv(PROJECTIONY, tz);
-    vis->scale           =
-        divu_guarded(R_VIEWHEIGHT * FRACUNIT, distance);
+    vis->scale           = scale;
     /* tz is already constrained to 4..1280 map units.  The largest quotient
      * is Low mode's (1280 << 16) / (28 << 7) == 23405, so DIVU.W is exact in
      * every supported render mode.
@@ -1993,11 +2152,15 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
     vis->fracstep        =
         divu((uint32_t)tz, R_VIEWHEIGHT << COLEXTRABITS);
     vis->lump_num        = sprframe->lump[rot];
+#if defined NEOGEO_COMPACT_BLOCKMAP
+    vis->thing_index     = thing - _g_thingPool;
+#else
     vis->patch_topoffset = patch->topoffset;
     vis->gx              = fx;
     vis->gy              = fy;
     vis->gz              = fz;
     vis->texturemid      = (fz + (((int32_t)patch->topoffset) << FRACBITS)) - viewz;
+#endif
     vis->x1              = x1 < 0 ? 0 : x1;
     vis->x2              = x2 >= R_VIEWWIDTH ? R_VIEWWIDTH - 1 : x2;
 
@@ -2019,14 +2182,21 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
         vis->startfrac += vis->xiscale*(vis->x1-x1);
 
     // get light level
+    const uint8_t *colormap;
     if (thing->flags & MF_SHADOW)
-        vis->colormap = NULL;             // shadow draw
+        colormap = NULL;             // shadow draw
     else if (fixedcolormap)
-        vis->colormap = fixedcolormap;      // fixed map
+        colormap = fixedcolormap;      // fixed map
     else if (thing->frame & FF_FULLBRIGHT)
-        vis->colormap = fullcolormap;     // full bright  // killough 3/20/98
+        colormap = fullcolormap;     // full bright  // killough 3/20/98
     else
-        vis->colormap = R_LoadColorMap(lightlevel); // diminished light
+        colormap = R_LoadColorMap(lightlevel); // diminished light
+
+#if defined NEOGEO_COMPACT_BLOCKMAP
+    vis->colormap_index = R_EncodeVisColormap(colormap);
+#else
+    vis->colormap = colormap;
+#endif
 }
 
 //
