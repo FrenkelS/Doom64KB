@@ -178,8 +178,11 @@ static const microfb_mode_t microfb_modes[] =
 static uint8_t _s_screen[VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT];
 #define MICROFB_COLUMN(x) (&_s_screen[(uint16_t)(x) * VIEWWINDOWHEIGHT])
 #define MICROFB_PIXEL(x, y) (MICROFB_COLUMN(x)[(uint16_t)(y)])
-static uint8_t _s_color_to_tile_slot[256];
-static uint8_t _s_color_to_palette[256];
+/* Packed SCB1 words: palette attribute in the high byte, tile slot in the low. */
+static uint16_t _s_color_to_scb1[256];
+_Static_assert(sizeof(_s_color_to_scb1) == 512u, "Neo Geo color map must stay 512 bytes");
+_Static_assert((MICROFB_TILE_BASE & 0x00ffu) == 0u,
+	"packed SCB1 upload requires a tile-page-aligned base");
 static uint8_t _s_visible_sprite_set;
 static uint8_t _s_fix_page_active;
 static uint8_t _s_fix_wipe_active;
@@ -353,8 +356,8 @@ static void NG_InitColorTileMap(void)
 	for (uint16_t palette = 0; palette < MICROFB_SPRITE_PALETTES; palette++)
 		for (uint16_t slot = 1; slot <= MICROFB_VISIBLE_COLOR_SLOTS && color < 256u; slot++, color++)
 		{
-			_s_color_to_tile_slot[color] = slot;
-			_s_color_to_palette[color] = MICROFB_SPRITE_PALETTE_BASE + palette;
+			_s_color_to_scb1[color] =
+				MICROFB_PALETTE_ATTR(MICROFB_SPRITE_PALETTE_BASE + palette) | slot;
 		}
 }
 
@@ -667,12 +670,24 @@ static void NG_UploadMicroFramebuffer(uint8_t set)
 			const uint8_t *src = MICROFB_COLUMN(x) + row_base;
 
 			*REG_VRAMADDR = ADDR_SCB1 + (sprite * 64u);
-			for (uint16_t row = 0; row < chunk_rows; row++)
-			{
-				const uint8_t color = *src++;
-				*REG_VRAMRW = MICROFB_TILE_BASE + _s_color_to_tile_slot[color];
-				*REG_VRAMRW = MICROFB_PALETTE_ATTR(_s_color_to_palette[color]);
-			}
+			uint16_t rows = chunk_rows - 1u;
+			__asm__ volatile (
+				"move.w %[tile_base],%%d0\n\t"
+				"1:\n\t"
+				"moveq #0,%%d2\n\t"
+				"move.b %[src]@+,%%d2\n\t"
+				"add.w %%d2,%%d2\n\t"
+				"move.w %[map]@(0,%%d2:w),%%d1\n\t"
+				"move.b %%d1,%%d0\n\t"
+				"move.w %%d0,%[vramrw]@\n\t"
+				"clr.b %%d1\n\t"
+				"move.w %%d1,%[vramrw]@\n\t"
+				"dbra %[rows],1b"
+				: [src] "+&a" (src), [rows] "+&d" (rows)
+				: [map] "a" (_s_color_to_scb1), [vramrw] "a" (REG_VRAMRW),
+				  [tile_base] "i" (MICROFB_TILE_BASE)
+				: "d0", "d1", "d2", "cc", "memory"
+			);
 		}
 	}
 }
