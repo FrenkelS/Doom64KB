@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 static const uint8_t doom_fix_wipe_zero_pen_map[16] = {
-    247u, 170u, 33u, 209u, 63u, 81u, 97u, 113u, 129u, 133u, 228u, 177u, 81u, 4u, 4u, 207u,
+    97u, 97u, 97u, 97u, 97u, 97u, 97u, 97u, 97u, 97u, 97u, 97u, 97u, 97u, 97u, 97u,
 };
 
 static const uint16_t doom_title_wipe_map[1120] = {

@@ -339,7 +339,11 @@ static void NG_UploadStaticBackgroundPalettes(static_background_t background)
 
 static void NG_UploadFixPalette(const uint16_t *src)
 {
-	memcpy((uint8_t *)&MMAP_PALBANK1[0], src, 256u * sizeof(uint16_t));
+	volatile uint16_t *dst = &MMAP_PALBANK1[0];
+
+	/* Palette RAM requires word writes; memcpy emits unsupported long writes. */
+	for (uint16_t i = 0; i < 256u; i++)
+		dst[i] = src[i];
 }
 
 
@@ -1127,6 +1131,14 @@ void I_NeoGeoShowLoadingScreen(int16_t map)
 	_s_fix_target_kind = FIX_TARGET_NONE;
 	_s_fix_menu_palette_requested = false;
 	memset(_s_screen, 0, sizeof(_s_screen));
+
+	/*
+	 * A pending melt already owns FIX as an exact copy of the old frame.
+	 * Keep it intact while the new level is prepared behind it.
+	 */
+	if (_s_fix_wipe_active)
+		return;
+
 	NG_ClearFixOverlay();
 	I_FinishUpdate();
 	NG_ClearFixOverlay();
@@ -1191,6 +1203,9 @@ static void NG_UploadFixWipeMap(const uint16_t *map)
 
 void wipe_StartScreen(void)
 {
+	if (_s_fix_wipe_active)
+		return;
+
 	_s_fix_wipe_active = true;
 	_s_fix_wipe_restore_menu_palette = _s_fix_menu_palette_requested;
 	_s_fix_menu_palette_requested = false;

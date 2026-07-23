@@ -429,13 +429,22 @@ def quantize_tile(
     return palette_index, encode_fix_tile(output)
 
 
-def wipe_zero_pen_map(playpal: list[tuple[int, int, int]]) -> list[int]:
+def neo_color_components(color: int) -> tuple[int, int, int]:
+    return (
+        ((color >> 14) & 1) | ((color >> 7) & 0x1E),
+        ((color >> 13) & 1) | ((color >> 3) & 0x1E),
+        ((color >> 12) & 1) | ((color & 0x0F) << 1),
+    )
+
+
+def wipe_zero_pen_map(playpal: list[int]) -> list[int]:
+    components = [neo_color_components(color) for color in playpal]
     opaque_colors = [color for color in range(256) if color & 0x0F]
     return [
         min(
             opaque_colors,
             key=lambda candidate: sum(
-                (playpal[color][channel] - playpal[candidate][channel]) ** 2
+                (components[color][channel] - components[candidate][channel]) ** 2
                 for channel in range(3)
             ),
         )
@@ -473,7 +482,11 @@ def write_menu_assets(
 ) -> None:
     playpal_data = iwad.get("PLAYPAL")
     playpal = [tuple(playpal_data[index : index + 3]) for index in range(0, 768, 3)]
-    zero_pen_map = wipe_zero_pen_map(playpal)
+    embedded_playpal_data = embedded_wad.get("PLAYPAL")
+    if len(embedded_playpal_data) < 512:
+        raise ValueError("compact PLAYPAL does not contain a complete base palette")
+    embedded_playpal = list(struct.unpack_from(">256H", embedded_playpal_data))
+    zero_pen_map = wipe_zero_pen_map(embedded_playpal)
     blank = bytes(FIX_TILE_BYTES)
     unique_tiles: list[tuple[int, bytes]] = []
     tile_ids: dict[bytes, int] = {}

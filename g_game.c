@@ -303,6 +303,14 @@ void G_BuildTiccmd(void)
 
 static void G_DoLoadLevel (void)
 {
+#if defined NEOGEO_SPRITE_MICROFB
+    /*
+     * Preserve the frame that is actually on screen before level setup and
+     * its loading presentation reuse the software framebuffer.
+     */
+    wipe_StartScreen();
+#endif
+
     if (wipegamestate == GS_LEVEL)
         wipegamestate = -1;             // force a wipe
 
