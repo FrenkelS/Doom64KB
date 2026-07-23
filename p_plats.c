@@ -208,7 +208,7 @@ boolean EV_DoPlat(const line_t __far* line, plattype_e type)
     {
       case raiseToNearestAndChange:
         plat->speed = PLATSPEED/2;
-        sec->floorpic = _g_sides[line->sidenum[0]].sector->floorpic;
+        sec->floorpic = SIDE_SECTOR(&_g_sides[line->sidenum[0]])->floorpic;
         plat->high = P_FindNextHighestFloor(sec);
         plat->wait = 0;
         plat->status = up;

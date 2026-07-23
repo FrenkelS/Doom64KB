@@ -192,8 +192,8 @@ boolean P_TeleportMove(mobj_t __far* thing, fixed_t x, fixed_t y, boolean boss)
   // Any contacted lines the step closer together
   // will adjust them.
 
-  _g_tmfloorz = _g_tmdropoffz = newsubsec->sector->floorheight;
-  _g_tmceilingz = newsubsec->sector->ceilingheight;
+  _g_tmfloorz = _g_tmdropoffz = SUBSECTOR_SECTOR(newsubsec)->floorheight;
+  _g_tmceilingz = SUBSECTOR_SECTOR(newsubsec)->ceilingheight;
 
   validcount++;
   _g_numspechit = 0;
@@ -464,8 +464,8 @@ boolean P_CheckPosition(mobj_t __far* thing, fixed_t x, fixed_t y)
   // Any contacted lines the step closer together
   // will adjust them.
 
-  _g_tmfloorz = _g_tmdropoffz = newsubsec->sector->floorheight;
-  _g_tmceilingz = newsubsec->sector->ceilingheight;
+  _g_tmfloorz = _g_tmdropoffz = SUBSECTOR_SECTOR(newsubsec)->floorheight;
+  _g_tmceilingz = SUBSECTOR_SECTOR(newsubsec)->ceilingheight;
   validcount++;
   _g_numspechit = 0;
 
@@ -1408,7 +1408,7 @@ void P_CreateSecNodeList(mobj_t __far* thing)
 
   // Add the sector of the (x,y) point to sector_list.
 
-  P_AddSecnode(thing->subsector->sector,thing);
+  P_AddSecnode(SUBSECTOR_SECTOR(thing->subsector),thing);
 
   // Now delete any nodes that won't be used. These are the ones where
   // m_thing is still NULL.

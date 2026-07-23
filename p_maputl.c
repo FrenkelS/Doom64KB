@@ -377,7 +377,7 @@ void P_SetThingPosition(mobj_t __far* thing)
       // killough 8/11/98: simpler scheme using pointer-to-pointer prev
       // pointers, allows head nodes to be treated like everything else
 
-      mobj_t __far*__far* link = &ss->sector->thinglist;
+      mobj_t __far*__far* link = &SUBSECTOR_SECTOR(ss)->thinglist;
       mobj_t __far* snext = *link;
       if ((thing->snext = snext))
         snext->sprev = &thing->snext;

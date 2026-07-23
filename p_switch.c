@@ -306,7 +306,7 @@ static void EV_VerticalDoor(const line_t __far* line, mobj_t __far* thing)
   }
 
   // get the sector on the second side of activating linedef
-  sec = _g_sides[line->sidenum[1]].sector;
+  sec = SIDE_SECTOR(&_g_sides[line->sidenum[1]]);
 
   door = sec->ceilingdata;
 

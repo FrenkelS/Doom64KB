@@ -336,7 +336,7 @@ static void P_LoadSideDefs (int16_t lump)
         side_t __far* sd = _g_sides + i;
 
         sd->textureoffset = msd->textureoffset;
-        sd->sector        = &_g_sectors[msd->sector];
+        sd->sector        = msd->sector;
         sd->midtexture    = msd->midtexture;
         sd->toptexture    = msd->toptexture;
         sd->bottomtexture = msd->bottomtexture;
@@ -431,7 +431,7 @@ static void P_GroupLines (void)
     for (i=0 ; i<numsubsectors ; i++)
     {
         const seg_t __far* seg = &_g_segs[_g_mapsubsectors[i].firstseg];
-        _g_subsectors[i].sector = NULL;
+        _g_subsectors[i].sector = 0;
         for(j=0; j<_g_mapsubsectors[i].numsegs; j++)
         {
             if(seg->sidenum != NO_INDEX)

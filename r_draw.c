@@ -1730,7 +1730,7 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
 static void R_DrawPlayerSprites(void)
 {
 
-  int16_t i, lightlevel = _g_player.mo->subsector->sector->lightlevel;
+  int16_t i, lightlevel = SUBSECTOR_SECTOR(_g_player.mo->subsector)->lightlevel;
   pspdef_t *psp;
 
   // clip to screen bounds
@@ -2008,7 +2008,7 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
 // killough 9/18/98: add lightlevel as parameter, fixing underwater lighting
 static void R_AddSprites(subsector_t __far* subsec, int16_t lightlevel)
 {
-  sector_t __far* sec=subsec->sector;
+  sector_t __far* sec=SUBSECTOR_SECTOR(subsec);
   mobj_t __far* thing;
 
   // BSP is traversed by subsector.
@@ -2938,7 +2938,7 @@ static void R_Subsector(int16_t num)
     subsector_t __far* sub;
 
     sub = &_g_subsectors[num];
-    frontsector = sub->sector;
+    frontsector = SUBSECTOR_SECTOR(sub);
     count = _g_mapsubsectors[num].numsegs;
     line = &_g_segs[_g_mapsubsectors[num].firstseg];
 

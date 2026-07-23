@@ -135,16 +135,18 @@ typedef char assertMapsectorSize[sizeof(mapsector_t) == 12 ? 1 : -1];
 // by setting textures and offsets.
 //
 
-typedef struct
+typedef PACKEDATTR_PRE struct
 {
-    sector_t __far* sector;      // Sector the SideDef is facing.
+    uint8_t sector;              // Index of the sector this SideDef faces.
 
     uint8_t textureoffset; // add this to the calculated texture column
 
     int8_t toptexture;
     int8_t bottomtexture;
     int8_t midtexture;
-} side_t;
+} PACKEDATTR_POST side_t;
+
+typedef char assertSideSize[sizeof(side_t) == 5 ? 1 : -1];
 
 typedef PACKEDATTR_PRE struct {
   int16_t textureoffset;
@@ -206,8 +208,9 @@ typedef PACKEDATTR_PRE struct line_s
 typedef char assertLineSize[sizeof(line_t) == 32 ? 1 : -1];
 
 
-#define LN_FRONTSECTOR(l) (_g_sides[(l)->sidenum[0]].sector)
-#define LN_BACKSECTOR(l) ((l)->sidenum[1] != NO_INDEX ? _g_sides[(l)->sidenum[1]].sector : NULL)
+#define SIDE_SECTOR(s) (&_g_sectors[(s)->sector])
+#define LN_FRONTSECTOR(l) SIDE_SECTOR(&_g_sides[(l)->sidenum[0]])
+#define LN_BACKSECTOR(l) ((l)->sidenum[1] != NO_INDEX ? SIDE_SECTOR(&_g_sides[(l)->sidenum[1]]) : NULL)
 
 #define LN_SPECIAL(l) (_g_lines[(l)->lineno].special)
 
@@ -292,8 +295,12 @@ typedef char assertSegSize[sizeof(seg_t) == 18 ? 1 : -1];
 
 typedef struct subsector_s
 {
-  sector_t __far* sector;
+  uint8_t sector;
 } subsector_t;
+
+typedef char assertSubsectorSize[sizeof(subsector_t) == 1 ? 1 : -1];
+
+#define SUBSECTOR_SECTOR(s) (&_g_sectors[(s)->sector])
 
 typedef struct {
 	int16_t		numsegs;

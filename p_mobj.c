@@ -485,7 +485,7 @@ static void P_XYMovement(mobj_t __far* mo)
     if ((mo->flags & MF_CORPSE) &&
             (mo->momx > FRACUNIT/4 || mo->momx < -FRACUNIT/4 ||
              mo->momy > FRACUNIT/4 || mo->momy < -FRACUNIT/4) &&
-            mo->floorz != mo->subsector->sector->floorheight)
+            mo->floorz != SUBSECTOR_SECTOR(mo->subsector)->floorheight)
         return;  // do not stop sliding if halfway off a step with some momentum
 
     // killough 11/98:
@@ -675,7 +675,7 @@ static void P_NightmareRespawn(mobj_t __far* mobj)
 
     mo = P_SpawnMobj (mobj->x,
                       mobj->y,
-                      mobj->subsector->sector->floorheight,
+                      SUBSECTOR_SECTOR(mobj->subsector)->floorheight,
                       MT_TFOG);
 
     // initiate teleport sound
@@ -686,7 +686,7 @@ static void P_NightmareRespawn(mobj_t __far* mobj)
 
     ss = R_PointInSubsector (x,y);
 
-    mo = P_SpawnMobj (x, y, ss->sector->floorheight , MT_TFOG);
+    mo = P_SpawnMobj (x, y, SUBSECTOR_SECTOR(ss)->floorheight , MT_TFOG);
 
     S_StartSound (mo, sfx_telept);
 
@@ -861,8 +861,8 @@ mobj_t __far* P_SpawnMobj(fixed_t x,fixed_t y,fixed_t z,mobjtype_t type)
     P_SetThingPosition (mobj);
 
     mobj->dropoffz =           /* killough 11/98: for tracking dropoffs */
-            mobj->floorz   = mobj->subsector->sector->floorheight;
-    mobj->ceilingz = mobj->subsector->sector->ceilingheight;
+            mobj->floorz   = SUBSECTOR_SECTOR(mobj->subsector)->floorheight;
+    mobj->ceilingz = SUBSECTOR_SECTOR(mobj->subsector)->ceilingheight;
 
     mobj->z = z == ONFLOORZ ? mobj->floorz : z == ONCEILINGZ ?
                                   mobj->ceilingz - mobj->height : z;
