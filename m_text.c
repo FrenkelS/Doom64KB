@@ -173,37 +173,15 @@ static void M_ClearMenus (void);
 #if defined __NGDEVKIT__
 #define NEO_FIX_MENU_WIDTH 38
 
-static int16_t M_NeoGeoTextWidth(const char *text)
-{
-	int16_t width = 0;
-	while (*text)
-	{
-		text++;
-		width++;
-	}
-	return width;
-}
-
-
-static void M_DrawNeoGeoText(int16_t x, int16_t y, const char *text)
-{
-	while (*text && x < NEO_FIX_MENU_WIDTH)
-	{
-		uint8_t c = (uint8_t)*text++;
-		if (c >= 'a' && c <= 'z')
-			c -= 'a' - 'A';
-
-		if (c >= DOOM_MENU_FONT_FIRST && c < DOOM_MENU_FONT_FIRST + DOOM_MENU_FONT_COUNT)
-			V_DrawFixEntry(x++, y, doom_menu_font[c - DOOM_MENU_FONT_FIRST]);
-		else
-			x++;
-	}
-}
-
-
 static void M_DrawNeoGeoPatchCentered(int16_t y, const uint16_t *patch, uint16_t cols, uint16_t rows)
 {
 	V_DrawFixPatch((NEO_FIX_MENU_WIDTH - (int16_t)cols) / 2, y, patch, cols, rows);
+}
+
+
+static void M_DrawNeoGeoPatchRight(int16_t y, const uint16_t *patch, uint16_t cols, uint16_t rows)
+{
+	V_DrawFixPatch(NEO_FIX_MENU_WIDTH - (int16_t)cols - 1, y, patch, cols, rows);
 }
 
 
@@ -648,23 +626,57 @@ static void M_DrawOptions(void)
 {
 #if defined __NGDEVKIT__
 	static const uint8_t item_rows[] = {5, 8, 11, 14, 17, 20};
+	static const uint16_t * const gamma_patches[] = {
+		doom_menu_text_0, doom_menu_text_1, doom_menu_text_2,
+		doom_menu_text_3, doom_menu_text_4, doom_menu_text_5
+	};
+	static const uint8_t gamma_cols[] = {
+		DOOM_MENU_TEXT_0_COLS, DOOM_MENU_TEXT_1_COLS, DOOM_MENU_TEXT_2_COLS,
+		DOOM_MENU_TEXT_3_COLS, DOOM_MENU_TEXT_4_COLS, DOOM_MENU_TEXT_5_COLS
+	};
 	const char *quality = I_NeoGeoSpriteQualityName();
-	char gamma_value[2] = {(char)('0' + _g_gamma), 0};
+	const uint16_t *boolean_patch;
+	uint16_t boolean_cols;
+	const uint16_t *quality_patch;
+	uint16_t quality_cols;
 
 	M_DrawNeoGeoPatchCentered(0, doom_menu_optttl, DOOM_MENU_OPTTTL_COLS, DOOM_MENU_OPTTTL_ROWS);
-	M_DrawNeoGeoText(7, item_rows[endgame], "END GAME");
-	M_DrawNeoGeoText(7, item_rows[messages], "MESSAGES");
-	M_DrawNeoGeoText(NEO_FIX_MENU_WIDTH - M_NeoGeoTextWidth(msgNames[showMessages]) - 1,
-		item_rows[messages], msgNames[showMessages]);
-	M_DrawNeoGeoText(7, item_rows[alwaysrun], "ALWAYS RUN");
-	M_DrawNeoGeoText(NEO_FIX_MENU_WIDTH - M_NeoGeoTextWidth(msgNames[_g_alwaysRun]) - 1,
-		item_rows[alwaysrun], msgNames[_g_alwaysRun]);
-	M_DrawNeoGeoText(7, item_rows[spritesize], "GRAPHIC DETAIL");
-	M_DrawNeoGeoText(NEO_FIX_MENU_WIDTH - M_NeoGeoTextWidth(quality) - 1,
-		item_rows[spritesize], quality);
-	M_DrawNeoGeoText(7, item_rows[gamma], "GAMMA BOOST");
-	M_DrawNeoGeoText(NEO_FIX_MENU_WIDTH - 2, item_rows[gamma], gamma_value);
-	M_DrawNeoGeoText(7, item_rows[soundvol], "SOUND VOLUME");
+	V_DrawFixPatch(7, item_rows[endgame], doom_menu_text_end_game,
+		DOOM_MENU_TEXT_END_GAME_COLS, DOOM_MENU_TEXT_END_GAME_ROWS);
+	V_DrawFixPatch(7, item_rows[messages], doom_menu_text_messages,
+		DOOM_MENU_TEXT_MESSAGES_COLS, DOOM_MENU_TEXT_MESSAGES_ROWS);
+	boolean_patch = showMessages ? doom_menu_text_on : doom_menu_text_off;
+	boolean_cols = showMessages ? DOOM_MENU_TEXT_ON_COLS : DOOM_MENU_TEXT_OFF_COLS;
+	M_DrawNeoGeoPatchRight(item_rows[messages], boolean_patch, boolean_cols, DOOM_MENU_TEXT_ON_ROWS);
+	V_DrawFixPatch(7, item_rows[alwaysrun], doom_menu_text_always_run,
+		DOOM_MENU_TEXT_ALWAYS_RUN_COLS, DOOM_MENU_TEXT_ALWAYS_RUN_ROWS);
+	boolean_patch = _g_alwaysRun ? doom_menu_text_on : doom_menu_text_off;
+	boolean_cols = _g_alwaysRun ? DOOM_MENU_TEXT_ON_COLS : DOOM_MENU_TEXT_OFF_COLS;
+	M_DrawNeoGeoPatchRight(item_rows[alwaysrun], boolean_patch, boolean_cols, DOOM_MENU_TEXT_ON_ROWS);
+	V_DrawFixPatch(7, item_rows[spritesize], doom_menu_text_graphic_detail,
+		DOOM_MENU_TEXT_GRAPHIC_DETAIL_COLS, DOOM_MENU_TEXT_GRAPHIC_DETAIL_ROWS);
+	if (quality[0] == 'L')
+	{
+		quality_patch = doom_menu_text_low;
+		quality_cols = DOOM_MENU_TEXT_LOW_COLS;
+	}
+	else if (quality[0] == 'M')
+	{
+		quality_patch = doom_menu_text_medium;
+		quality_cols = DOOM_MENU_TEXT_MEDIUM_COLS;
+	}
+	else
+	{
+		quality_patch = doom_menu_text_high;
+		quality_cols = DOOM_MENU_TEXT_HIGH_COLS;
+	}
+	M_DrawNeoGeoPatchRight(item_rows[spritesize], quality_patch, quality_cols, DOOM_MENU_TEXT_HIGH_ROWS);
+	V_DrawFixPatch(7, item_rows[gamma], doom_menu_text_gamma_boost,
+		DOOM_MENU_TEXT_GAMMA_BOOST_COLS, DOOM_MENU_TEXT_GAMMA_BOOST_ROWS);
+	M_DrawNeoGeoPatchRight(item_rows[gamma], gamma_patches[_g_gamma], gamma_cols[_g_gamma],
+		DOOM_MENU_TEXT_0_ROWS);
+	V_DrawFixPatch(7, item_rows[soundvol], doom_menu_text_sound_volume,
+		DOOM_MENU_TEXT_SOUND_VOLUME_COLS, DOOM_MENU_TEXT_SOUND_VOLUME_ROWS);
 	M_DrawNeoGeoSkull(3, item_rows[itemOn] - 1);
 #else
 	V_DrawString((VIEWWINDOWWIDTH - 7) / 2, 2, D_LIGHT_RED, "OPTIONS");

@@ -63,8 +63,20 @@ COMPACT_PATCHES = frozenset((
     "M_MUSVOL",
 ))
 
-FONT_FIRST = 33
-FONT_LAST = 95
+TEXT_PATCHES = (
+    ("doom_menu_text_end_game", "END GAME"),
+    ("doom_menu_text_messages", "MESSAGES"),
+    ("doom_menu_text_always_run", "ALWAYS RUN"),
+    ("doom_menu_text_graphic_detail", "GRAPHIC DETAIL"),
+    ("doom_menu_text_gamma_boost", "GAMMA BOOST"),
+    ("doom_menu_text_sound_volume", "SOUND VOLUME"),
+    ("doom_menu_text_off", "OFF"),
+    ("doom_menu_text_on", "ON"),
+    ("doom_menu_text_low", "LOW"),
+    ("doom_menu_text_medium", "MEDIUM"),
+    ("doom_menu_text_high", "HIGH"),
+    *((f"doom_menu_text_{value}", str(value)) for value in range(6)),
+)
 
 
 def neo_color(rgb: tuple[int, int, int]) -> int:
@@ -158,15 +170,31 @@ def compact_patch(patch: list[list[int]]) -> list[list[int]]:
     )
 
 
-def normalize_font_glyph(glyph: list[list[int]]) -> list[list[int]]:
-    width = len(glyph[0])
-    if width > 8:
-        return resize_patch(glyph, 8, len(glyph))
-    if width == 8:
-        return glyph
+def text_patch(iwad: Wad, text: str) -> list[list[int]]:
+    glyphs: list[list[list[int]] | None] = []
+    width = 0
+    height = 0
+    for char in text.upper():
+        if char == " ":
+            glyphs.append(None)
+            width += 4
+            continue
+        glyph = decode_patch(iwad.get(f"STCFN{ord(char):03d}"))
+        glyphs.append(glyph)
+        width += len(glyph[0]) + 1
+        height = max(height, len(glyph))
 
-    left = (8 - width) // 2
-    return [[-1] * left + row + [-1] * (8 - width - left) for row in glyph]
+    width = max(1, width - (1 if glyphs and glyphs[-1] is not None else 0))
+    canvas = [[-1] * width for _ in range(height)]
+    x_offset = 0
+    for glyph in glyphs:
+        if glyph is None:
+            x_offset += 4
+            continue
+        for y, row in enumerate(glyph):
+            canvas[y][x_offset : x_offset + len(row)] = row
+        x_offset += len(glyph[0]) + 1
+    return canvas
 
 
 def menu_patch(iwad: Wad, name: str) -> list[list[int]]:
@@ -404,14 +432,10 @@ def write_menu_assets(
         patch_sources.append((c_name(name), cols, rows, sources))
         all_sources.extend(sources)
 
-    font_sources: list[list[int]] = []
-    for code in range(FONT_FIRST, FONT_LAST + 1):
-        glyph = normalize_font_glyph(decode_patch(iwad.get(f"STCFN{code:03d}")))
-        cols, rows, sources = patch_tile_sources(glyph)
-        if cols != 1 or rows != 1:
-            raise ValueError(f"STCFN{code:03d} does not fit in one FIX tile")
-        font_sources.append(sources[0])
-        all_sources.append(sources[0])
+    for name, text in TEXT_PATCHES:
+        cols, rows, sources = patch_tile_sources(text_patch(iwad, text))
+        patch_sources.append((name, cols, rows, sources))
+        all_sources.extend(sources)
 
     palettes, distances = build_palette_set(all_sources, playpal, 16)
 
@@ -438,11 +462,6 @@ def write_menu_assets(
         entries = [(palette << 12) | tile_id(tile) for palette, tile in tiles]
         patches.append((name, cols, rows, entries))
 
-    font_entries: list[int] = []
-    for source in font_sources:
-        palette, tile = quantize_tile(source, palettes, distances)
-        font_entries.append((palette << 12) | tile_id(tile))
-
     if unique_tiles and unique_tiles[-1][0] >= FIX_TILE_LIMIT:
         raise ValueError(
             f"menu needs {len(unique_tiles)} unique tiles at {MENU_TILE_BASE}, "
@@ -467,8 +486,6 @@ def write_menu_assets(
         "",
         f"#define DOOM_MENU_FIX_TILE_BASE {MENU_TILE_BASE}u",
         f"#define DOOM_MENU_FIX_TILE_COUNT {len(unique_tiles)}u",
-        f"#define DOOM_MENU_FONT_FIRST {FONT_FIRST}u",
-        f"#define DOOM_MENU_FONT_COUNT {len(font_entries)}u",
         "",
     ]
 
@@ -485,11 +502,7 @@ def write_menu_assets(
             lines.append(f"    {values},")
         lines.extend(["};", ""])
 
-    lines.append(f"static const uint16_t doom_menu_font[{len(font_entries)}] = {{")
-    for offset in range(0, len(font_entries), 12):
-        values = ", ".join(f"0x{entry:04x}" for entry in font_entries[offset : offset + 12])
-        lines.append(f"    {values},")
-    lines.extend(["};", "", "#endif", ""])
+    lines.extend(["#endif", ""])
     output_header.parent.mkdir(parents=True, exist_ok=True)
     output_header.write_text("\n".join(lines), encoding="ascii")
 
