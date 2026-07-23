@@ -52,6 +52,9 @@
 
 #include "globdata.h"
 
+#include "neogeo/doom_fix_menu_palette.h"
+#include "neogeo/doom_title_assets.h"
+
 
 extern int16_t CENTERY;
 
@@ -72,6 +75,7 @@ extern int16_t CENTERY;
 #define MICROFB_VISIBLE_COLOR_SLOTS 15u
 #define MICROFB_SPRITE_PALETTE_BASE 16u
 #define MICROFB_SPRITE_PALETTES ((256u + MICROFB_VISIBLE_COLOR_SLOTS - 1u) / MICROFB_VISIBLE_COLOR_SLOTS)
+#define TITLE_SPRITE_PALETTE_BASE (MICROFB_SPRITE_PALETTE_BASE + MICROFB_SPRITE_PALETTES)
 
 #define MICROFB_DISPLAY_W 320u
 #define MICROFB_DISPLAY_H 224u
@@ -112,11 +116,8 @@ typedef enum
 #define MICROFB_SPRITES_PER_SET (VIEWWINDOWWIDTH * MICROFB_COLUMN_CHUNKS)
 #define MICROFB_SPRITE_COUNT (MICROFB_SPRITES_PER_SET * MICROFB_FRAMEBUFFER_SETS)
 
-#define TITLE_TILE_BASE (MICROFB_TILE_BASE + 16u)
-#define TITLE_FIX_WIDTH 38u
-#define TITLE_FIX_HEIGHT 28u
 #define TITLE_SPRITE_BASE (MICROFB_SPRITE_BASE + MICROFB_SPRITE_COUNT)
-#define TITLE_SPRITE_COUNT TITLE_FIX_WIDTH
+#define TITLE_SPRITE_COUNT DOOM_TITLE_COLUMNS
 #define TITLE_X_OFFSET 8u
 #define TITLE_SHRINK_WORD 0x077fu
 
@@ -134,6 +135,10 @@ typedef enum
 
 #if (MICROFB_SPRITE_PALETTE_BASE + MICROFB_SPRITE_PALETTES) > 256
 #error Neo Geo sprite microframebuffer exceeds sprite palette budget
+#endif
+
+#if (TITLE_SPRITE_PALETTE_BASE + DOOM_TITLE_PALETTE_COUNT) > 256
+#error Neo Geo TITLEPIC exceeds sprite palette budget
 #endif
 
 typedef struct
@@ -173,9 +178,14 @@ static uint8_t _s_title_sprites_initialized;
 static uint8_t _s_title_sprite_active;
 static uint8_t _s_title_sprite_requested;
 static const uint16_t *_s_title_fix_source;
+static uint8_t _s_fix_menu_palette_requested;
+static uint8_t _s_fix_menu_palette_applied;
+static int8_t _s_current_palette;
 
 static int16_t palettelumpnum;
 static int8_t newpal = 100;
+
+#define NO_PALETTE_CHANGE 100
 
 
 static uint16_t NG_SpriteYWord(uint16_t y, uint16_t height_tiles)
@@ -290,6 +300,22 @@ static void NG_BuildSpritePalettes(const uint16_t *src)
 }
 
 
+static void NG_UploadTitlePalettes(void)
+{
+	volatile uint16_t *dst = &MMAP_PALBANK1[TITLE_SPRITE_PALETTE_BASE * 16u];
+	for (uint16_t i = 0; i < DOOM_TITLE_PALETTE_COUNT * 16u; i++)
+		dst[i] = ((const uint16_t *)doom_title_palettes)[i];
+}
+
+
+static void NG_UploadFixPalette(const uint16_t *src)
+{
+	volatile uint16_t *dst = &MMAP_PALBANK1[0];
+	for (uint16_t i = 0; i < 256u; i++)
+		dst[i] = src[i];
+}
+
+
 static void NG_InitColorTileMap(void)
 {
 	uint16_t color = 0;
@@ -318,12 +344,38 @@ static void I_UploadNewPalette(int8_t pal)
 {
 	const uint16_t *palette_lump = W_GetLumpByNum(palettelumpnum);
 	const uint16_t *src = &palette_lump[256 * pal];
+	_s_current_palette = pal;
 
 	MMAP_PALBANK1[0xfff] = src[0];
-	for (uint16_t i = 1; i < 256; i++)
-		MMAP_PALBANK1[i] = src[i];
+	if (!_s_fix_menu_palette_requested)
+	{
+		NG_UploadFixPalette(src);
+		_s_fix_menu_palette_applied = false;
+	}
 
 	NG_BuildSpritePalettes(src);
+}
+
+
+static void NG_ApplyPendingPalettes(void)
+{
+	if (newpal != NO_PALETTE_CHANGE)
+	{
+		I_UploadNewPalette(newpal);
+		newpal = NO_PALETTE_CHANGE;
+	}
+
+	if (_s_fix_menu_palette_requested != _s_fix_menu_palette_applied)
+	{
+		if (_s_fix_menu_palette_requested)
+			NG_UploadFixPalette(&doom_menu_palettes[0][0]);
+		else
+		{
+			const uint16_t *palette_lump = W_GetLumpByNum(palettelumpnum);
+			NG_UploadFixPalette(&palette_lump[256 * _s_current_palette]);
+		}
+		_s_fix_menu_palette_applied = _s_fix_menu_palette_requested;
+	}
 }
 
 
@@ -473,23 +525,29 @@ static void NG_InitMicroSprites(void)
 }
 
 
-static void NG_InitTitleSprites(const uint16_t *tilemap)
+static uint16_t NG_TitlePalette(uint16_t row, uint16_t col)
+{
+	return doom_title_palette_map[row * DOOM_TITLE_COLUMNS + col];
+}
+
+
+static void NG_InitTitleSprites(void)
 {
 	if (_s_title_sprites_initialized)
 		return;
 
 	*REG_VRAMMOD = 1;
-	for (uint16_t col = 0; col < TITLE_FIX_WIDTH; col++)
+	for (uint16_t col = 0; col < DOOM_TITLE_COLUMNS; col++)
 	{
 		const uint16_t sprite = TITLE_SPRITE_BASE + col;
 		*REG_VRAMADDR = ADDR_SCB1 + (sprite * 64u);
-		for (uint16_t row = 0; row < TITLE_FIX_HEIGHT; row++)
+		for (uint16_t row = 0; row < DOOM_TITLE_ROWS; row++)
 		{
-			const uint16_t entry = tilemap[row * TITLE_FIX_WIDTH + col];
-			*REG_VRAMRW = TITLE_TILE_BASE + row * TITLE_FIX_WIDTH + col;
-			*REG_VRAMRW = (entry & 0xf000u) >> 4;
+			*REG_VRAMRW = DOOM_TITLE_TILE_BASE + row * DOOM_TITLE_COLUMNS + col;
+			*REG_VRAMRW = MICROFB_PALETTE_ATTR(
+				TITLE_SPRITE_PALETTE_BASE + NG_TitlePalette(row, col));
 		}
-		for (uint16_t row = TITLE_FIX_HEIGHT; row < 32; row++)
+		for (uint16_t row = DOOM_TITLE_ROWS; row < 32; row++)
 		{
 			*REG_VRAMRW = MICROFB_TILE_BLANK;
 			*REG_VRAMRW = 0;
@@ -509,7 +567,7 @@ static void NG_InitTitleSprites(const uint16_t *tilemap)
 
 static void NG_SetTitleSpritesVisible(uint8_t visible)
 {
-	const uint16_t height_word = visible ? NG_SpriteYWord(0, TITLE_FIX_HEIGHT) : 0;
+	const uint16_t height_word = visible ? NG_SpriteYWord(0, DOOM_TITLE_ROWS) : 0;
 	*REG_VRAMMOD = 1;
 	*REG_VRAMADDR = ADDR_SCB3 + TITLE_SPRITE_BASE;
 	for (uint16_t col = 0; col < TITLE_SPRITE_COUNT; col++)
@@ -524,7 +582,10 @@ void I_InitGraphicsHardwareSpecificCode(void)
 
 	I_ReloadPalette();
 	NG_InitColorTileMap();
+	_s_fix_menu_palette_requested = false;
+	_s_fix_menu_palette_applied = false;
 	I_UploadNewPalette(0);
+	NG_UploadTitlePalettes();
 
 	_s_microfb_mode_index = MICROFB_DEFAULT_MODE_INDEX;
 	_s_pending_microfb_mode_index = _s_microfb_mode_index;
@@ -557,8 +618,6 @@ void V_SetSTPalette(void)
 	// Do nothing
 }
 
-
-#define NO_PALETTE_CHANGE 100
 
 static void NG_UploadMicroFramebuffer(uint8_t set)
 {
@@ -611,15 +670,10 @@ const char *I_NeoGeoSpriteQualityName(void)
 
 void I_FinishUpdate(void)
 {
-	if (newpal != NO_PALETTE_CHANGE)
-	{
-		I_UploadNewPalette(newpal);
-		newpal = NO_PALETTE_CHANGE;
-	}
-
 	if (_s_title_sprite_requested)
 	{
 		NG_WaitVBlankStart();
+		NG_ApplyPendingPalettes();
 		if (!_s_title_sprite_active)
 		{
 			NG_SetMicroSpriteSetVisible(_s_visible_sprite_set, false);
@@ -637,6 +691,7 @@ void I_FinishUpdate(void)
 	if (_s_configured_microfb_mode[next_sprite_set] != _s_microfb_mode_index)
 		NG_ConfigureMicroSpriteSet(next_sprite_set);
 	NG_WaitVBlankStart();
+	NG_ApplyPendingPalettes();
 	if (_s_title_sprite_active)
 	{
 		NG_SetTitleSpritesVisible(false);
@@ -651,6 +706,12 @@ void I_FinishUpdate(void)
 	NG_UploadFixOverlay();
 
 	NG_ApplyMicroFramebufferMode(_s_pending_microfb_mode_index);
+}
+
+
+void I_NeoGeoSetFixMenuPalette(boolean active)
+{
+	_s_fix_menu_palette_requested = active;
 }
 
 
@@ -832,9 +893,9 @@ void V_DrawRawFullScreen(int16_t num)
 	if (num == titlepicnum)
 	{
 		_s_title_fix_source = W_GetLumpByNum(num);
-		NG_InitTitleSprites(_s_title_fix_source);
+		NG_InitTitleSprites();
 		_s_title_sprite_requested = true;
-		if (!_s_fix_wipe_active)
+		if (!_s_fix_wipe_active && !_s_title_sprite_active)
 			NG_ClearFixOverlay();
 		return;
 	}

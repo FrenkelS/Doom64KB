@@ -75,8 +75,12 @@ static void D_UpdateFPS(void);
 
 
 //jff 1/22/98 parms for disabling music and sound
-      boolean nosfxparm   = true;
+      boolean nosfxparm   = false;
+#if defined __NGDEVKIT__
+const boolean nomusicparm = false;
+#else
 const boolean nomusicparm = true;
+#endif
 
 const boolean nodrawers = false;
 

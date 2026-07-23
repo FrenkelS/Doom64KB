@@ -59,7 +59,11 @@
 #include "globdata.h"
 
 
+#if defined __NGDEVKIT__
+#define MAX_CHANNELS    6
+#else
 #define MAX_CHANNELS    1
+#endif
 
 
 int16_t I_StartSound(sfxenum_t id, int16_t channel, int16_t vol, int16_t sep)
@@ -82,6 +86,12 @@ int16_t I_StartSound(sfxenum_t id, int16_t channel, int16_t vol, int16_t sep)
 	DMX_Play(id);
 
 	return channel;
+}
+
+
+void I_SetSfxVolume(int16_t volume)
+{
+	DMX_SetSfxVolume((uint8_t)volume);
 }
 
 
@@ -120,18 +130,18 @@ void I_ShutdownSound(void)
 
 void I_PlaySong(musicenum_t handle, boolean looping)
 {
-	UNUSED(handle);
-	UNUSED(looping);
+	DMX_PlayMusic(handle, looping);
 }
 
 
 void I_StopSong(musicenum_t handle)
 {
 	UNUSED(handle);
+	DMX_StopMusic();
 }
 
 
 void I_SetMusicVolume(int16_t volume)
 {
-	UNUSED(volume);
+	DMX_SetMusicVolume((uint8_t)volume);
 }

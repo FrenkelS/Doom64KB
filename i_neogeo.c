@@ -34,6 +34,8 @@
 #include "d_main.h"
 #include "i_system.h"
 
+#include "neogeo/assets/generated/audio/doom_audio_generated.h"
+
 #include "globdata.h"
 
 
@@ -121,13 +123,51 @@ void I_StartTic(void)
 
 #define RESET_SOUND_DRIVER 3
 
-
-static const int16_t firstsfx = 3;
+_Static_assert(NUMSFX - 1 == DOOM_SOUND_SFX_COUNT,
+	"Neo Geo sound command table must match sfxenum_t");
+_Static_assert(NUMMUSIC - 1 == DOOM_SOUND_MUSIC_COUNT,
+	"Neo Geo music command table must match musicenum_t");
 
 
 void DMX_Play(sfxenum_t id)
 {
-	*REG_SOUND = firstsfx + id;
+	if (id > sfx_None && id < NUMSFX)
+		*REG_SOUND = DOOM_SOUND_SFX_COMMAND(id);
+}
+
+
+void DMX_PlayMusic(musicenum_t id, uint8_t looping)
+{
+	uint8_t command;
+	UNUSED(looping);
+
+	if (id <= mus_None || id >= NUMMUSIC)
+		return;
+
+	command = DOOM_SOUND_MUSIC_COMMAND(id);
+	*REG_SOUND = command;
+}
+
+
+void DMX_StopMusic(void)
+{
+	*REG_SOUND = DOOM_SOUND_CMD_MUSIC_STOP;
+}
+
+
+void DMX_SetSfxVolume(uint8_t volume)
+{
+	if (volume > 15u)
+		volume = 15u;
+	*REG_SOUND = DOOM_SOUND_SFX_VOLUME_COMMAND(volume);
+}
+
+
+void DMX_SetMusicVolume(uint8_t volume)
+{
+	if (volume > 15u)
+		volume = 15u;
+	*REG_SOUND = DOOM_SOUND_MUSIC_VOLUME_COMMAND(volume);
 }
 
 
@@ -145,7 +185,7 @@ void DMX_Init2(void)
 
 void DMX_Shutdown(void)
 {
-	*REG_SOUND = RESET_SOUND_DRIVER;
+	*REG_SOUND = DOOM_SOUND_CMD_ALL_OFF;
 }
 
 

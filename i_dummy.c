@@ -82,6 +82,26 @@ void DMX_Play(sfxenum_t id)
 }
 
 
+void DMX_PlayMusic(musicenum_t id, uint8_t looping)
+{
+}
+
+
+void DMX_StopMusic(void)
+{
+}
+
+
+void DMX_SetSfxVolume(uint8_t volume)
+{
+}
+
+
+void DMX_SetMusicVolume(uint8_t volume)
+{
+}
+
+
 void DMX_Init(void)
 {
 }

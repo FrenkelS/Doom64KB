@@ -64,6 +64,13 @@ typedef struct
 // the set of channels available
 static channel_t *channels;
 
+#if defined __NGDEVKIT__
+#define S_SOUND_CHANNELS 6
+static channel_t neogeo_channels[S_SOUND_CHANNELS];
+#else
+#define S_SOUND_CHANNELS 1
+#endif
+
 // music currently being played
 static musicenum_t mus_playing;
 
@@ -97,7 +104,7 @@ int16_t snd_MusicVolume = 15;
 
 
 // number of channels available
-static const int16_t numChannels = 1;
+static const int16_t numChannels = S_SOUND_CHANNELS;
 
 //
 // Internals.
@@ -129,8 +136,12 @@ void S_Init(int16_t sfxVolume, int16_t musicVolume)
         // (the maximum numer of sounds rendered
         // simultaneously) within zone memory.
         // CPhipps - calloc
+#if defined __NGDEVKIT__
+        channels = neogeo_channels;
+#else
         channels =
                 (channel_t *) Z_MallocStatic(numChannels * sizeof(channel_t));
+#endif
         memset(channels, 0, numChannels * sizeof(channel_t));
     }
 
@@ -293,7 +304,7 @@ static boolean S_SoundIsPlaying(int16_t cnum)
     {
         int32_t ticknow = _g_gametic;
 
-        return (channel->tickend < ticknow);
+        return (ticknow < channel->tickend);
     }
 
     return false;
@@ -350,6 +361,7 @@ void S_SetSfxVolume(int16_t volume)
     if (!(0 <= volume && volume <= 127))
         I_Error("S_SetSfxVolume: Attempt to set sfx volume at %d", volume);
 
+	I_SetSfxVolume(volume);
     snd_SfxVolume = volume;
 }
 

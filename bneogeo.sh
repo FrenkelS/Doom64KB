@@ -1,8 +1,45 @@
-mkdir neogeo/rom
-
 set -e
 
+mkdir -p neogeo/rom
 mkdir -p neogeo/assets/generated
+
+AUDIO_ASSET_DIR="neogeo/assets/generated/audio"
+AUDIO_VROM_BYTES="${AUDIO_VROM_BYTES:-16777216}"
+AUDIO_REPORT="$AUDIO_ASSET_DIR/doom_audio_report.txt"
+
+mkdir -p "$AUDIO_ASSET_DIR"
+
+audio_needs_rebuild=false
+for asset in doom_audio.vrom doom_audio_generated.inc doom_audio_generated.h doom_audio_report.txt
+do
+  if [ ! -f "$AUDIO_ASSET_DIR/$asset" ]
+  then
+    audio_needs_rebuild=true
+  fi
+done
+
+if [ "$audio_needs_rebuild" = false ] && \
+   { [ tools/gen_neogeo_audio.py -nt "$AUDIO_REPORT" ] || \
+     [ DOOM64TB.WAD -nt "$AUDIO_REPORT" ]; }
+then
+  audio_needs_rebuild=true
+fi
+
+if [ "$audio_needs_rebuild" = true ]
+then
+  python3 tools/gen_neogeo_audio.py \
+    --iwad DOOM64TB.WAD \
+    --out-dir "$AUDIO_ASSET_DIR" \
+    --vrom-size "$AUDIO_VROM_BYTES"
+fi
+
+z80-neogeo-ihx-sdasz80 -g -p -u \
+  -I"$AUDIO_ASSET_DIR" \
+  -o "$AUDIO_ASSET_DIR/doomsnd.rel" \
+  neogeo/sound/doomsnd.s
+z80-neogeo-ihx-sdldz80 -i \
+  "$AUDIO_ASSET_DIR/doomsnd.ihx" \
+  "$AUDIO_ASSET_DIR/doomsnd.rel"
 
 unset CFLAGS
 
@@ -116,7 +153,7 @@ rm z_zone.o
 
 m68k-neogeo-elf-objcopy -O binary -S -R .text2 --gap-fill 0xff --pad-to             1048576   neogeo/DOOM64KB.elf neogeo/rom/doom64kb-p1.p1 && dd if=neogeo/rom/doom64kb-p1.p1 of=neogeo/rom/doom64kb-p1.p1 conv=notrunc,swab status=none
 m68k-neogeo-elf-objcopy -O binary    -j .text2 --gap-fill 0xff --pad-to $((0x200000+1048576)) neogeo/DOOM64KB.elf neogeo/rom/doom64kb-p2.p2 && dd if=neogeo/rom/doom64kb-p2.p2 of=neogeo/rom/doom64kb-p2.p2 conv=notrunc,swab status=none
-z80-neogeo-ihx-sdobjcopy -I ihex -O binary neogeo/assets/demo_driver.ihx neogeo/rom/doom64kb-m1.m1 --pad-to 131072
+z80-neogeo-ihx-sdobjcopy -I ihex -O binary "$AUDIO_ASSET_DIR/doomsnd.ihx" neogeo/rom/doom64kb-m1.m1 --pad-to 131072
 python3 tools/gen_neogeo_color_tiles.py \
   --base-c1 neogeo/assets/base-crom-logo.c1 \
   --base-c2 neogeo/assets/base-crom-logo.c2 \
@@ -129,9 +166,9 @@ cp neogeo/assets/generated/doom_color_microfb.c1 neogeo/rom/doom64kb-c1.c1 && tr
 cp neogeo/assets/generated/doom_color_microfb.c2 neogeo/rom/doom64kb-c2.c2 && truncate -s "$CROM_FILE_BYTES" neogeo/rom/doom64kb-c2.c2
 cp neogeo/assets/doom64kb.fix neogeo/rom/doom64kb-s1.s1
 dd if=neogeo/assets/doom-menu.fix of=neogeo/rom/doom64kb-s1.s1 bs=32 seek=3525 conv=notrunc status=none
-cp neogeo/assets/samples.v1 neogeo/rom/doom64kb-v1.v1
+cp "$AUDIO_ASSET_DIR/doom_audio.vrom" neogeo/rom/doom64kb-v1.v1
 truncate -s 131072 neogeo/rom/doom64kb-s1.s1
-truncate -s 524288 neogeo/rom/doom64kb-v1.v1
+truncate -s "$AUDIO_VROM_BYTES" neogeo/rom/doom64kb-v1.v1
 romtool.py -b cartridge -f zip   -p neogeo/rom/doom64kb-p1.p1 neogeo/rom/doom64kb-p2.p2 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -x "zip.comment="              -o neogeo/rom/doom64kb.zip
 romtool.py -b hash      -f mame  -p neogeo/rom/doom64kb-p1.p1 neogeo/rom/doom64kb-p2.p2 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -l "Doom64KB: Neo Geo Edition" -o neogeo/rom/neogeo.xml
 romtool.py -b hash      -f gngeo -p neogeo/rom/doom64kb-p1.p1 neogeo/rom/doom64kb-p2.p2 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -l "Doom64KB: Neo Geo Edition" -o neogeo/rom/gngeo_data.zip -x gngeo.data=/usr/share/ngdevkit-gngeo/gngeo_data.zip
