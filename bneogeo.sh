@@ -3,6 +3,16 @@ set -e
 mkdir -p neogeo/rom
 mkdir -p neogeo/assets/generated
 
+SECTOR_LINES_HEADER="neogeo/assets/generated/doom_sector_lines.h"
+if [ ! -f "$SECTOR_LINES_HEADER" ] || \
+   [ tools/gen_neogeo_sector_lines.py -nt "$SECTOR_LINES_HEADER" ] || \
+   [ DOOM64TB.WAD -nt "$SECTOR_LINES_HEADER" ]
+then
+  python3 tools/gen_neogeo_sector_lines.py \
+    --iwad DOOM64TB.WAD \
+    --output "$SECTOR_LINES_HEADER"
+fi
+
 AUDIO_ASSET_DIR="neogeo/assets/generated/audio"
 AUDIO_VROM_BYTES="${AUDIO_VROM_BYTES:-16777216}"
 AUDIO_REPORT="$AUDIO_ASSET_DIR/doom_audio_report.txt"
@@ -46,7 +56,7 @@ unset CFLAGS
 
 CROM_FILE_BYTES="${CROM_FILE_BYTES:-4194304}"
 
-export RENDER_OPTIONS="-DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=104 -DWAD_FILE=\"DOOM64TB.WAD\" -DVIEWWINDOWWIDTH=80 -DVIEWWINDOWHEIGHT=56 -DMAPWIDTH=80 -DLOW_MEMORY -D__NGDEVKIT__ -DNEOGEO_SPRITE_MICROFB -DNEOGEO_HEAP_SIZE=44000"
+export RENDER_OPTIONS="-DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=104 -DWAD_FILE=\"DOOM64TB.WAD\" -DVIEWWINDOWWIDTH=80 -DVIEWWINDOWHEIGHT=56 -DMAPWIDTH=80 -DLOW_MEMORY -D__NGDEVKIT__ -DNEOGEO_SPRITE_MICROFB -DNEOGEO_ROM_SECTOR_LINES -DNEOGEO_COMPACT_BLOCKMAP -DNEOGEO_COMPACT_SECTORS -DNEOGEO_COMPACT_LINESTATE -DNEOGEO_HEAP_SIZE=44000 ${EXTRA_RENDER_OPTIONS:-}"
 
 export CPU=68000
 m68k-neogeo-elf-gcc -c i_neogev.c $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre

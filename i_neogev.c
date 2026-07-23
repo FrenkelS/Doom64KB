@@ -1111,6 +1111,33 @@ void V_ClearString(int16_t y, size_t len)
 }
 
 
+static void NG_DrawFixedString(int16_t x, int16_t y,
+	uint16_t color, const char *text)
+{
+	while (*text)
+		NG_DrawFixCharacter(x++, y, color, (uint8_t)*text++);
+}
+
+
+void I_NeoGeoShowLoadingScreen(int16_t map)
+{
+	_s_static_background_requested = STATIC_BACKGROUND_NONE;
+	_s_static_background_wipe_source = NULL;
+	_s_fix_target = NULL;
+	_s_fix_target_kind = FIX_TARGET_NONE;
+	_s_fix_menu_palette_requested = false;
+	memset(_s_screen, 0, sizeof(_s_screen));
+	NG_ClearFixOverlay();
+	I_FinishUpdate();
+	NG_ClearFixOverlay();
+
+	NG_DrawFixedString(15, 12, D_WHITE, "LOADING");
+	char map_name[] = "E1M1";
+	map_name[3] = '0' + map;
+	NG_DrawFixedString(17, 14, D_LIGHT_RED, map_name);
+}
+
+
 void I_InitScreenPage(void)
 {
 	NG_ClearFixOverlay();

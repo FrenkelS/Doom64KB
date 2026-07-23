@@ -219,7 +219,11 @@ typedef struct mobj_s
 
     // Interaction info, by BLOCKMAP.
     // Links in blocks (if needed).
-    uint16_t            bnext; // Index into _g_thingPool, or NO_INDEX.
+#if defined NEOGEO_COMPACT_BLOCKMAP
+    uint8_t             bnext; // Index into _g_thingPool, or MOBJ_NO_INDEX.
+#else
+    uint16_t            bnext; // Index into _g_thingPool, or MOBJ_NO_INDEX.
+#endif
 
     struct subsector_s __far* subsector;
 
@@ -279,6 +283,14 @@ typedef struct mobj_s
     // SEE WARNING ABOVE ABOUT POINTER FIELDS!!!
 } mobj_t;
 
+#if defined NEOGEO_COMPACT_BLOCKMAP
+typedef uint8_t mobjindex_t;
+#define MOBJ_NO_INDEX UINT8_MAX
+#else
+typedef uint16_t mobjindex_t;
+#define MOBJ_NO_INDEX UINT16_MAX
+#endif
+
 // External declarations (fomerly in p_local.h) -- killough 5/2/98
 
 #define VIEWHEIGHT      (41*FRACUNIT)
@@ -298,7 +310,10 @@ void    P_SpawnPuff(fixed_t x, fixed_t y, fixed_t z);
 void    P_SpawnBlood(fixed_t x, fixed_t y, fixed_t z, int16_t damage);
 mobj_t __far* P_SpawnMissile(mobj_t __far* source, mobj_t __far* dest, mobjtype_t type);
 void    P_SpawnPlayerMissile(mobj_t __far* source);
-void    P_SpawnMapThing (const mapthing_t __far* mthing);
+mobjtype_t P_MapThingMobjType(const mapthing_t __far* mthing);
+mobj_t __far* P_SpawnMapThing(const mapthing_t __far* mthing,
+                              mobjtype_t type,
+                              boolean count_totals);
 
 struct player_s* P_MobjIsPlayer(const mobj_t __far* mobj);
 

@@ -40,6 +40,7 @@ void I_NeoGeoChangeSpriteQuality(int16_t direction);
 const char *I_NeoGeoSpriteQualityName(void);
 void I_NeoGeoSetFixMenuPalette(boolean active);
 boolean I_NeoGeoFixWipeActive(void);
+void I_NeoGeoShowLoadingScreen(int16_t map);
 #endif
 
 

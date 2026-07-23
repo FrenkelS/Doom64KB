@@ -379,6 +379,22 @@ void __far* Z_TryMallocStatic(uint16_t size)
 	return Z_TryMalloc(size, PU_STATIC, NULL);
 }
 
+void __far* Z_TryMallocLevel(uint16_t size, void __far*__far* user)
+{
+	return Z_TryMalloc(size, PU_LEVEL, user);
+}
+
+uint16_t Z_LargestFreeBlock(void)
+{
+	uint32_t size = Z_GetLargestFreeBlockSize();
+
+	if (size <= PARAGRAPH_SIZE)
+		return 0;
+
+	size -= PARAGRAPH_SIZE;
+	return size > UINT16_MAX ? UINT16_MAX : (uint16_t)size;
+}
+
 
 void __far* Z_MallocStatic(uint16_t size)
 {

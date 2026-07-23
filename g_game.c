@@ -71,6 +71,7 @@
 #include "p_inter.h"
 #include "g_game.h"
 #include "i_system.h"
+#include "i_video.h"
 
 #include "globdata.h"
 
@@ -319,6 +320,9 @@ static void G_DoLoadLevel (void)
 
     P_SetSecnodeFirstpoolToNull();
 
+#if defined NEOGEO_SPRITE_MICROFB
+    I_NeoGeoShowLoadingScreen(_g_gamemap);
+#endif
 
     P_SetupLevel (_g_gamemap);
 
@@ -917,6 +921,13 @@ static void G_InitNew(skill_t skill, int16_t map)
     G_DoLoadLevel ();
 }
 
+#if defined NEOGEO_MAP_TEST
+void G_TestInitNew(void)
+{
+    G_InitNew(sk_medium, NEOGEO_MAP_TEST);
+}
+#endif
+
 //
 // DEMO RECORDING
 //
@@ -1102,4 +1113,3 @@ void G_CheckDemoStatus (void)
         D_AdvanceDemo ();
     }
 }
-

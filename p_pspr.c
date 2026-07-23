@@ -380,7 +380,7 @@ static void P_RecursiveSound(sector_t __far* sec, int16_t soundblocks, mobj_t __
   sec->soundtraversed = soundblocks+1;
   sec->soundtarget    = soundtarget;
 
-  for (i=0; i<sec->linecount; i++)
+  for (i=0; i<SECTOR_LINECOUNT(sec); i++)
     {
       sector_t __far* other;
       const line_t __far* check = SECTOR_LINE(sec, i);

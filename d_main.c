@@ -501,6 +501,9 @@ static void D_DoomMainSetup(void)
 
     I_InitGraphics();
 
+#if defined NEOGEO_MAP_TEST
+    G_TestInitNew();
+#else
     int16_t p = M_CheckParm("-timedemo");
     if (p && p < myargc - 1)
     {
@@ -513,6 +516,7 @@ static void D_DoomMainSetup(void)
     {
         D_StartTitle();                 // start up intro loop
     }
+#endif
 }
 
 //

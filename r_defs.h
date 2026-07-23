@@ -68,14 +68,25 @@ typedef struct
 
 typedef struct
 {
+  uint16_t first;
+  uint16_t count;
+} sectorlinespan_t;
+
+typedef struct
+{
   int16_t x, y;
 } vertex16_t;
 
 // Each sector has a degenmobj_t in its center for sound origin purposes.
 typedef struct
 {
+#if defined NEOGEO_COMPACT_SECTORS
+  int16_t x;
+  int16_t y;
+#else
   fixed_t x;
   fixed_t y;
+#endif
 } degenmobj_t;
 
 //
@@ -94,20 +105,33 @@ typedef struct
 
 
   // thinker_t for reversable actions
+#if defined NEOGEO_COMPACT_SECTORS
+  uint8_t floordata;        // nonzero while a floor thinker owns this sector
+#else
   void __far* floordata;    // jff 2/22/98 make thinkers on
+#endif
   void __far* ceilingdata;  // floors, ceilings, lighting,
 
   // list of mobjs that are at least partially in the sector
   // thinglist is a subset of touching_thinglist
   struct msecnode_s __far* touching_thinglist;
 
+#if !defined NEOGEO_ROM_SECTOR_LINES
   uint16_t __far* lines;        // Indexes into _g_maplines.
+#endif
 
   uint16_t validcount;        // if == validcount, already checked
+#if !defined NEOGEO_ROM_SECTOR_LINES
   int16_t linecount;
+#endif
 
+#if defined NEOGEO_COMPACT_SECTORS
+  uint8_t floorpic;
+  uint8_t ceilingpic;
+#else
   int16_t floorpic;
   int16_t ceilingpic;
+#endif
 
   uint8_t lightlevel;
   int8_t special;
@@ -116,6 +140,17 @@ typedef struct
   int8_t soundtraversed;    // 0 = untraversed, 1,2 = sndlines-1
 
 } sector_t;
+
+#if defined NEOGEO_COMPACT_SECTORS
+#define SECTOR_FLOOR_ACTIVE(sec) ((sec)->floordata != 0)
+#define SECTOR_CLAIM_FLOOR(sec, thinker) \
+  ((void)(thinker), (sec)->floordata = 1)
+#define SECTOR_RELEASE_FLOOR(sec) ((sec)->floordata = 0)
+#else
+#define SECTOR_FLOOR_ACTIVE(sec) ((sec)->floordata != NULL)
+#define SECTOR_CLAIM_FLOOR(sec, thinker) ((sec)->floordata = (thinker))
+#define SECTOR_RELEASE_FLOOR(sec) ((sec)->floordata = NULL)
+#endif
 
 typedef struct {
   int16_t floorheight;
@@ -181,13 +216,19 @@ typedef enum
 typedef struct linedata_s
 {
     uint16_t validcount;        // if == validcount, already checked
+#if !defined NEOGEO_COMPACT_LINESTATE
     uint16_t r_validcount;      // cph: if == gametic, r_flags already done
+#endif
 
     uint8_t r_flags;
     int8_t special;
 } linedata_t;
 
+#if defined NEOGEO_COMPACT_LINESTATE
+typedef char assertLinedataSize[sizeof(linedata_t) == 4 ? 1 : -1];
+#else
 typedef char assertLinedataSize[sizeof(linedata_t) == 6 ? 1 : -1];
+#endif
 
 typedef PACKEDATTR_PRE struct line_s
 {

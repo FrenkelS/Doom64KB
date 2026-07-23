@@ -42,6 +42,7 @@
 #include "r_main.h"
 #include "p_maputl.h"
 #include "p_map.h"
+#include "p_setup.h"
 #include "p_tick.h"
 #include "sounds.h"
 #include "s_sound.h"
@@ -891,6 +892,8 @@ void P_RemoveMobj(mobj_t __far* mobj)
 
   S_StopSound (mobj);
 
+  P_MapThingRemoved(mobj);
+
   // killough 11/98:
   //
   // Remove any references to other mobjs.
@@ -919,10 +922,10 @@ void P_RemoveMobj(mobj_t __far* mobj)
  *
  */
 
-static PUREFUNC int16_t P_FindDoomedNum(int16_t type)
+static PUREFUNC mobjtype_t P_FindDoomedNum(int16_t type)
 {
     // find which type to spawn
-    for (int16_t i = 0; i < NUMMOBJTYPES; i++)
+    for (mobjtype_t i = 0; i < NUMMOBJTYPES; i++)
     {
         if (type == mobjinfo[i].doomednum)
             return i;
@@ -939,7 +942,7 @@ static PUREFUNC int16_t P_FindDoomedNum(int16_t type)
 //  between levels.
 //
 
-static void P_SpawnPlayer(int16_t playerx, int16_t playery, int8_t playerangle)
+static mobj_t __far* P_SpawnPlayer(int16_t playerx, int16_t playery, int8_t playerangle)
 {
   player_t* p;
   mobj_t __far*   mobj;
@@ -974,6 +977,7 @@ static void P_SpawnPlayer(int16_t playerx, int16_t playery, int8_t playerangle)
   // setup gun psprite
 
   P_SetupPsprites (p);
+  return mobj;
 }
 
 
@@ -992,50 +996,54 @@ static void P_SpawnPlayer(int16_t playerx, int16_t playery, int8_t playerangle)
 // Deaf monsters/do not react to sound.
 #define MTF_AMBUSH              8
 
-void P_SpawnMapThing(const mapthing_t __far* mthing)
+mobjtype_t P_MapThingMobjType(const mapthing_t __far* mthing)
 {
-    int16_t     i;
-    mobj_t __far* mobj;
-    fixed_t x;
-    fixed_t y;
-
-    // check for players specially
-
-    //Only care about start spot for player 1.
     if (mthing->type == 1)
-    {
-        P_SpawnPlayer(mthing->x, mthing->y, mthing->angle);
-        return;
-    }
+        return MT_PLAYER;
 
     // check for apropriate skill level
     if (_g_gameskill == sk_baby || _g_gameskill == sk_easy ?
             !(mthing->options & MTF_EASY) :
             _g_gameskill == sk_hard || _g_gameskill == sk_nightmare ?
             !(mthing->options & MTF_HARD) : !(mthing->options & MTF_NORMAL))
-        return;
+        return MT_NOTHING;
 
-    // find which type to spawn
+    return P_FindDoomedNum(mthing->type);
+}
 
-    i = P_FindDoomedNum(mthing->type);
 
-    x = ((int32_t)mthing->x) << FRACBITS;
-    y = ((int32_t)mthing->y) << FRACBITS;
+mobj_t __far* P_SpawnMapThing(const mapthing_t __far* mthing,
+                              mobjtype_t type,
+                              boolean count_totals)
+{
+    if (type == MT_NOTHING)
+        return NULL;
 
-    mobj = P_SpawnMobj(x, y, ONFLOORZ, i);
+    if (type == MT_PLAYER)
+        return P_SpawnPlayer(mthing->x, mthing->y, mthing->angle);
+
+    fixed_t x = ((int32_t)mthing->x) << FRACBITS;
+    fixed_t y = ((int32_t)mthing->y) << FRACBITS;
+
+    mobj_t __far* mobj = P_SpawnMobj(x, y, ONFLOORZ, type);
 
     if (mobj->tics > 0)
         mobj->tics = 1 + (P_Random () % mobj->tics);
 
-    if (!((mobj->flags ^ MF_COUNTKILL) & MF_COUNTKILL))
-        _g_totalkills++;
+    if (count_totals)
+    {
+        if (!((mobj->flags ^ MF_COUNTKILL) & MF_COUNTKILL))
+            _g_totalkills++;
 
-    if (mobj->flags & MF_COUNTITEM)
-        _g_totalitems++;
+        if (mobj->flags & MF_COUNTITEM)
+            _g_totalitems++;
+    }
 
     mobj->angle = ANG45 * mthing->angle;
     if (mthing->options & MTF_AMBUSH)
         mobj->flags |= MF_AMBUSH;
+
+    return mobj;
 }
 
 

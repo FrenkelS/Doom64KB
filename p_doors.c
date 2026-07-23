@@ -72,7 +72,7 @@ static void EV_LightTurnOnPartway(const line_t __far* line, fixed_t level)
       sector_t __far* sector = _g_sectors+i;
       int16_t j, bright = 0, min = sector->lightlevel;
 
-      for (j = 0; j < sector->linecount; j++)
+      for (j = 0; j < SECTOR_LINECOUNT(sector); j++)
   if ((temp = getNextSector(SECTOR_LINE(sector, j),sector)))
     {
       if (temp->lightlevel > bright)

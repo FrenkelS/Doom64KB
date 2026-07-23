@@ -152,8 +152,21 @@ extern const mapsubsector_t *_g_mapsubsectors;
 extern int16_t      _g_numlines;
 extern linedata_t   __far* _g_lines;
 extern const line_t *_g_maplines;
+#if defined NEOGEO_COMPACT_LINESTATE
+extern uint8_t __far* _g_lineRenderValid;
+#endif
 
+#if defined NEOGEO_ROM_SECTOR_LINES
+extern const uint16_t __far* _g_sectorLineIndices;
+extern const sectorlinespan_t __far* _g_sectorLineSpans;
+#define SECTOR_LINE_SPAN(sec) (&_g_sectorLineSpans[(sec) - _g_sectors])
+#define SECTOR_LINECOUNT(sec) (SECTOR_LINE_SPAN(sec)->count)
+#define SECTOR_LINE(sec, i) \
+  (&_g_maplines[_g_sectorLineIndices[SECTOR_LINE_SPAN(sec)->first + (i)]])
+#else
+#define SECTOR_LINECOUNT(sec) ((sec)->linecount)
 #define SECTOR_LINE(sec, i) (&_g_maplines[(sec)->lines[(i)]])
+#endif
 
 
 extern side_t   __far* _g_sides;
@@ -179,7 +192,7 @@ extern const int16_t      __far* _g_blockmaplump;
 
 extern fixed_t   _g_bmaporgx, _g_bmaporgy;     // origin of block map
 
-extern uint16_t __far* _g_blocklinks;           // indexes into _g_thingPool
+extern mobjindex_t __far* _g_blocklinks;        // indexes into _g_thingPool
 
 //
 // REJECT

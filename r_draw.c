@@ -2763,7 +2763,11 @@ static void R_RecalcLineFlags(void)
 {
     const side_t __far* side = &_g_sides[curline->sidenum];
 
+#if defined NEOGEO_COMPACT_LINESTATE
+    _g_lineRenderValid[curline->linenum] = (uint8_t)_g_gametic;
+#else
     linedef->r_validcount = _g_gametic;
+#endif
 
     /* First decide if the line is closed, normal, or invisible */
     if (!(maplinedef->flags & ML_TWOSIDED)
@@ -2915,7 +2919,11 @@ static void R_AddLine(const seg_t __far* line)
     linedef = &_g_lines[curline->linenum];
     maplinedef = &_g_maplines[curline->linenum];
 
+#if defined NEOGEO_COMPACT_LINESTATE
+    if (_g_lineRenderValid[curline->linenum] != (uint8_t)_g_gametic)
+#else
     if (linedef->r_validcount != (uint16_t)_g_gametic)
+#endif
         R_RecalcLineFlags();
 
     if (!(linedef->r_flags & RF_IGNORE))
@@ -3201,6 +3209,15 @@ static void R_ClearClipSegs (void)
 
 static void R_SetupFrame (player_t *player)
 {
+#if defined NEOGEO_COMPACT_LINESTATE
+    static int32_t last_render_valid_reset = -1;
+    if (!((uint8_t)_g_gametic) && last_render_valid_reset != _g_gametic)
+    {
+        _fmemset(_g_lineRenderValid, 0xff, _g_numlines);
+        last_render_valid_reset = _g_gametic;
+    }
+#endif
+
     viewx = player->mo->x;
     viewy = player->mo->y;
     viewz = player->viewz;

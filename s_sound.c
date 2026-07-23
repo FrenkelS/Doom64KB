@@ -270,11 +270,17 @@ void S_StartSound2(degenmobj_t __far* origin, sfxenum_t sfx_id)
     static struct fake_mobj
     {
         thinker_t ununsed;
-        degenmobj_t origin;
+        fixed_t x;
+        fixed_t y;
     } __far fm;
 
-    fm.origin.x = origin->x;
-    fm.origin.y = origin->y;
+#if defined NEOGEO_COMPACT_SECTORS
+    fm.x = ((fixed_t)origin->x) << FRACBITS;
+    fm.y = ((fixed_t)origin->y) << FRACBITS;
+#else
+    fm.x = origin->x;
+    fm.y = origin->y;
+#endif
 
     S_StartSoundAtVolume((mobj_t __far*)&fm, sfx_id, snd_SfxVolume);
 }
