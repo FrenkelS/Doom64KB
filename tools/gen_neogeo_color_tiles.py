@@ -40,7 +40,7 @@ def encode_tile(color_index: int) -> tuple[bytes, bytes]:
         for _row in range(8):
             plane = [0, 0, 0, 0]
             for px in range(8):
-                bit = 7 - px
+                bit = px
                 for bp in range(4):
                     if color_index & (1 << bp):
                         plane[bp] |= 1 << bit

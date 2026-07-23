@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+import re
 import struct
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,13 +19,10 @@ FIX_TILE_BYTES = 32
 FIX_TILE_LIMIT = 4096
 MENU_TILE_BASE = 3525
 TITLE_CROM_TILE_BASE = 272
-TITLE_SOURCE_WIDTH = 320
-TITLE_WIDTH = 304
-TITLE_HEIGHT = 200
-TITLE_SCREEN_HEIGHT = 224
-TITLE_COLUMNS = 38
-TITLE_ROWS = 28
-TITLE_PALETTE_LIMIT = 222
+BACKGROUND_COLUMNS = 38
+BACKGROUND_ROWS = 28
+BACKGROUND_TILE_COUNT = BACKGROUND_COLUMNS * BACKGROUND_ROWS
+WIMAP_CROM_TILE_BASE = TITLE_CROM_TILE_BASE + BACKGROUND_TILE_COUNT
 SPRITE_TILE_HALF_BYTES = 64
 WIPE_TILE_IDS = frozenset(slot << 8 for slot in range(16))
 
@@ -232,6 +230,21 @@ def encode_fix_tile(pixels: list[int]) -> bytes:
     return bytes(result)
 
 
+def decode_fix_tile(data: bytes) -> list[int]:
+    if len(data) != FIX_TILE_BYTES:
+        raise ValueError("Neo Geo FIX tiles must contain 32 bytes")
+
+    pixels = [0] * 64
+    pos = 0
+    for xa, xb in ((4, 5), (6, 7), (0, 1), (2, 3)):
+        for y in range(8):
+            value = data[pos]
+            pos += 1
+            pixels[y * 8 + xa] = value & 0x0F
+            pixels[y * 8 + xb] = value >> 4
+    return pixels
+
+
 def encode_sprite_tile(pixels: list[int]) -> tuple[bytes, bytes]:
     if len(pixels) != 256:
         raise ValueError("Neo Geo sprite tiles must be 16x16")
@@ -243,7 +256,7 @@ def encode_sprite_tile(pixels: list[int]) -> tuple[bytes, bytes]:
             planes = [0, 0, 0, 0]
             for x in range(8):
                 color = pixels[(block_y + y) * 16 + block_x + x]
-                bit = 7 - x
+                bit = x
                 for plane in range(4):
                     if color & (1 << plane):
                         planes[plane] |= 1 << bit
@@ -256,20 +269,23 @@ def color_distance(a: tuple[int, int, int], b: tuple[int, int, int]) -> int:
     return sum((a[channel] - b[channel]) ** 2 for channel in range(3))
 
 
-def patch_tile_sources(patch: list[list[int]]) -> tuple[int, int, list[list[int]]]:
+def patch_tile_sources(
+    patch: list[list[int]],
+    tile_size: int = 8,
+) -> tuple[int, int, list[list[int]]]:
     height = len(patch)
     width = len(patch[0]) if height else 0
-    cols = max(1, (width + 7) // 8)
-    rows = max(1, (height + 7) // 8)
+    cols = max(1, (width + tile_size - 1) // tile_size)
+    rows = max(1, (height + tile_size - 1) // tile_size)
     tiles: list[list[int]] = []
 
     for tile_y in range(rows):
         for tile_x in range(cols):
             source = []
-            for y in range(8):
-                src_y = tile_y * 8 + y
-                for x in range(8):
-                    src_x = tile_x * 8 + x
+            for y in range(tile_size):
+                src_y = tile_y * tile_size + y
+                for x in range(tile_size):
+                    src_x = tile_x * tile_size + x
                     source.append(patch[src_y][src_x] if src_y < height and src_x < width else -1)
             tiles.append(source)
     return cols, rows, tiles
@@ -413,19 +429,51 @@ def quantize_tile(
     return palette_index, encode_fix_tile(output)
 
 
+def wipe_zero_pen_map(playpal: list[tuple[int, int, int]]) -> list[int]:
+    opaque_colors = [color for color in range(256) if color & 0x0F]
+    return [
+        min(
+            opaque_colors,
+            key=lambda candidate: sum(
+                (playpal[color][channel] - playpal[candidate][channel]) ** 2
+                for channel in range(3)
+            ),
+        )
+        for color in range(0, 256, 16)
+    ]
+
+
+def compact_fix_map(embedded_wad: Wad, lump_name: str) -> list[int]:
+    tilemap = embedded_wad.get(lump_name)
+    if len(tilemap) != BACKGROUND_TILE_COUNT * 2:
+        raise ValueError(
+            f"unexpected compact {lump_name} size: {len(tilemap)}"
+        )
+
+    entries = struct.unpack(f">{BACKGROUND_TILE_COUNT}H", tilemap)
+    padded: list[int] = []
+    for row in range(BACKGROUND_ROWS):
+        start = row * BACKGROUND_COLUMNS
+        padded.extend((0x0020, *entries[start : start + BACKGROUND_COLUMNS], 0x0020))
+    return padded
+
+
 def c_name(name: str) -> str:
     return name.lower().replace("m_", "doom_menu_")
 
 
 def write_menu_assets(
     iwad: Wad,
+    embedded_wad: Wad,
     base_srom_path: Path,
     output_fix: Path,
     output_header: Path,
     output_palette_header: Path,
+    output_wipe_header: Path,
 ) -> None:
     playpal_data = iwad.get("PLAYPAL")
     playpal = [tuple(playpal_data[index : index + 3]) for index in range(0, 768, 3)]
+    zero_pen_map = wipe_zero_pen_map(playpal)
     blank = bytes(FIX_TILE_BYTES)
     unique_tiles: list[tuple[int, bytes]] = []
     tile_ids: dict[bytes, int] = {}
@@ -444,6 +492,8 @@ def write_menu_assets(
         all_sources.extend(sources)
 
     palettes, distances = build_palette_set(all_sources, playpal, 16)
+    title_wipe_map = compact_fix_map(embedded_wad, "TITLEPIC")
+    wimap_wipe_map = compact_fix_map(embedded_wad, "WIMAP0")
 
     def next_tile_id() -> int:
         candidate = MENU_TILE_BASE + len(unique_tiles)
@@ -534,60 +584,97 @@ def write_menu_assets(
     output_palette_header.parent.mkdir(parents=True, exist_ok=True)
     output_palette_header.write_text("\n".join(palette_lines), encoding="ascii")
 
+    wipe_lines = [
+        "/* Generated by tools/gen_neogeo_fix_menu.py. */",
+        "#ifndef DOOM_NEO_GEO_FIX_WIPE_ASSETS_H",
+        "#define DOOM_NEO_GEO_FIX_WIPE_ASSETS_H",
+        "",
+        "#include <stdint.h>",
+        "",
+        "static const uint8_t doom_fix_wipe_zero_pen_map[16] = {",
+        "    " + ", ".join(f"{color}u" for color in zero_pen_map) + ",",
+        "};",
+        "",
+    ]
+    for name, values in (
+        ("doom_title_wipe_map", title_wipe_map),
+        ("doom_wimap_wipe_map", wimap_wipe_map),
+    ):
+        wipe_lines.append(f"static const uint16_t {name}[{len(values)}] = {{")
+        for offset in range(0, len(values), 12):
+            encoded = ", ".join(
+                f"0x{entry:04x}" for entry in values[offset : offset + 12]
+            )
+            wipe_lines.append(f"    {encoded},")
+        wipe_lines.extend(["};", ""])
+    wipe_lines.extend(["#endif", ""])
+    output_wipe_header.parent.mkdir(parents=True, exist_ok=True)
+    output_wipe_header.write_text("\n".join(wipe_lines), encoding="ascii")
+
     print(f"FIX menu: {len(unique_tiles)} unique tiles, IDs {MENU_TILE_BASE}..{last_tile} (wipe tiles preserved)")
 
-def write_title_crom(
-    iwad: Wad,
-    output_c1: Path,
-    output_c2: Path,
-    output_header: Path,
-) -> None:
-    source = decode_patch(iwad.get("TITLEPIC"))
-    if len(source) != TITLE_HEIGHT or len(source[0]) != TITLE_SOURCE_WIDTH:
+def build_background_crom(
+    embedded_wad: Wad,
+    lump_name: str,
+    srom: bytes,
+) -> tuple[bytes, bytes, list[int]]:
+    tilemap = embedded_wad.get(lump_name)
+    if len(tilemap) != BACKGROUND_TILE_COUNT * 2:
         raise ValueError(
-            f"unexpected retail TITLEPIC size: {len(source[0])}x{len(source)}"
+            f"unexpected compact {lump_name} size: {len(tilemap)}"
         )
-    source = resize_patch(source, TITLE_WIDTH, TITLE_HEIGHT)
-
-    playpal_data = iwad.get("PLAYPAL")
-    playpal = [tuple(playpal_data[index : index + 3]) for index in range(0, 768, 3)]
-    canvas = [[-1] * TITLE_WIDTH for _ in range(TITLE_SCREEN_HEIGHT)]
-    y_offset = (TITLE_SCREEN_HEIGHT - TITLE_HEIGHT) // 2
-    for y, row in enumerate(source):
-        canvas[y_offset + y] = row
-
-    columns, rows, tile_sources = patch_tile_sources(canvas)
-    if columns != TITLE_COLUMNS or rows != TITLE_ROWS:
-        raise ValueError(f"unexpected TITLEPIC tile grid: {columns}x{rows}")
-    palettes, distances = build_palette_set(tile_sources, playpal, TITLE_PALETTE_LIMIT)
 
     c1 = bytearray()
     c2 = bytearray()
     palette_map: list[int] = []
-    for source_tile in tile_sources:
-        histogram = Counter(color for color in source_tile if color >= 0)
-        palette_index = min(
-            range(len(palettes)),
-            key=lambda index: palette_error(histogram, palettes[index], distances),
-        )
-        palette_map.append(palette_index)
-        palette = palettes[palette_index]
-        pixels = [
-            0 if color < 0 else 1 + min(
-                range(len(palette)),
-                key=lambda index: distances[color][palette[index]],
-            )
-            for color in source_tile
+    for offset in range(0, len(tilemap), 2):
+        entry = struct.unpack_from(">H", tilemap, offset)[0]
+        tile = entry & 0x0FFF
+        tile_offset = tile * FIX_TILE_BYTES
+        pixels = decode_fix_tile(srom[tile_offset : tile_offset + FIX_TILE_BYTES])
+        scaled = [
+            pixels[(y // 2) * 8 + (x // 2)]
+            for y in range(16)
+            for x in range(16)
         ]
-        scaled = [pixels[(y // 2) * 8 + (x // 2)] for y in range(16) for x in range(16)]
         tile_c1, tile_c2 = encode_sprite_tile(scaled)
         c1.extend(tile_c1)
         c2.extend(tile_c2)
+        palette_map.append(entry >> 12)
+
+    return bytes(c1), bytes(c2), palette_map
+
+
+def write_title_crom(
+    embedded_wad: Wad,
+    base_srom_path: Path,
+    output_c1: Path,
+    output_c2: Path,
+    output_header: Path,
+) -> None:
+    srom = base_srom_path.read_bytes()
+    title_c1, title_c2, title_palette_map = build_background_crom(
+        embedded_wad,
+        "TITLEPIC",
+        srom,
+    )
+    wimap_c1, wimap_c2, wimap_palette_map = build_background_crom(
+        embedded_wad,
+        "WIMAP0",
+        srom,
+    )
+    playpal_data = embedded_wad.get("PLAYPAL")
+    if len(playpal_data) < 512:
+        raise ValueError("compact PLAYPAL does not contain a complete base palette")
+    palettes = [
+        list(struct.unpack_from(">16H", playpal_data, palette * 32))
+        for palette in range(16)
+    ]
 
     output_c1.parent.mkdir(parents=True, exist_ok=True)
     output_c2.parent.mkdir(parents=True, exist_ok=True)
-    output_c1.write_bytes(c1)
-    output_c2.write_bytes(c2)
+    output_c1.write_bytes(title_c1 + wimap_c1)
+    output_c2.write_bytes(title_c2 + wimap_c2)
 
     lines = [
         "/* Generated by tools/gen_neogeo_fix_menu.py. */",
@@ -597,54 +684,87 @@ def write_title_crom(
         "#include <stdint.h>",
         "",
         f"#define DOOM_TITLE_TILE_BASE {TITLE_CROM_TILE_BASE}u",
-        f"#define DOOM_TITLE_COLUMNS {TITLE_COLUMNS}u",
-        f"#define DOOM_TITLE_ROWS {TITLE_ROWS}u",
-        f"#define DOOM_TITLE_PALETTE_COUNT {len(palettes)}u",
+        f"#define DOOM_WIMAP_TILE_BASE {WIMAP_CROM_TILE_BASE}u",
+        f"#define DOOM_BACKGROUND_COLUMNS {BACKGROUND_COLUMNS}u",
+        f"#define DOOM_BACKGROUND_ROWS {BACKGROUND_ROWS}u",
+        "#define DOOM_TITLE_PALETTE_COUNT 16u",
+        "#define DOOM_WIMAP_PALETTE_COUNT 16u",
         "",
-        f"static const uint16_t doom_title_palettes[{len(palettes)}][16] = {{",
+        "static const uint16_t doom_title_palettes[16][16] = {",
     ]
     for palette in palettes:
-        values = [0x8000]
-        values.extend(neo_color(playpal[color]) for color in palette)
-        values.extend([0x8000] * (16 - len(values)))
-        lines.append("    {" + ", ".join(f"0x{value:04x}" for value in values) + "},")
-    lines.extend(["};", "", f"static const uint8_t doom_title_palette_map[{len(palette_map)}] = {{"])
-    for offset in range(0, len(palette_map), 20):
-        values = ", ".join(f"{value}u" for value in palette_map[offset : offset + 20])
+        lines.append(
+            "    {" + ", ".join(f"0x{value:04x}" for value in palette) + "},"
+        )
+    lines.extend([
+        "};",
+        "#define doom_wimap_palettes doom_title_palettes",
+        "",
+        f"static const uint8_t doom_title_palette_map[{len(title_palette_map)}] = {{",
+    ])
+    for offset in range(0, len(title_palette_map), 20):
+        values = ", ".join(
+            f"{value}u" for value in title_palette_map[offset : offset + 20]
+        )
+        lines.append("    " + values + ",")
+    lines.extend([
+        "};",
+        "",
+        f"static const uint8_t doom_wimap_palette_map[{len(wimap_palette_map)}] = {{",
+    ])
+    for offset in range(0, len(wimap_palette_map), 20):
+        values = ", ".join(
+            f"{value}u" for value in wimap_palette_map[offset : offset + 20]
+        )
         lines.append("    " + values + ",")
     lines.extend(["};", "", "#endif", ""])
     output_header.parent.mkdir(parents=True, exist_ok=True)
     output_header.write_text("\n".join(lines), encoding="ascii")
 
     print(
-        f"TITLEPIC C-ROM: retail {TITLE_SOURCE_WIDTH}x{TITLE_HEIGHT} fit to "
-        f"{TITLE_WIDTH}x{TITLE_HEIGHT}, "
-        f"{TITLE_COLUMNS}x{TITLE_ROWS} tiles, {len(palettes)} palettes at tile "
-        f"{TITLE_CROM_TILE_BASE}"
+        f"background C-ROM: TITLEPIC at tile {TITLE_CROM_TILE_BASE} "
+        f"(16 palettes), WIMAP0 at tile {WIMAP_CROM_TILE_BASE} "
+        f"(16 palettes), "
+        f"{BACKGROUND_COLUMNS}x{BACKGROUND_ROWS} tiles each"
     )
+
+
+def parse_embedded_wad(header: Path) -> Wad:
+    source = header.read_text(encoding="ascii")
+    values = bytes(
+        int(value, 16)
+        for value in re.findall(r"0x([0-9a-fA-F]{2})", source)
+    )
+    return Wad(values, endian=">")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--iwad", type=Path, required=True)
+    parser.add_argument("--embedded-wad-header", type=Path, required=True)
     parser.add_argument("--base-srom", type=Path, required=True)
     parser.add_argument("--out-fix", type=Path, required=True)
     parser.add_argument("--out-menu-header", type=Path, required=True)
     parser.add_argument("--out-menu-palette-header", type=Path, required=True)
+    parser.add_argument("--out-wipe-header", type=Path, required=True)
     parser.add_argument("--out-title-c1", type=Path, required=True)
     parser.add_argument("--out-title-c2", type=Path, required=True)
     parser.add_argument("--out-title-header", type=Path, required=True)
     args = parser.parse_args()
 
+    embedded_wad = parse_embedded_wad(args.embedded_wad_header)
     write_menu_assets(
         Wad(args.iwad.read_bytes()),
+        embedded_wad,
         args.base_srom,
         args.out_fix,
         args.out_menu_header,
         args.out_menu_palette_header,
+        args.out_wipe_header,
     )
     write_title_crom(
-        Wad(args.iwad.read_bytes()),
+        embedded_wad,
+        args.base_srom,
         args.out_title_c1,
         args.out_title_c2,
         args.out_title_header,

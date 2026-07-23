@@ -45,6 +45,7 @@
 #include "i_system.h"
 #include "i_video.h"
 #include "i_vtext.h"
+#include "m_menu.h"
 #include "m_random.h"
 #include "r_defs.h"
 #include "v_video.h"
@@ -53,6 +54,7 @@
 #include "globdata.h"
 
 #include "neogeo/doom_fix_menu_palette.h"
+#include "neogeo/doom_fix_wipe_assets.h"
 #include "neogeo/doom_title_assets.h"
 
 
@@ -91,8 +93,6 @@ extern int16_t CENTERY;
 #define FIX_WIPE_WIDTH 40
 #define FIX_WIPE_HEIGHT 28
 #define FIX_WIPE_Y_OFFSET 2
-#define FIX_WIPE_CHAR 0x00u
-
 typedef enum
 {
 	FIX_TARGET_NONE,
@@ -116,10 +116,11 @@ typedef enum
 #define MICROFB_SPRITES_PER_SET (VIEWWINDOWWIDTH * MICROFB_COLUMN_CHUNKS)
 #define MICROFB_SPRITE_COUNT (MICROFB_SPRITES_PER_SET * MICROFB_FRAMEBUFFER_SETS)
 
-#define TITLE_SPRITE_BASE (MICROFB_SPRITE_BASE + MICROFB_SPRITE_COUNT)
-#define TITLE_SPRITE_COUNT DOOM_TITLE_COLUMNS
-#define TITLE_X_OFFSET 8u
-#define TITLE_SHRINK_WORD 0x077fu
+#define BACKGROUND_SPRITE_BASE (MICROFB_SPRITE_BASE + MICROFB_SPRITE_COUNT)
+#define BACKGROUND_SPRITE_COUNT DOOM_BACKGROUND_COLUMNS
+#define BACKGROUND_X_OFFSET 8u
+#define BACKGROUND_SHRINK_WORD 0x077fu
+#define BACKGROUND_TILE_PX 8u
 
 #if MICROFB_CHUNK_CELLS > 32
 #error Neo Geo sprite microframebuffer chunk cannot exceed 32 source tiles
@@ -129,8 +130,8 @@ typedef enum
 #error Neo Geo sprite microframebuffer double buffer exceeds displayable sprite budget
 #endif
 
-#if (TITLE_SPRITE_BASE + TITLE_SPRITE_COUNT) > 381
-#error Neo Geo TITLEPIC sprites exceed displayable sprite budget
+#if (BACKGROUND_SPRITE_BASE + BACKGROUND_SPRITE_COUNT) > 381
+#error Neo Geo static background sprites exceed displayable sprite budget
 #endif
 
 #if (MICROFB_SPRITE_PALETTE_BASE + MICROFB_SPRITE_PALETTES) > 256
@@ -140,6 +141,17 @@ typedef enum
 #if (TITLE_SPRITE_PALETTE_BASE + DOOM_TITLE_PALETTE_COUNT) > 256
 #error Neo Geo TITLEPIC exceeds sprite palette budget
 #endif
+
+#if (TITLE_SPRITE_PALETTE_BASE + DOOM_WIMAP_PALETTE_COUNT) > 256
+#error Neo Geo WIMAP0 exceeds sprite palette budget
+#endif
+
+typedef enum
+{
+	STATIC_BACKGROUND_NONE,
+	STATIC_BACKGROUND_TITLE,
+	STATIC_BACKGROUND_WIMAP
+} static_background_t;
 
 typedef struct
 {
@@ -174,12 +186,13 @@ static const uint16_t *_s_fix_target;
 static uint8_t _s_microfb_mode_index;
 static uint8_t _s_pending_microfb_mode_index;
 static uint8_t _s_configured_microfb_mode[2];
-static uint8_t _s_title_sprites_initialized;
-static uint8_t _s_title_sprite_active;
-static uint8_t _s_title_sprite_requested;
-static const uint16_t *_s_title_fix_source;
+static static_background_t _s_static_background_configured;
+static static_background_t _s_static_background_active;
+static static_background_t _s_static_background_requested;
+static const uint16_t *_s_static_background_wipe_source;
 static uint8_t _s_fix_menu_palette_requested;
 static uint8_t _s_fix_menu_palette_applied;
+static uint8_t _s_fix_wipe_restore_menu_palette;
 static int8_t _s_current_palette;
 
 static int16_t palettelumpnum;
@@ -300,19 +313,31 @@ static void NG_BuildSpritePalettes(const uint16_t *src)
 }
 
 
-static void NG_UploadTitlePalettes(void)
+static void NG_UploadStaticBackgroundPalettes(static_background_t background)
 {
+	const uint16_t *src;
+	uint16_t palette_count;
+
+	if (background == STATIC_BACKGROUND_WIMAP)
+	{
+		src = &doom_wimap_palettes[0][0];
+		palette_count = DOOM_WIMAP_PALETTE_COUNT;
+	}
+	else
+	{
+		src = &doom_title_palettes[0][0];
+		palette_count = DOOM_TITLE_PALETTE_COUNT;
+	}
+
 	volatile uint16_t *dst = &MMAP_PALBANK1[TITLE_SPRITE_PALETTE_BASE * 16u];
-	for (uint16_t i = 0; i < DOOM_TITLE_PALETTE_COUNT * 16u; i++)
-		dst[i] = ((const uint16_t *)doom_title_palettes)[i];
+	for (uint16_t i = 0; i < palette_count * 16u; i++)
+		dst[i] = src[i];
 }
 
 
 static void NG_UploadFixPalette(const uint16_t *src)
 {
-	volatile uint16_t *dst = &MMAP_PALBANK1[0];
-	for (uint16_t i = 0; i < 256u; i++)
-		dst[i] = src[i];
+	memcpy((uint8_t *)&MMAP_PALBANK1[0], src, 256u * sizeof(uint16_t));
 }
 
 
@@ -525,29 +550,28 @@ static void NG_InitMicroSprites(void)
 }
 
 
-static uint16_t NG_TitlePalette(uint16_t row, uint16_t col)
+static void NG_ConfigureStaticBackgroundSprites(static_background_t background)
 {
-	return doom_title_palette_map[row * DOOM_TITLE_COLUMNS + col];
-}
-
-
-static void NG_InitTitleSprites(void)
-{
-	if (_s_title_sprites_initialized)
-		return;
+	const uint16_t tile_base = background == STATIC_BACKGROUND_WIMAP
+		? DOOM_WIMAP_TILE_BASE
+		: DOOM_TITLE_TILE_BASE;
+	const uint8_t *palette_map = background == STATIC_BACKGROUND_WIMAP
+		? doom_wimap_palette_map
+		: doom_title_palette_map;
 
 	*REG_VRAMMOD = 1;
-	for (uint16_t col = 0; col < DOOM_TITLE_COLUMNS; col++)
+	for (uint16_t col = 0; col < DOOM_BACKGROUND_COLUMNS; col++)
 	{
-		const uint16_t sprite = TITLE_SPRITE_BASE + col;
+		const uint16_t sprite = BACKGROUND_SPRITE_BASE + col;
 		*REG_VRAMADDR = ADDR_SCB1 + (sprite * 64u);
-		for (uint16_t row = 0; row < DOOM_TITLE_ROWS; row++)
+		for (uint16_t row = 0; row < DOOM_BACKGROUND_ROWS; row++)
 		{
-			*REG_VRAMRW = DOOM_TITLE_TILE_BASE + row * DOOM_TITLE_COLUMNS + col;
+			const uint16_t palette = palette_map[row * DOOM_BACKGROUND_COLUMNS + col];
+			*REG_VRAMRW = tile_base + row * DOOM_BACKGROUND_COLUMNS + col;
 			*REG_VRAMRW = MICROFB_PALETTE_ATTR(
-				TITLE_SPRITE_PALETTE_BASE + NG_TitlePalette(row, col));
+				TITLE_SPRITE_PALETTE_BASE + palette);
 		}
-		for (uint16_t row = DOOM_TITLE_ROWS; row < 32; row++)
+		for (uint16_t row = DOOM_BACKGROUND_ROWS; row < 32; row++)
 		{
 			*REG_VRAMRW = MICROFB_TILE_BLANK;
 			*REG_VRAMRW = 0;
@@ -555,22 +579,22 @@ static void NG_InitTitleSprites(void)
 
 		*REG_VRAMMOD = 0x200;
 		*REG_VRAMADDR = ADDR_SCB2 + sprite;
-		*REG_VRAMRW = TITLE_SHRINK_WORD;
+		*REG_VRAMRW = BACKGROUND_SHRINK_WORD;
 		*REG_VRAMRW = 0;
-		*REG_VRAMRW = MICROFB_X_WORD(TITLE_X_OFFSET + col * 8u);
+		*REG_VRAMRW = MICROFB_X_WORD(BACKGROUND_X_OFFSET + col * BACKGROUND_TILE_PX);
 		*REG_VRAMMOD = 1;
 	}
 
-	_s_title_sprites_initialized = true;
+	_s_static_background_configured = background;
 }
 
 
-static void NG_SetTitleSpritesVisible(uint8_t visible)
+static void NG_SetStaticBackgroundSpritesVisible(uint8_t visible)
 {
-	const uint16_t height_word = visible ? NG_SpriteYWord(0, DOOM_TITLE_ROWS) : 0;
+	const uint16_t height_word = visible ? NG_SpriteYWord(0, DOOM_BACKGROUND_ROWS) : 0;
 	*REG_VRAMMOD = 1;
-	*REG_VRAMADDR = ADDR_SCB3 + TITLE_SPRITE_BASE;
-	for (uint16_t col = 0; col < TITLE_SPRITE_COUNT; col++)
+	*REG_VRAMADDR = ADDR_SCB3 + BACKGROUND_SPRITE_BASE;
+	for (uint16_t col = 0; col < BACKGROUND_SPRITE_COUNT; col++)
 		*REG_VRAMRW = height_word;
 }
 
@@ -585,7 +609,6 @@ void I_InitGraphicsHardwareSpecificCode(void)
 	_s_fix_menu_palette_requested = false;
 	_s_fix_menu_palette_applied = false;
 	I_UploadNewPalette(0);
-	NG_UploadTitlePalettes();
 
 	_s_microfb_mode_index = MICROFB_DEFAULT_MODE_INDEX;
 	_s_pending_microfb_mode_index = _s_microfb_mode_index;
@@ -593,10 +616,10 @@ void I_InitGraphicsHardwareSpecificCode(void)
 	memset(_s_screen, 0, sizeof(_s_screen));
 	NG_ClearFixOverlay();
 	NG_InitMicroSprites();
-	_s_title_sprites_initialized = false;
-	_s_title_sprite_active = false;
-	_s_title_sprite_requested = false;
-	_s_title_fix_source = NULL;
+	_s_static_background_configured = STATIC_BACKGROUND_NONE;
+	_s_static_background_active = STATIC_BACKGROUND_NONE;
+	_s_static_background_requested = STATIC_BACKGROUND_NONE;
+	_s_static_background_wipe_source = NULL;
 	NG_UploadFixOverlay();
 }
 
@@ -670,18 +693,26 @@ const char *I_NeoGeoSpriteQualityName(void)
 
 void I_FinishUpdate(void)
 {
-	if (_s_title_sprite_requested)
+	if (_s_static_background_requested != STATIC_BACKGROUND_NONE)
 	{
 		NG_WaitVBlankStart();
 		NG_ApplyPendingPalettes();
-		if (!_s_title_sprite_active)
+		if (_s_static_background_active == STATIC_BACKGROUND_NONE)
 		{
 			NG_SetMicroSpriteSetVisible(_s_visible_sprite_set, false);
-			NG_SetTitleSpritesVisible(true);
-			_s_title_sprite_active = true;
 		}
+		else if (_s_static_background_active != _s_static_background_requested)
+			NG_SetStaticBackgroundSpritesVisible(false);
+
+		if (_s_static_background_configured != _s_static_background_requested)
+		{
+			NG_UploadStaticBackgroundPalettes(_s_static_background_requested);
+			NG_ConfigureStaticBackgroundSprites(_s_static_background_requested);
+		}
+		NG_SetStaticBackgroundSpritesVisible(true);
+		_s_static_background_active = _s_static_background_requested;
 		NG_UploadFixOverlay();
-		_s_title_sprite_requested = false;
+		_s_static_background_requested = STATIC_BACKGROUND_NONE;
 		NG_ApplyMicroFramebufferMode(_s_pending_microfb_mode_index);
 		return;
 	}
@@ -692,10 +723,10 @@ void I_FinishUpdate(void)
 		NG_ConfigureMicroSpriteSet(next_sprite_set);
 	NG_WaitVBlankStart();
 	NG_ApplyPendingPalettes();
-	if (_s_title_sprite_active)
+	if (_s_static_background_active != STATIC_BACKGROUND_NONE)
 	{
-		NG_SetTitleSpritesVisible(false);
-		_s_title_sprite_active = false;
+		NG_SetStaticBackgroundSpritesVisible(false);
+		_s_static_background_active = STATIC_BACKGROUND_NONE;
 	}
 	else
 	{
@@ -711,7 +742,16 @@ void I_FinishUpdate(void)
 
 void I_NeoGeoSetFixMenuPalette(boolean active)
 {
-	_s_fix_menu_palette_requested = active;
+	if (_s_fix_wipe_active)
+		_s_fix_wipe_restore_menu_palette = active;
+	else
+		_s_fix_menu_palette_requested = active;
+}
+
+
+boolean I_NeoGeoFixWipeActive(void)
+{
+	return _s_fix_wipe_active;
 }
 
 
@@ -887,15 +927,22 @@ void V_DrawBackground(int16_t backgroundnum)
 void V_DrawRawFullScreen(int16_t num)
 {
 	static int16_t titlepicnum = -1;
+	static int16_t wimap0num = -1;
 	if (titlepicnum < 0)
-		titlepicnum = W_GetNumForName("TITLEPIC");
-
-	if (num == titlepicnum)
 	{
-		_s_title_fix_source = W_GetLumpByNum(num);
-		NG_InitTitleSprites();
-		_s_title_sprite_requested = true;
-		if (!_s_fix_wipe_active && !_s_title_sprite_active)
+		titlepicnum = W_GetNumForName("TITLEPIC");
+		wimap0num = W_GetNumForName("WIMAP0");
+	}
+
+	if (num == titlepicnum || num == wimap0num)
+	{
+		_s_static_background_wipe_source = num == titlepicnum
+			? doom_title_wipe_map
+			: doom_wimap_wipe_map;
+		_s_static_background_requested = num == titlepicnum
+			? STATIC_BACKGROUND_TITLE
+			: STATIC_BACKGROUND_WIMAP;
+		if (!_s_fix_wipe_active && _s_static_background_active == STATIC_BACKGROUND_NONE)
 			NG_ClearFixOverlay();
 		return;
 	}
@@ -1111,9 +1158,24 @@ static void NG_DrawFixWipeMask(void)
 		{
 			const uint16_t sx = (x * mode->cols) / FIX_WIPE_WIDTH;
 			const uint16_t sy = (y * mode->rows) / FIX_WIPE_HEIGHT;
-			const uint8_t color = _s_screen[sy * VIEWWINDOWWIDTH + sx];
-			*REG_VRAMRW = ((uint16_t)color << 8) | FIX_WIPE_CHAR;
+			uint8_t color = _s_screen[sy * VIEWWINDOWWIDTH + sx];
+			if ((color & 0x0fu) == 0)
+				color = doom_fix_wipe_zero_pen_map[color >> 4];
+			*REG_VRAMRW = (uint16_t)color << 8;
 		}
+	}
+	_s_fix_page_active = true;
+}
+
+
+static void NG_UploadFixWipeMap(const uint16_t *map)
+{
+	*REG_VRAMMOD = 32;
+	for (uint16_t y = 0; y < FIX_WIPE_HEIGHT; y++)
+	{
+		*REG_VRAMADDR = ADDR_FIXMAP + FIX_WIPE_Y_OFFSET + y;
+		for (uint16_t x = 0; x < FIX_WIPE_WIDTH; x++)
+			*REG_VRAMRW = map[y * FIX_WIPE_WIDTH + x];
 	}
 	_s_fix_page_active = true;
 }
@@ -1122,19 +1184,19 @@ static void NG_DrawFixWipeMask(void)
 void wipe_StartScreen(void)
 {
 	_s_fix_wipe_active = true;
+	_s_fix_wipe_restore_menu_palette = _s_fix_menu_palette_requested;
+	_s_fix_menu_palette_requested = false;
+	NG_WaitVBlankStart();
+	NG_ApplyPendingPalettes();
 
-	if (_s_title_sprite_active && _s_title_fix_source)
-	{
-		_s_fix_target = _s_title_fix_source;
-		_s_fix_target_kind = FIX_TARGET_PAGE;
-		NG_UploadFixTarget();
-	}
+	if (_s_static_background_active != STATIC_BACKGROUND_NONE
+		&& _s_static_background_wipe_source)
+		NG_UploadFixWipeMap(_s_static_background_wipe_source);
+	else
+		NG_DrawFixWipeMask();
 
 	_s_fix_target = NULL;
 	_s_fix_target_kind = FIX_TARGET_NONE;
-
-	if (!_s_fix_page_active)
-		NG_DrawFixWipeMask();
 }
 
 
@@ -1216,6 +1278,17 @@ static void wipe_initMelt()
 }
 
 
+static void NG_FinishFixWipe(void)
+{
+	_s_fix_menu_palette_requested = _s_fix_wipe_restore_menu_palette;
+	NG_WaitVBlankStart();
+	NG_ApplyPendingPalettes();
+	_s_fix_wipe_active = false;
+	M_NeoGeoInvalidateMenu();
+	M_Drawer();
+}
+
+
 void D_Wipe(void)
 {
 	wipe_y_lookup = Z_TryMallocStatic(FIX_WIPE_WIDTH * sizeof(int16_t));
@@ -1225,10 +1298,11 @@ void D_Wipe(void)
 			NG_UploadFixTarget();
 		else
 			NG_ClearFixOverlay();
-		_s_fix_wipe_active = false;
+		NG_FinishFixWipe();
 		return;
 	}
 
+	_s_fix_menu_palette_requested = false;
 	I_FinishUpdate();
 
 	wipe_initMelt();
@@ -1249,7 +1323,6 @@ void D_Wipe(void)
 		wipestart = nowtime;
 		done = wipe_ScreenWipe(tics);
 
-		M_Drawer();                   // menu is drawn even on top of wipes
 		NG_WaitVBlankStart();
 		NG_UploadFixOverlay();
 
@@ -1260,8 +1333,9 @@ void D_Wipe(void)
 	else
 		NG_ClearFixOverlay();
 
-	_s_fix_wipe_active = false;
 	_s_fix_target = NULL;
 	_s_fix_target_kind = FIX_TARGET_NONE;
 	Z_Free(wipe_y_lookup);
+
+	NG_FinishFixWipe();
 }

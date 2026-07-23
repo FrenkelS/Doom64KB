@@ -1125,6 +1125,15 @@ static char __far* Z_Strdup(const char* s)
 
 
 #if defined NEOGEO_SPRITE_MICROFB
+static boolean neo_menu_invalidated;
+
+
+void M_NeoGeoInvalidateMenu(void)
+{
+	neo_menu_invalidated = true;
+}
+
+
 static boolean M_NeoGeoMenuNeedsDraw(void)
 {
 	static boolean was_active;
@@ -1150,7 +1159,8 @@ static boolean M_NeoGeoMenuNeedsDraw(void)
 		return false;
 	}
 
-	rebuild = !was_active
+	rebuild = neo_menu_invalidated
+		|| !was_active
 		|| was_message != messageToPrint
 		|| (messageToPrint && last_message != messageString)
 		|| (!messageToPrint && (last_menu != currentMenu
@@ -1166,6 +1176,7 @@ static boolean M_NeoGeoMenuNeedsDraw(void)
 	if (rebuild)
 		I_InitScreenPage();
 
+	neo_menu_invalidated = false;
 	was_active = true;
 	was_message = messageToPrint;
 	last_menu = currentMenu;
@@ -1193,6 +1204,8 @@ void M_Drawer (void)
 {
 #if defined NEOGEO_SPRITE_MICROFB
 	I_NeoGeoSetFixMenuPalette(messageToPrint || _g_menuactive);
+	if (I_NeoGeoFixWipeActive())
+		return;
 	if (!M_NeoGeoMenuNeedsDraw())
 		return;
 #endif
