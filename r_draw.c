@@ -571,7 +571,8 @@ static fixed_t  rw_scalestep;
 static int32_t      worldtop;
 static int32_t      worldbottom;
 
-static boolean didsolidcol; /* True if at least one column was marked solid */
+static uint16_t didsolidcol; /* True if at least one column was marked solid */
+static uint16_t solidcol_remaining;
 
 static boolean  maskedtexture;
 static int16_t      toptexture;
@@ -1150,7 +1151,8 @@ CONSTFUNC angle_t R_PointToAngle3(fixed_t x, fixed_t y)
 #define R_PointToAngle(x,y) R_PointToAngle16((x)>>FRACBITS,(y)>>FRACBITS)
 
 
-static angle16_t R_PointToAngle16(int16_t x, int16_t y)
+static inline __attribute__((always_inline))
+angle16_t R_PointToAngle16(int16_t x, int16_t y)
 {
     x = x - (viewx >> FRACBITS);
     y = y - (viewy >> FRACBITS);
@@ -3093,6 +3095,8 @@ static void R_ClipWallSegment(int16_t first, int16_t last, const boolean solid)
 
             if (solid)
             {
+                /* The interval contained only zeroes before this call. */
+                solidcol_remaining -= to - first;
                 R_FillSolidColumns(solidcol + first, to - first);
             }
 
@@ -3277,6 +3281,9 @@ static const byte checkcoord[12][4] =
 
 static boolean R_CheckBBox(const int16_t __far* bspcoord)
 {
+    if (!solidcol_remaining)
+        return false;
+
     // Find the corners of the box
     // that define the edges from current viewpoint.
     int16_t boxpos = (viewx <= ((fixed_t)bspcoord[BOXLEFT]<<FRACBITS) ? 0 : viewx < ((fixed_t)bspcoord[BOXRIGHT]<<FRACBITS) ? 1 : 2) +
@@ -3451,6 +3458,7 @@ static void R_ClearDrawSegs(void)
 static void R_ClearClipSegs (void)
 {
     memset(solidcol, 0, R_VIEWWIDTH);
+    solidcol_remaining = R_VIEWWIDTH;
 }
 
 
