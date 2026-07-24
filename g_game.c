@@ -1019,9 +1019,6 @@ static const byte __far* G_ReadDemoHeader(const byte __far* demo_p)
     skill = *demo_p++;
     demo_p++;
     map = *demo_p++;
-#if defined LOW_MEMORY
-    map = 1;
-#endif
     demo_p++;
     demo_p++;
     demo_p++;
