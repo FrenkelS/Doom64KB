@@ -3,6 +3,57 @@ set -e
 mkdir -p neogeo/rom
 mkdir -p neogeo/assets/generated
 
+fix_ui_inputs="
+  tools/gen_neogeo_fix_menu.py
+  DOOM64TB.WAD
+  doom64ng.h
+  neogeo/assets/doom64kb.fix
+"
+fix_ui_outputs="
+  neogeo/assets/doom-menu.fix
+  neogeo/assets/doom-title.c1
+  neogeo/assets/doom-title.c2
+  neogeo/doom_fix_menu_assets.h
+  neogeo/doom_fix_intermission_assets.h
+  neogeo/doom_fix_menu_palette.h
+  neogeo/doom_fix_wipe_assets.h
+  neogeo/doom_title_assets.h
+"
+fix_ui_needs_rebuild=false
+for asset in $fix_ui_outputs
+do
+  if [ ! -f "$asset" ]
+  then
+    fix_ui_needs_rebuild=true
+    break
+  fi
+
+  for source in $fix_ui_inputs
+  do
+    if [ "$source" -nt "$asset" ]
+    then
+      fix_ui_needs_rebuild=true
+      break 2
+    fi
+  done
+done
+
+if [ "$fix_ui_needs_rebuild" = true ]
+then
+  python3 -B tools/gen_neogeo_fix_menu.py \
+    --iwad DOOM64TB.WAD \
+    --embedded-wad-header doom64ng.h \
+    --base-srom neogeo/assets/doom64kb.fix \
+    --out-fix neogeo/assets/doom-menu.fix \
+    --out-menu-header neogeo/doom_fix_menu_assets.h \
+    --out-intermission-header neogeo/doom_fix_intermission_assets.h \
+    --out-menu-palette-header neogeo/doom_fix_menu_palette.h \
+    --out-wipe-header neogeo/doom_fix_wipe_assets.h \
+    --out-title-c1 neogeo/assets/doom-title.c1 \
+    --out-title-c2 neogeo/assets/doom-title.c2 \
+    --out-title-header neogeo/doom_title_assets.h
+fi
+
 SPRITE_DEFS_HEADER="neogeo/assets/generated/doom_sprite_defs.h"
 if [ ! -f "$SPRITE_DEFS_HEADER" ] || \
    [ tools/gen_neogeo_sprite_defs.py -nt "$SPRITE_DEFS_HEADER" ] || \
@@ -170,7 +221,7 @@ export GLOBOBJS+=" st_text.c"
 export GLOBOBJS+=" tables.o"
 #export GLOBOBJS+=" w_wad.c"
 export GLOBOBJS+=" w_wad.o"
-export GLOBOBJS+=" wi_libt.c"
+export GLOBOBJS+=" wi_libn.c"
 export GLOBOBJS+=" wi_stuff.c"
 export GLOBOBJS+=" z_bmallo.c"
 #export GLOBOBJS+=" z_zone.c"
@@ -205,7 +256,7 @@ python3 tools/gen_neogeo_color_tiles.py \
 cp neogeo/assets/generated/doom_color_microfb.c1 neogeo/rom/doom64kb-c1.c1 && truncate -s "$CROM_FILE_BYTES" neogeo/rom/doom64kb-c1.c1
 cp neogeo/assets/generated/doom_color_microfb.c2 neogeo/rom/doom64kb-c2.c2 && truncate -s "$CROM_FILE_BYTES" neogeo/rom/doom64kb-c2.c2
 cp neogeo/assets/doom64kb.fix neogeo/rom/doom64kb-s1.s1
-dd if=neogeo/assets/doom-menu.fix of=neogeo/rom/doom64kb-s1.s1 bs=32 seek=3525 conv=notrunc status=none
+dd if=neogeo/assets/doom-menu.fix of=neogeo/rom/doom64kb-s1.s1 bs=32 seek=2393 conv=notrunc status=none
 cp "$AUDIO_ASSET_DIR/doom_audio.vrom" neogeo/rom/doom64kb-v1.v1
 truncate -s 131072 neogeo/rom/doom64kb-s1.s1
 truncate -s "$AUDIO_VROM_BYTES" neogeo/rom/doom64kb-v1.v1

@@ -147,11 +147,16 @@ typedef enum
 #error Neo Geo WIMAP0 exceeds sprite palette budget
 #endif
 
+#if (TITLE_SPRITE_PALETTE_BASE + DOOM_HELP_PALETTE_COUNT) > 256
+#error Neo Geo HELP2 exceeds sprite palette budget
+#endif
+
 typedef enum
 {
 	STATIC_BACKGROUND_NONE,
 	STATIC_BACKGROUND_TITLE,
-	STATIC_BACKGROUND_WIMAP
+	STATIC_BACKGROUND_WIMAP,
+	STATIC_BACKGROUND_HELP
 } static_background_t;
 
 typedef struct
@@ -353,6 +358,11 @@ static void NG_UploadStaticBackgroundPalettes(static_background_t background)
 	{
 		src = &doom_wimap_palettes[0][0];
 		palette_count = DOOM_WIMAP_PALETTE_COUNT;
+	}
+	else if (background == STATIC_BACKGROUND_HELP)
+	{
+		src = &doom_help_palettes[0][0];
+		palette_count = DOOM_HELP_PALETTE_COUNT;
 	}
 	else
 	{
@@ -600,12 +610,18 @@ static void NG_InitMicroSprites(void)
 
 static void NG_ConfigureStaticBackgroundSprites(static_background_t background)
 {
-	const uint16_t tile_base = background == STATIC_BACKGROUND_WIMAP
-		? DOOM_WIMAP_TILE_BASE
-		: DOOM_TITLE_TILE_BASE;
-	const uint8_t *palette_map = background == STATIC_BACKGROUND_WIMAP
-		? doom_wimap_palette_map
-		: doom_title_palette_map;
+	uint16_t tile_base = DOOM_TITLE_TILE_BASE;
+	const uint8_t *palette_map = doom_title_palette_map;
+	if (background == STATIC_BACKGROUND_WIMAP)
+	{
+		tile_base = DOOM_WIMAP_TILE_BASE;
+		palette_map = doom_wimap_palette_map;
+	}
+	else if (background == STATIC_BACKGROUND_HELP)
+	{
+		tile_base = DOOM_HELP_TILE_BASE;
+		palette_map = doom_help_palette_map;
+	}
 
 	*REG_VRAMMOD = 1;
 	for (uint16_t col = 0; col < DOOM_BACKGROUND_COLUMNS; col++)
@@ -1171,20 +1187,31 @@ void V_DrawRawFullScreen(int16_t num)
 {
 	static int16_t titlepicnum = -1;
 	static int16_t wimap0num = -1;
+	static int16_t help2num = -1;
 	if (titlepicnum < 0)
 	{
 		titlepicnum = W_GetNumForName("TITLEPIC");
 		wimap0num = W_GetNumForName("WIMAP0");
+		help2num = W_GetNumForName("HELP2");
 	}
 
-	if (num == titlepicnum || num == wimap0num)
+	if (num == titlepicnum || num == wimap0num || num == help2num)
 	{
-		_s_static_background_wipe_source = num == titlepicnum
-			? doom_title_wipe_map
-			: doom_wimap_wipe_map;
-		_s_static_background_requested = num == titlepicnum
-			? STATIC_BACKGROUND_TITLE
-			: STATIC_BACKGROUND_WIMAP;
+		if (num == titlepicnum)
+		{
+			_s_static_background_wipe_source = doom_title_wipe_map;
+			_s_static_background_requested = STATIC_BACKGROUND_TITLE;
+		}
+		else if (num == wimap0num)
+		{
+			_s_static_background_wipe_source = doom_wimap_wipe_map;
+			_s_static_background_requested = STATIC_BACKGROUND_WIMAP;
+		}
+		else
+		{
+			_s_static_background_wipe_source = doom_help_wipe_map;
+			_s_static_background_requested = STATIC_BACKGROUND_HELP;
+		}
 		if (!_s_fix_wipe_active && _s_static_background_active == STATIC_BACKGROUND_NONE)
 		{
 			NG_BeginMainVramWrite();

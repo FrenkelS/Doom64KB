@@ -6,10 +6,12 @@
 
 #define DOOM_TITLE_TILE_BASE 272u
 #define DOOM_WIMAP_TILE_BASE 1336u
+#define DOOM_HELP_TILE_BASE 2400u
 #define DOOM_BACKGROUND_COLUMNS 38u
 #define DOOM_BACKGROUND_ROWS 28u
 #define DOOM_TITLE_PALETTE_COUNT 16u
 #define DOOM_WIMAP_PALETTE_COUNT 16u
+#define DOOM_HELP_PALETTE_COUNT 16u
 
 static const uint16_t doom_title_palettes[16][16] = {
     {0x8000, 0x0111, 0xd220, 0x8321, 0x6432, 0xf822, 0x9553, 0x0555, 0x3754, 0xc675, 0x4c85, 0x7999, 0xab98, 0xdfb7, 0xcfbb, 0x6ff4},
@@ -30,6 +32,7 @@ static const uint16_t doom_title_palettes[16][16] = {
     {0x8000, 0x7bbb, 0x0777, 0x8005, 0x4500, 0xc500, 0x0222, 0x133f, 0xb742, 0xb753, 0xbb44, 0xaa87, 0x3e88, 0x2db4, 0x8faa, 0x9ccf},
 };
 #define doom_wimap_palettes doom_title_palettes
+#define doom_help_palettes doom_title_palettes
 
 static const uint8_t doom_title_palette_map[1064] = {
     13u, 13u, 11u, 5u, 4u, 4u, 4u, 4u, 4u, 4u, 4u, 5u, 5u, 12u, 4u, 12u, 12u, 12u, 12u, 11u,
@@ -143,6 +146,63 @@ static const uint8_t doom_wimap_palette_map[1064] = {
     1u, 1u, 1u, 1u, 1u, 14u, 10u, 1u, 0u, 10u, 1u, 0u, 1u, 0u, 0u, 10u, 10u, 10u, 10u, 0u,
     10u, 0u, 10u, 10u, 11u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 11u, 10u, 10u, 10u, 10u, 1u, 1u,
     1u, 1u, 1u, 1u,
+};
+
+static const uint8_t doom_help_palette_map[1064] = {
+    3u, 3u, 3u, 3u, 3u, 3u, 3u, 3u, 3u, 3u, 1u, 1u, 1u, 3u, 3u, 3u, 3u, 3u, 3u, 3u,
+    3u, 3u, 15u, 3u, 3u, 3u, 3u, 3u, 3u, 1u, 1u, 3u, 3u, 3u, 1u, 3u, 3u, 15u, 15u, 15u,
+    3u, 3u, 8u, 15u, 3u, 15u, 15u, 3u, 3u, 15u, 3u, 7u, 15u, 7u, 1u, 1u, 15u, 8u, 8u, 7u,
+    8u, 15u, 8u, 15u, 8u, 8u, 8u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 3u, 15u, 3u, 15u, 1u, 12u,
+    15u, 1u, 12u, 1u, 1u, 1u, 1u, 12u, 3u, 15u, 3u, 1u, 1u, 1u, 8u, 8u, 1u, 8u, 0u, 10u,
+    8u, 0u, 8u, 0u, 10u, 8u, 1u, 0u, 1u, 1u, 1u, 3u, 3u, 3u, 3u, 8u, 15u, 8u, 7u, 7u,
+    12u, 8u, 8u, 15u, 7u, 7u, 7u, 3u, 3u, 8u, 1u, 1u, 8u, 0u, 0u, 8u, 8u, 8u, 10u, 8u,
+    0u, 0u, 0u, 8u, 8u, 0u, 1u, 1u, 1u, 3u, 3u, 3u, 1u, 8u, 7u, 7u, 7u, 7u, 7u, 3u,
+    7u, 7u, 8u, 7u, 1u, 8u, 3u, 1u, 1u, 1u, 8u, 8u, 0u, 8u, 8u, 0u, 8u, 1u, 10u, 0u,
+    1u, 10u, 8u, 1u, 1u, 8u, 8u, 8u, 8u, 15u, 2u, 2u, 7u, 10u, 7u, 1u, 15u, 15u, 15u, 7u,
+    10u, 11u, 7u, 1u, 7u, 7u, 1u, 1u, 15u, 8u, 0u, 8u, 8u, 8u, 1u, 8u, 8u, 0u, 1u, 1u,
+    8u, 6u, 0u, 8u, 1u, 8u, 8u, 3u, 2u, 1u, 11u, 10u, 15u, 15u, 6u, 6u, 15u, 6u, 6u, 1u,
+    6u, 15u, 1u, 15u, 1u, 1u, 3u, 1u, 1u, 3u, 3u, 1u, 8u, 3u, 3u, 1u, 3u, 1u, 1u, 1u,
+    1u, 3u, 3u, 3u, 3u, 15u, 2u, 1u, 6u, 15u, 15u, 1u, 15u, 8u, 8u, 15u, 15u, 8u, 1u, 1u,
+    1u, 1u, 1u, 1u, 7u, 1u, 1u, 1u, 5u, 5u, 5u, 10u, 11u, 4u, 5u, 5u, 12u, 1u, 1u, 3u,
+    15u, 15u, 15u, 15u, 1u, 1u, 6u, 8u, 8u, 3u, 1u, 3u, 3u, 1u, 3u, 3u, 8u, 8u, 15u, 15u,
+    1u, 1u, 7u, 3u, 1u, 5u, 11u, 4u, 13u, 13u, 11u, 5u, 5u, 12u, 12u, 3u, 1u, 3u, 15u, 15u,
+    15u, 3u, 3u, 1u, 8u, 8u, 3u, 3u, 12u, 3u, 3u, 1u, 3u, 3u, 3u, 15u, 8u, 15u, 1u, 1u,
+    7u, 3u, 8u, 0u, 13u, 1u, 11u, 13u, 5u, 5u, 12u, 12u, 12u, 3u, 1u, 3u, 15u, 3u, 3u, 3u,
+    3u, 8u, 7u, 8u, 7u, 8u, 1u, 7u, 8u, 2u, 13u, 8u, 2u, 7u, 8u, 7u, 2u, 8u, 7u, 3u,
+    8u, 0u, 12u, 0u, 5u, 12u, 15u, 0u, 12u, 5u, 8u, 3u, 1u, 3u, 3u, 3u, 3u, 1u, 1u, 13u,
+    13u, 2u, 7u, 13u, 2u, 7u, 7u, 13u, 5u, 13u, 13u, 8u, 13u, 13u, 13u, 7u, 8u, 3u, 7u, 8u,
+    0u, 0u, 13u, 13u, 0u, 5u, 11u, 13u, 1u, 3u, 8u, 3u, 8u, 8u, 8u, 3u, 1u, 13u, 2u, 13u,
+    8u, 7u, 2u, 7u, 8u, 5u, 6u, 7u, 13u, 2u, 7u, 13u, 5u, 2u, 1u, 1u, 8u, 13u, 8u, 0u,
+    13u, 2u, 13u, 13u, 13u, 13u, 13u, 11u, 5u, 5u, 5u, 11u, 12u, 1u, 2u, 13u, 5u, 2u, 2u, 13u,
+    13u, 13u, 13u, 2u, 13u, 8u, 13u, 13u, 2u, 1u, 1u, 1u, 3u, 2u, 1u, 8u, 0u, 0u, 13u, 8u,
+    13u, 8u, 15u, 7u, 13u, 5u, 12u, 5u, 12u, 5u, 12u, 1u, 1u, 13u, 13u, 13u, 13u, 13u, 7u, 3u,
+    1u, 1u, 4u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 1u, 0u, 8u, 0u, 8u, 8u, 11u, 7u,
+    8u, 8u, 12u, 5u, 12u, 12u, 12u, 12u, 12u, 2u, 1u, 2u, 8u, 2u, 8u, 8u, 8u, 8u, 4u, 4u,
+    9u, 9u, 4u, 1u, 1u, 1u, 1u, 1u, 15u, 1u, 1u, 8u, 0u, 15u, 8u, 8u, 13u, 13u, 13u, 5u,
+    12u, 15u, 15u, 7u, 7u, 12u, 12u, 3u, 2u, 13u, 13u, 2u, 8u, 13u, 13u, 13u, 13u, 2u, 13u, 13u,
+    1u, 1u, 1u, 1u, 1u, 1u, 13u, 5u, 13u, 0u, 0u, 0u, 0u, 13u, 8u, 15u, 5u, 5u, 12u, 7u,
+    7u, 7u, 7u, 12u, 12u, 15u, 3u, 13u, 13u, 13u, 2u, 13u, 13u, 13u, 13u, 2u, 1u, 1u, 1u, 1u,
+    1u, 1u, 1u, 8u, 7u, 12u, 13u, 8u, 0u, 8u, 0u, 10u, 8u, 8u, 8u, 8u, 8u, 15u, 1u, 11u,
+    5u, 1u, 1u, 15u, 8u, 1u, 1u, 2u, 1u, 1u, 1u, 5u, 1u, 2u, 1u, 7u, 4u, 6u, 1u, 1u,
+    1u, 7u, 7u, 7u, 0u, 8u, 0u, 8u, 8u, 8u, 8u, 15u, 15u, 15u, 12u, 12u, 2u, 13u, 13u, 12u,
+    8u, 1u, 2u, 2u, 13u, 13u, 5u, 5u, 13u, 13u, 13u, 13u, 13u, 13u, 13u, 13u, 8u, 2u, 2u, 12u,
+    7u, 12u, 13u, 8u, 0u, 0u, 0u, 8u, 12u, 12u, 12u, 12u, 12u, 12u, 8u, 7u, 13u, 13u, 8u, 2u,
+    3u, 7u, 13u, 13u, 2u, 13u, 13u, 13u, 13u, 13u, 2u, 13u, 13u, 13u, 13u, 2u, 3u, 11u, 11u, 13u,
+    0u, 0u, 8u, 0u, 0u, 8u, 12u, 14u, 8u, 15u, 2u, 2u, 15u, 13u, 13u, 8u, 8u, 2u, 3u, 13u,
+    2u, 5u, 13u, 13u, 8u, 13u, 13u, 13u, 13u, 7u, 13u, 7u, 13u, 13u, 1u, 11u, 11u, 12u, 13u, 8u,
+    8u, 0u, 13u, 13u, 11u, 8u, 8u, 15u, 15u, 15u, 15u, 8u, 8u, 8u, 1u, 1u, 3u, 13u, 13u, 13u,
+    2u, 5u, 13u, 13u, 13u, 7u, 13u, 13u, 13u, 2u, 13u, 2u, 1u, 8u, 13u, 12u, 13u, 8u, 0u, 0u,
+    8u, 9u, 8u, 8u, 15u, 4u, 15u, 15u, 8u, 11u, 8u, 2u, 11u, 2u, 3u, 7u, 13u, 13u, 13u, 13u,
+    13u, 13u, 5u, 7u, 13u, 13u, 13u, 7u, 13u, 13u, 13u, 8u, 13u, 8u, 8u, 8u, 0u, 8u, 8u, 8u,
+    8u, 8u, 8u, 8u, 0u, 0u, 1u, 11u, 2u, 11u, 11u, 2u, 3u, 8u, 8u, 8u, 8u, 15u, 1u, 1u,
+    8u, 8u, 2u, 1u, 2u, 4u, 1u, 1u, 1u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 1u, 1u,
+    1u, 3u, 3u, 3u, 3u, 11u, 2u, 8u, 11u, 2u, 2u, 2u, 13u, 13u, 13u, 13u, 13u, 13u, 13u, 13u,
+    13u, 13u, 13u, 13u, 13u, 13u, 1u, 8u, 12u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 1u, 1u, 1u, 3u,
+    3u, 3u, 15u, 11u, 2u, 2u, 11u, 2u, 1u, 13u, 13u, 13u, 13u, 13u, 13u, 13u, 13u, 13u, 13u, 13u,
+    13u, 13u, 13u, 13u, 13u, 13u, 13u, 13u, 13u, 8u, 13u, 13u, 8u, 8u, 1u, 1u, 1u, 3u, 3u, 3u,
+    15u, 2u, 1u, 2u, 1u, 2u, 1u, 2u, 2u, 2u, 2u, 4u, 2u, 13u, 13u, 13u, 13u, 13u, 13u, 4u,
+    13u, 2u, 2u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 8u, 12u, 1u, 1u, 1u, 3u, 7u, 7u, 7u, 15u,
+    3u, 3u, 3u, 12u,
 };
 
 #endif
