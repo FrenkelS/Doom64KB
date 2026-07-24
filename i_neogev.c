@@ -886,6 +886,14 @@ boolean I_NeoGeoFixWipeActive(void)
 #define COLEXTRABITS (8 - 1)
 #define COLBITS (8 + 1)
 
+#define DRAW_WALL_PIXEL_ASM \
+	"move.b %[frac_hi],%[texel]\n\t" \
+	"lsr.b #1,%[texel]\n\t" \
+	"move.b (%[source],%[texel].w),%[texel]\n\t" \
+	"move.b (%[colormap],%[texel].w),(%[dest])+\n\t" \
+	"add.b %[step_lo],%[frac_lo]\n\t" \
+	"addx.b %[step_hi],%[frac_hi]\n\t"
+
 
 void R_DrawColumnSprite(const draw_column_vars_t *dcvars)
 {
@@ -937,23 +945,54 @@ void R_DrawColumnWall(const draw_column_vars_t *dcvars)
 	const uint16_t step_lo = (uint8_t)fracstep;
 	const uint16_t step_hi = fracstep >> 8;
 	uint16_t texel;
-	uint16_t iterations = (uint16_t)count - 1u;
+
+	if (count < 8)
+	{
+		uint16_t short_iterations = (uint16_t)count - 1u;
+		__asm__ volatile (
+			"moveq #0,%[texel]\n\t"
+			"1:\n\t"
+			DRAW_WALL_PIXEL_ASM
+			"dbra %[iterations],1b"
+			: [dest] "+&a" (dest),
+			  [frac_lo] "+&d" (frac_lo),
+			  [frac_hi] "+&d" (frac_hi),
+			  [iterations] "+&d" (short_iterations),
+			  [texel] "=&d" (texel)
+			: [source] "a" (source),
+			  [colormap] "a" (colormap),
+			  [step_lo] "d" (step_lo),
+			  [step_hi] "d" (step_hi)
+			: "cc", "memory"
+		);
+		return;
+	}
+
+	uint16_t iterations = (uint16_t)count - 4u;
 
 	/*
 	 * Keep the 16-bit phase in two low register bytes. On a 68000 this
 	 * replaces the per-pixel variable shift and long masks with byte
-	 * arithmetic; ADDX carries the low-byte phase into the high byte.
+	 * arithmetic; ADDX carries the low-byte phase into the high byte. Four
+	 * pixels share the hot loop branch, then the biased counter handles the
+	 * zero-to-three-pixel tail without another quotient or remainder.
 	 */
 	__asm__ volatile (
 		"moveq #0,%[texel]\n\t"
 		"1:\n\t"
-		"move.b %[frac_hi],%[texel]\n\t"
-		"lsr.b #1,%[texel]\n\t"
-		"move.b (%[source],%[texel].w),%[texel]\n\t"
-		"move.b (%[colormap],%[texel].w),(%[dest])+\n\t"
-		"add.b %[step_lo],%[frac_lo]\n\t"
-		"addx.b %[step_hi],%[frac_hi]\n\t"
-		"dbra %[iterations],1b"
+		DRAW_WALL_PIXEL_ASM
+		DRAW_WALL_PIXEL_ASM
+		DRAW_WALL_PIXEL_ASM
+		DRAW_WALL_PIXEL_ASM
+		"subq.w #4,%[iterations]\n\t"
+		"bpl.s 1b\n\t"
+		"2:\n\t"
+		"addq.w #3,%[iterations]\n\t"
+		"bmi.s 4f\n\t"
+		"3:\n\t"
+		DRAW_WALL_PIXEL_ASM
+		"dbra %[iterations],3b\n\t"
+		"4:"
 		: [dest] "+&a" (dest),
 		  [frac_lo] "+&d" (frac_lo),
 		  [frac_hi] "+&d" (frac_hi),
@@ -969,6 +1008,8 @@ void R_DrawColumnWall(const draw_column_vars_t *dcvars)
 	R_DrawColumnSprite(dcvars);
 #endif
 }
+
+#undef DRAW_WALL_PIXEL_ASM
 
 
 void R_DrawColumnFlat(uint8_t color, const draw_column_vars_t *dcvars)
