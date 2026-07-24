@@ -1021,11 +1021,36 @@ void R_DrawColumnFlat(uint8_t color, const draw_column_vars_t *dcvars)
 
 	uint8_t *dest = MICROFB_COLUMN(dcvars->x) + dcvars->yl;
 #if defined __GNUC__ && defined __mc68000__
-	uint16_t iterations = (uint16_t)count - 1u;
+	if (count < 8)
+	{
+		uint16_t short_iterations = (uint16_t)count - 1u;
+		__asm__ volatile (
+			"1:\n\t"
+			"move.b %[color],(%[dest])+\n\t"
+			"dbra %[iterations],1b"
+			: [dest] "+&a" (dest),
+			  [iterations] "+&d" (short_iterations)
+			: [color] "d" (color)
+			: "cc", "memory"
+		);
+		return;
+	}
+
+	uint16_t iterations = (uint16_t)count - 4u;
 	__asm__ volatile (
 		"1:\n\t"
 		"move.b %[color],(%[dest])+\n\t"
-		"dbra %[iterations],1b"
+		"move.b %[color],(%[dest])+\n\t"
+		"move.b %[color],(%[dest])+\n\t"
+		"move.b %[color],(%[dest])+\n\t"
+		"subq.w #4,%[iterations]\n\t"
+		"bpl.s 1b\n\t"
+		"addq.w #3,%[iterations]\n\t"
+		"bmi.s 3f\n\t"
+		"2:\n\t"
+		"move.b %[color],(%[dest])+\n\t"
+		"dbra %[iterations],2b\n\t"
+		"3:"
 		: [dest] "+&a" (dest),
 		  [iterations] "+&d" (iterations)
 		: [color] "d" (color)
