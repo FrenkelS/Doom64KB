@@ -79,7 +79,7 @@ const line_t __far* _g_spechit[4];
 int16_t _g_numspechit;
 
 // Temporary holder for thing_sectorlist threads
-static msecnode_t __far* _s_sector_list;
+static msecnode_link_t _s_sector_list = MSECNODE_NULL;
 
 
 mobj_t __far*   _g_linetarget; // who got hit (or NULL)
@@ -1190,11 +1190,133 @@ void P_RadiusAttack(mobj_t __far* spot, mobj_t __far* source, int16_t damage)
 
 #include "z_bmallo.h"
 
+#if defined NEOGEO_COMPACT_MSECNODES
+
+#define NEOGEO_WORK_RAM_START UINT32_C(0x00100000)
+#define NEOGEO_WORK_RAM_END   UINT32_C(0x00110000)
+#define NEOGEO_WORK_RAM_MAX_HANDLE \
+  ((NEOGEO_WORK_RAM_END - NEOGEO_WORK_RAM_START) / 2)
+
+inline static uint16_t P_WramHandleFromPointer(const void __far* pointer,
+                                               uint16_t object_size)
+{
+  if (!pointer)
+    return 0;
+
+  const uintptr_t address = (uintptr_t)pointer;
+#if defined NEOGEO_VALIDATE_COMPACT_MSECNODES
+  if (!object_size
+      || (address & 1u)
+      || address < NEOGEO_WORK_RAM_START
+      || address > NEOGEO_WORK_RAM_END - object_size)
+    I_Error("P_WramHandleFromPointer: invalid Work-RAM object %lx/%u",
+            (unsigned long)address, object_size);
+#else
+  (void)object_size;
+#endif
+
+  return (uint16_t)(((address - NEOGEO_WORK_RAM_START) >> 1) + 1);
+}
+
+inline static void __far* P_WramPointerFromHandle(uint16_t handle,
+                                                  uint16_t object_size)
+{
+  if (!handle)
+    return NULL;
+
+#if defined NEOGEO_VALIDATE_COMPACT_MSECNODES
+  if (handle > NEOGEO_WORK_RAM_MAX_HANDLE)
+    I_Error("P_WramPointerFromHandle: invalid Work-RAM handle %u", handle);
+#endif
+
+  const uintptr_t address = NEOGEO_WORK_RAM_START
+    + (((uintptr_t)handle - 1) << 1);
+#if defined NEOGEO_VALIDATE_COMPACT_MSECNODES
+  if (!object_size || address > NEOGEO_WORK_RAM_END - object_size)
+    I_Error("P_WramPointerFromHandle: object %u exceeds Work RAM", handle);
+#else
+  (void)object_size;
+#endif
+
+  return (void __far*)address;
+}
+
+msecnode_t __far* P_MsecnodeFromLink(msecnode_link_t link)
+{
+  return (msecnode_t __far*)P_WramPointerFromHandle(link,
+                                                    sizeof(msecnode_t));
+}
+
+static msecnode_link_t P_MsecnodeToLink(const msecnode_t __far* node)
+{
+  return P_WramHandleFromPointer(node, sizeof(*node));
+}
+
+mobj_t __far* P_MsecnodeThing(const msecnode_t __far* node)
+{
+  return (mobj_t __far*)P_WramPointerFromHandle(node->m_thing,
+                                                sizeof(mobj_t));
+}
+
+static sector_t __far* P_MsecnodeSector(const msecnode_t __far* node)
+{
+  const uint16_t offset =
+    node->m_sector_visited & MSECNODE_SECTOR_OFFSET_MASK;
+#if defined NEOGEO_VALIDATE_COMPACT_MSECNODES
+  const uint32_t sector_bytes = (uint16_t)_g_numsectors * sizeof(sector_t);
+  if (!_g_sectors || _g_numsectors <= 0
+      || ((uint32_t)offset << 1) > sector_bytes - sizeof(sector_t))
+    I_Error("P_MsecnodeSector: invalid sector offset %u", offset);
+#endif
+  return (sector_t __far*)((byte __far*)_g_sectors + ((uint32_t)offset << 1));
+}
+
+inline static uint16_t P_MsecnodeSectorOffset(const sector_t __far* sector)
+{
+#if defined NEOGEO_VALIDATE_COMPACT_MSECNODES
+  if (!_g_sectors || !sector || _g_numsectors <= 0)
+    I_Error("P_MsecnodeSectorOffset: invalid sector array");
+
+  const uintptr_t base = (uintptr_t)_g_sectors;
+  const uintptr_t address = (uintptr_t)sector;
+  const uint32_t bytes = (uint16_t)_g_numsectors * sizeof(sector_t);
+  if (address < base || address >= base + bytes
+      || (address - base) % sizeof(sector_t))
+    I_Error("P_MsecnodeSectorOffset: sector %lx outside array",
+            (unsigned long)address);
+#endif
+
+  return (uint16_t)(((uintptr_t)sector - (uintptr_t)_g_sectors) >> 1);
+}
+
+msecnode_link_t P_MsecnodeSectorNext(const msecnode_t __far* node)
+{
+  return node->m_snext;
+}
+
+boolean P_MsecnodeVisited(const msecnode_t __far* node)
+{
+  return (node->m_sector_visited & MSECNODE_VISITED_MASK) != 0;
+}
+
+void P_MsecnodeSetVisited(msecnode_t __far* node, boolean visited)
+{
+  if (visited)
+    node->m_sector_visited |= MSECNODE_VISITED_MASK;
+  else
+    node->m_sector_visited &= MSECNODE_SECTOR_OFFSET_MASK;
+}
+
+#endif
+
 static struct block_memory_alloc_s secnodezone = { NULL, sizeof(msecnode_t) };
 
 void P_SetSecnodeFirstpoolToNull(void)
 {
 	secnodezone.firstpool = NULL;
+#if defined NEOGEO_COMPACT_MSECNODES
+	_s_sector_list = MSECNODE_NULL;
+#endif
 }
 
 
@@ -1221,6 +1343,23 @@ static void P_AddSecnode(sector_t __far* s, mobj_t __far* thing)
   {
   msecnode_t __far* node;
 
+#if defined NEOGEO_COMPACT_MSECNODES
+  const uint16_t sector_offset = P_MsecnodeSectorOffset(s);
+  const mobj_wram_handle_t thing_handle =
+    P_WramHandleFromPointer(thing, sizeof(*thing));
+  msecnode_link_t link = _s_sector_list;
+  while (link != MSECNODE_NULL)
+    {
+    node = P_MsecnodeFromLink(link);
+    if ((node->m_sector_visited & MSECNODE_SECTOR_OFFSET_MASK)
+        == sector_offset)
+      {
+      node->m_thing = thing_handle; // A nonzero thing says to keep the node.
+      return;
+      }
+    link = node->m_tnext;
+    }
+#else
   node = _s_sector_list;
   while (node)
     {
@@ -1231,12 +1370,32 @@ static void P_AddSecnode(sector_t __far* s, mobj_t __far* thing)
       }
     node = node->m_tnext;
     }
+#endif
 
   // Couldn't find an existing node for this sector. Add one at the head
   // of the list.
 
   node = P_GetSecnode();
 
+#if defined NEOGEO_COMPACT_MSECNODES
+  const msecnode_link_t node_link = P_MsecnodeToLink(node);
+
+  node->m_sector_visited = sector_offset;
+  node->m_thing = thing_handle;
+  node->m_tprev = MSECNODE_NULL;
+  node->m_tnext = _s_sector_list;
+  if (_s_sector_list != MSECNODE_NULL)
+    P_MsecnodeFromLink(_s_sector_list)->m_tprev = node_link;
+
+  // Add new node at head of sector thread starting at s->touching_thinglist
+
+  node->m_sprev = MSECNODE_NULL;
+  node->m_snext = s->touching_thinglist;
+  if (s->touching_thinglist != MSECNODE_NULL)
+    P_MsecnodeFromLink(s->touching_thinglist)->m_sprev = node_link;
+  s->touching_thinglist = node_link;
+  _s_sector_list = node_link;
+#else
   // killough 4/4/98, 4/7/98: mark new nodes unvisited.
   node->visited = false;
 
@@ -1255,6 +1414,7 @@ static void P_AddSecnode(sector_t __far* s, mobj_t __far* thing)
     node->m_snext->m_sprev = node;
   s->touching_thinglist = node;
   _s_sector_list = node;
+#endif
   }
 
 
@@ -1262,8 +1422,35 @@ static void P_AddSecnode(sector_t __far* s, mobj_t __far* thing)
 // sectors this object appears in. Returns a pointer to the next node
 // on the linked list, or NULL.
 
-static msecnode_t __far* P_DelSecnode(msecnode_t __far* node)
+static msecnode_link_t P_DelSecnode(msecnode_t __far* node)
   {
+#if defined NEOGEO_COMPACT_MSECNODES
+  if (node)
+    {
+    const msecnode_link_t tp = node->m_tprev;
+    const msecnode_link_t tn = node->m_tnext;
+    const msecnode_link_t sp = node->m_sprev;
+    const msecnode_link_t sn = node->m_snext;
+
+    // Unlink from the Thing thread. Its external head is _s_sector_list.
+    if (tp != MSECNODE_NULL)
+      P_MsecnodeFromLink(tp)->m_tnext = tn;
+    if (tn != MSECNODE_NULL)
+      P_MsecnodeFromLink(tn)->m_tprev = tp;
+
+    // Unlink from the sector thread.
+    if (sp != MSECNODE_NULL)
+      P_MsecnodeFromLink(sp)->m_snext = sn;
+    else
+      P_MsecnodeSector(node)->touching_thinglist = sn;
+    if (sn != MSECNODE_NULL)
+      P_MsecnodeFromLink(sn)->m_sprev = sp;
+
+    P_PutSecnode(node);
+    return tn;
+    }
+  return MSECNODE_NULL;
+#else
   msecnode_t __far* tp;  // prev node on thing thread
   msecnode_t __far* tn;  // next node on thing thread
   msecnode_t __far* sp;  // prev node on sector thread
@@ -1300,21 +1487,28 @@ static msecnode_t __far* P_DelSecnode(msecnode_t __far* node)
     return(tn);
     }
   return(NULL);
+#endif
   }                             // phares 3/13/98
 
 // Delete an entire sector list
 
 void P_DelSeclist(void)
 {
+#if defined NEOGEO_COMPACT_MSECNODES
+	msecnode_link_t link = _s_sector_list;
+	while (link != MSECNODE_NULL)
+		link = P_DelSecnode(P_MsecnodeFromLink(link));
+#else
 	msecnode_t __far* node = _s_sector_list;
 	while (node)
 		node = P_DelSecnode(node);
+#endif
 
-	_s_sector_list = NULL;
+	_s_sector_list = MSECNODE_NULL;
 }
 
 
-void P_SetSeclist(msecnode_t __far* sectorList)
+void P_SetSeclist(msecnode_link_t sectorList)
 {
 	_s_sector_list = sectorList;
 }
@@ -1378,12 +1572,22 @@ void P_CreateSecNodeList(mobj_t __far* thing)
   // finished, delete all nodes where m_thing is still NULL. These
   // represent the sectors the Thing has vacated.
 
+#if defined NEOGEO_COMPACT_MSECNODES
+  msecnode_link_t node_link = _s_sector_list;
+  while (node_link != MSECNODE_NULL)
+    {
+    msecnode_t __far* node = P_MsecnodeFromLink(node_link);
+    node->m_thing = 0;
+    node_link = node->m_tnext;
+    }
+#else
   msecnode_t __far* node = _s_sector_list;
   while (node)
     {
     node->m_thing = NULL;
     node = node->m_tnext;
     }
+#endif
 
   tmthing = thing;
 
@@ -1413,6 +1617,21 @@ void P_CreateSecNodeList(mobj_t __far* thing)
   // Now delete any nodes that won't be used. These are the ones where
   // m_thing is still NULL.
 
+#if defined NEOGEO_COMPACT_MSECNODES
+  node_link = _s_sector_list;
+  while (node_link != MSECNODE_NULL)
+    {
+    msecnode_t __far* node = P_MsecnodeFromLink(node_link);
+    if (node->m_thing == 0)
+      {
+      if (node_link == _s_sector_list)
+        _s_sector_list = node->m_tnext;
+      node_link = P_DelSecnode(node);
+      }
+    else
+      node_link = node->m_tnext;
+    }
+#else
   node = _s_sector_list;
   while (node)
     {
@@ -1425,6 +1644,7 @@ void P_CreateSecNodeList(mobj_t __far* thing)
     else
       node = node->m_tnext;
     }
+#endif
 
   /* cph -
    * This is the strife we get into for using global variables. tmthing
@@ -1437,7 +1657,7 @@ void P_CreateSecNodeList(mobj_t __far* thing)
   tmthing = saved_tmthing;
 
   thing->touching_sectorlist = _s_sector_list; // Attach to Thing's mobj_t
-  _s_sector_list = NULL; // clear for next time
+  _s_sector_list = MSECNODE_NULL; // clear for next time
 }
 
 void P_MapEnd(void)

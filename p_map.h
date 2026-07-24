@@ -61,8 +61,16 @@ boolean P_CheckPosition(mobj_t __far* thing, fixed_t x, fixed_t y);
 
 void    P_SetSecnodeFirstpoolToNull(void);
 void    P_DelSeclist(void);
-void    P_SetSeclist(msecnode_t __far* sectorList);
+void    P_SetSeclist(msecnode_link_t sectorList);
 void    P_CreateSecNodeList(mobj_t __far*);
+
+#if defined NEOGEO_COMPACT_MSECNODES
+msecnode_t __far* P_MsecnodeFromLink(msecnode_link_t link);
+msecnode_link_t P_MsecnodeSectorNext(const msecnode_t __far* node);
+mobj_t __far* P_MsecnodeThing(const msecnode_t __far* node);
+boolean P_MsecnodeVisited(const msecnode_t __far* node);
+void P_MsecnodeSetVisited(msecnode_t __far* node, boolean visited);
+#endif
 
 
 void	P_MapEnd(void);

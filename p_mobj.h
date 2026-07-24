@@ -198,6 +198,18 @@
 /* cph 2006/08/28 - move Prev[XYZ] fields to the end of the struct. Add any
  * other new fields to the end, and make sure you don't break savegames! */
 
+#if defined NEOGEO_COMPACT_MSECNODES && !defined __NGDEVKIT__
+#error NEOGEO_COMPACT_MSECNODES requires the Neo Geo Work-RAM ABI
+#endif
+
+#if defined NEOGEO_COMPACT_MSECNODES
+typedef uint16_t msecnode_link_t;
+#else
+typedef struct msecnode_s __far* msecnode_link_t;
+#endif
+
+#define MSECNODE_NULL ((msecnode_link_t)0)
+
 typedef struct mobj_s
 {
     // List: thinker links.
@@ -278,10 +290,17 @@ typedef struct mobj_s
 
                                        // phares 3/17/98
     // a linked list of sectors where this object appears
-    struct msecnode_s __far* touching_sectorlist;
+    msecnode_link_t touching_sectorlist;
 
     // SEE WARNING ABOVE ABOUT POINTER FIELDS!!!
 } mobj_t;
+
+#if defined NEOGEO_COMPACT_MSECNODES
+_Static_assert(sizeof(mobj_t) == 110,
+               "compact Neo Geo mobj_t must be 110 bytes");
+_Static_assert(_Alignof(mobj_t) >= 2,
+               "compact Neo Geo mobj_t must stay 68000-aligned");
+#endif
 
 #if defined NEOGEO_COMPACT_BLOCKMAP
 typedef uint8_t mobjindex_t;

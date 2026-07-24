@@ -43,6 +43,9 @@
 #include "p_tick.h"
 #include "s_sound.h"
 #include "sounds.h"
+#if defined NEOGEO_COMPACT_MSECNODES
+#include "i_system.h"
+#endif
 
 #include "globdata.h"
 
@@ -161,7 +164,11 @@ static void PIT_ChangeSector(mobj_t __far* thing)
 
 static boolean P_CheckSector(sector_t __far* sector)
   {
+#if defined NEOGEO_COMPACT_MSECNODES
+  msecnode_link_t link;
+#else
   msecnode_t __far* n;
+#endif
 
   nofit = false;
 
@@ -175,6 +182,32 @@ static boolean P_CheckSector(sector_t __far* sector)
 
   // Mark all things invalid
 
+#if defined NEOGEO_COMPACT_MSECNODES
+  for (link = sector->touching_thinglist; link != MSECNODE_NULL;)
+    {
+    msecnode_t __far* const n = P_MsecnodeFromLink(link);
+    P_MsecnodeSetVisited(n, false);
+    link = P_MsecnodeSectorNext(n);
+    }
+
+  do
+    for (link = sector->touching_thinglist; link != MSECNODE_NULL;)
+      {
+      msecnode_t __far* const n = P_MsecnodeFromLink(link);
+      if (!P_MsecnodeVisited(n))       // unprocessed thing found
+        {
+        P_MsecnodeSetVisited(n, true); // mark thing as processed
+        mobj_t __far* const thing = P_MsecnodeThing(n);
+        if (!thing)
+          I_Error("P_CheckSector: null thing in sector list");
+        if (!(thing->flags & MF_NOBLOCKMAP)) // jff 4/7/98 don't do these
+          PIT_ChangeSector(thing);      // may remove the current node
+        break;                         // exit and start over
+        }
+      link = P_MsecnodeSectorNext(n);
+      }
+  while (link != MSECNODE_NULL);
+#else
   for (n=sector->touching_thinglist; n; n=n->m_snext)
     n->visited = false;
 
@@ -188,6 +221,7 @@ static boolean P_CheckSector(sector_t __far* sector)
         break;                 // exit and start over
         }
   while (n);  // repeat from scratch until all things left are marked valid
+#endif
 
   return nofit;
   }

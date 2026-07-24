@@ -855,7 +855,7 @@ mobj_t __far* P_SpawnMobj(fixed_t x,fixed_t y,fixed_t z,mobjtype_t type)
     mobj->tics   = st->tics;
     mobj->sprite = st->sprite;
     mobj->frame  = st->frame;
-    mobj->touching_sectorlist = NULL; // NULL head of sector list // phares 3/13/98
+    mobj->touching_sectorlist = MSECNODE_NULL; // phares 3/13/98
 
     // set subsector and/or block links
 

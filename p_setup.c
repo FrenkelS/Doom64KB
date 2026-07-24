@@ -270,7 +270,19 @@ static void P_LoadSectors (int16_t lump)
 {
   int16_t  i;
 
+#if defined NEOGEO_COMPACT_MSECNODES
+  const uint16_t sector_count =
+    W_MapLumpLength(lump) / sizeof(mapsector_t);
+  const uint32_t sector_bytes = (uint32_t)sector_count * sizeof(sector_t);
+  if (!sector_count
+      || sector_count > INT16_MAX
+      || sector_bytes > MSECNODE_SECTOR_MAX_BYTES)
+    I_Error("P_LoadSectors: %u sectors do not fit compact msecnode",
+            sector_count);
+  _g_numsectors = sector_count;
+#else
   _g_numsectors = W_MapLumpLength (lump) / sizeof(mapsector_t);
+#endif
   _g_mapsectors = W_GetMapLumpByNum(lump);
   _g_sectors = Z_CallocLevel(_g_numsectors * sizeof(sector_t));
 
@@ -289,7 +301,7 @@ static void P_LoadSectors (int16_t lump)
       ss->oldspecial = ms->special;
 
       ss->thinglist = NULL;
-      ss->touching_thinglist = NULL;
+      ss->touching_thinglist = MSECNODE_NULL;
     }
 }
 

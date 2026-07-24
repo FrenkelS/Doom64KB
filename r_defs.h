@@ -114,7 +114,7 @@ typedef struct
 
   // list of mobjs that are at least partially in the sector
   // thinglist is a subset of touching_thinglist
-  struct msecnode_s __far* touching_thinglist;
+  msecnode_link_t touching_thinglist;
 
 #if !defined NEOGEO_ROM_SECTOR_LINES
   uint16_t __far* lines;        // Indexes into _g_maplines.
@@ -140,6 +140,13 @@ typedef struct
   int8_t soundtraversed;    // 0 = untraversed, 1,2 = sndlines-1
 
 } sector_t;
+
+#if defined NEOGEO_COMPACT_MSECNODES
+_Static_assert(sizeof(sector_t) == 36,
+               "compact Neo Geo sector_t must be 36 bytes");
+_Static_assert(_Alignof(sector_t) >= 2,
+               "compact Neo Geo sector_t must stay 68000-aligned");
+#endif
 
 #if defined NEOGEO_COMPACT_SECTORS
 #define SECTOR_FLOOR_ACTIVE(sec) ((sec)->floordata != 0)
@@ -272,6 +279,32 @@ typedef char assertLineSize[sizeof(line_t) == 32 ? 1 : -1];
 //
 // For the links, NULL means top or end of list.
 
+#if defined NEOGEO_COMPACT_MSECNODES
+
+#define MSECNODE_SECTOR_OFFSET_MASK UINT16_C(0x7fff)
+#define MSECNODE_VISITED_MASK       UINT16_C(0x8000)
+#define MSECNODE_SECTOR_MAX_BYTES \
+  (((uint32_t)MSECNODE_SECTOR_OFFSET_MASK + 1) * 2)
+
+typedef uint16_t mobj_wram_handle_t;
+
+typedef struct msecnode_s
+{
+  uint16_t m_sector_visited;  // sector halfword offset plus visited high bit
+  mobj_wram_handle_t m_thing; // even-address Neo Geo Work-RAM handle
+  msecnode_link_t m_tprev;    // prev node on Thing thread
+  msecnode_link_t m_tnext;    // next node on Thing thread
+  msecnode_link_t m_sprev;    // prev node on sector thread
+  msecnode_link_t m_snext;    // next node on sector thread
+} msecnode_t;
+
+_Static_assert(sizeof(msecnode_t) == 12,
+               "compact Neo Geo msecnode_t must be 12 bytes");
+_Static_assert(_Alignof(msecnode_t) >= 2,
+               "compact Neo Geo msecnode_t must stay 68000-aligned");
+
+#else
+
 typedef struct msecnode_s
 {
   sector_t          __far* m_sector; // a sector containing this object
@@ -282,6 +315,8 @@ typedef struct msecnode_s
   struct msecnode_s __far* m_snext;  // next msecnode_t for this sector
   boolean visited; // killough 4/4/98, 4/7/98: used in search algorithms
 } msecnode_t;
+
+#endif
 
 //
 // The LineSeg.

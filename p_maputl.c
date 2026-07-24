@@ -323,7 +323,7 @@ void P_UnsetThingPosition(mobj_t __far* thing)
         // routine will clear out the nodes in sector_list.
 
       P_SetSeclist(thing->touching_sectorlist);
-      thing->touching_sectorlist = NULL; //to be restored by P_SetThingPosition
+      thing->touching_sectorlist = MSECNODE_NULL; // restored by SetThingPosition
     }
 
   if (!(thing->flags & MF_NOBLOCKMAP))
