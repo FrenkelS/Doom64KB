@@ -2392,6 +2392,14 @@ static void R_RenderSegLoop(int16_t rw_x, boolean segtextured, boolean markfloor
 {
     draw_column_vars_t dcvars;
     int16_t  texturecolumn = 0;   // shut up compiler warning
+    height_t *floorp = floorclip + rw_x;
+    height_t *ceilingp = ceilingclip + rw_x;
+    fixed_t loop_rw_scale = rw_scale;
+    fixed_t loop_topfrac = topfrac;
+    fixed_t loop_bottomfrac = bottomfrac;
+    const fixed_t loop_rw_scalestep = rw_scalestep;
+    const fixed_t loop_topstep = topstep;
+    const fixed_t loop_bottomstep = bottomstep;
 
     dcvars.colormap = R_LoadColorMap(rw_lightlevel);
 
@@ -2399,11 +2407,11 @@ static void R_RenderSegLoop(int16_t rw_x, boolean segtextured, boolean markfloor
     {
         // mark floor / ceiling areas
 
-        int16_t yh = bottomfrac>>FRACBITS;
-        int16_t yl = (topfrac+FRACUNIT-1)>>FRACBITS;
+        int16_t yh = loop_bottomfrac>>FRACBITS;
+        int16_t yl = (loop_topfrac+FRACUNIT-1)>>FRACBITS;
 
-        int16_t cc_rwx = ceilingclip[rw_x];
-        int16_t fc_rwx = floorclip[rw_x];
+        int16_t cc_rwx = *ceilingp;
+        int16_t fc_rwx = *floorp;
 
         // no space above wall?
         int16_t bottom,top = cc_rwx+1;
@@ -2482,7 +2490,7 @@ static void R_RenderSegLoop(int16_t rw_x, boolean segtextured, boolean markfloor
 			}
 #endif
 
-            dcvars.fracstep = FixedReciprocal((uint32_t)rw_scale) >> COLEXTRABITS;
+            dcvars.fracstep = FixedReciprocal((uint32_t)loop_rw_scale) >> COLEXTRABITS;
         }
 
         // draw the wall tiers
@@ -2573,13 +2581,17 @@ static void R_RenderSegLoop(int16_t rw_x, boolean segtextured, boolean markfloor
                 maskedtexturecol[rw_x] = texturecolumn;
         }
 
-        rw_scale += rw_scalestep;
-        topfrac += topstep;
-        bottomfrac += bottomstep;
+        loop_rw_scale += loop_rw_scalestep;
+        loop_topfrac += loop_topstep;
+        loop_bottomfrac += loop_bottomstep;
 
-        floorclip[rw_x] = fc_rwx;
-        ceilingclip[rw_x] = cc_rwx;
+        *floorp++ = fc_rwx;
+        *ceilingp++ = cc_rwx;
     }
+
+    rw_scale = loop_rw_scale;
+    topfrac = loop_topfrac;
+    bottomfrac = loop_bottomfrac;
 }
 
 static boolean R_CheckOpenings(const int16_t start)
@@ -2674,8 +2686,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
 
     side_t    __far* sidedef = &_g_sides[curline->sidenum];
     const mapsidedef_t *mapsidedef = &_g_mapsides[curline->sidenum];	
-    linedef = &_g_lines[curline->linenum];
-    maplinedef = &_g_maplines[curline->linenum];
+    // R_AddLine initializes both definitions before clipping this segment.
 
     // mark the segment as visible for auto map
     linedef->r_flags |= RF_MAPPED;
@@ -3117,8 +3128,6 @@ static void R_ClipWallSegment(int16_t first, int16_t last, const boolean solid)
 
 static void R_AddLine(const seg_t __far* line)
 {
-    curline = line;
-
     angle16_t angle1 = R_PointToAngle16(line->v1.x, line->v1.y);
     angle16_t angle2 = R_PointToAngle16(line->v2.x, line->v2.y);
 
@@ -3168,6 +3177,7 @@ static void R_AddLine(const seg_t __far* line)
     if (x1 >= x2)       // killough 1/31/98 -- change == to >= for robustness
         return;
 
+    curline = line;
     backsector = line->backsectornum != NO_INDEX8 ? &_g_sectors[line->backsectornum] : NULL;
 
     /* cph - roll up linedef properties in flags */
@@ -3252,8 +3262,8 @@ static void R_Subsector(int16_t num)
     {
         R_AddLine (line);
         line++;
-        curline = NULL; /* cph 2001/11/18 - must clear curline now we're done with it, so R_LoadColorMap doesn't try using it for other things */
     }
+    curline = NULL; /* cph 2001/11/18 - must clear curline now we're done with it, so R_LoadColorMap doesn't try using it for other things */
 }
 
 //
