@@ -2232,6 +2232,10 @@ static void R_AddSprites(subsector_t __far* subsec, int16_t lightlevel)
 #if defined FLAT_WALL
 #define R_DrawSegTextureColumn(w,x,y,z) R_DrawColumnFlat(x,z)
 #else
+#if defined NEOGEO_ROM_WALL_COLUMNS
+#include "neogeo/assets/generated/doom_wall_columns.h"
+#else
+
 static void R_DrawColumnInCache(const column_t __far* patch, byte* cache, int16_t originy, int16_t cacheheight)
 {
     while (patch->topdelta != 0xff)
@@ -2255,6 +2259,7 @@ static void R_DrawColumnInCache(const column_t __far* patch, byte* cache, int16_
         patch = (const column_t __far*)((const byte __far*)patch + patch->length + 4);
     }
 }
+#endif
 
 /*
  * Draw a column of pixels of the specified texture.
@@ -2263,11 +2268,11 @@ static void R_DrawColumnInCache(const column_t __far* patch, byte* cache, int16_
 */
 
 #define MAX_CACHE_ENTRIES 32
-#define MAX_CACHE_TRIES 4
+#define MAX_CACHE_TRIES 3
 
 static uint16_t CACHE_ENTRY(int16_t column, int16_t texture)
 {
-	return column | (texture << 8);
+	return (column | (texture << 8)) + 1u;
 }
 
 
@@ -2283,12 +2288,26 @@ static byte __far columnCache[MAX_CACHE_ENTRIES*128];
 #endif
 static uint16_t columnCacheEntries[MAX_CACHE_ENTRIES];
 
-static uint16_t FindColumnCacheItem(int16_t texture, int16_t column)
+#if defined NEOGEO_ROM_WALL_COLUMNS
+static __attribute__((noinline, noipa))
+void R_LoadPrecomposedColumn(int16_t texture, int16_t xc,
+                            int16_t height, byte __far* colcache)
+{
+    const uint16_t ref_base = doom_wall_ref_bases[texture];
+    const uint16_t column_id = doom_wall_refs[ref_base + xc];
+
+    /*
+     * Both addresses and the length are 4-byte aligned, so memcpy emits only
+     * long transfers (two word bus cycles) to palette RAM.
+     */
+    _fmemcpy(colcache, doom_wall_columns[column_id], (height + 3) & ~3);
+}
+#endif
+
+static uint16_t FindColumnCacheItem(int16_t texture, int16_t column, uint16_t cx)
 {
 	uint16_t hash = ((column >> 2) ^ (texture * 71)) & (MAX_CACHE_ENTRIES - 1);
 	uint16_t key = hash;
-
-	uint16_t cx = CACHE_ENTRY(column, texture);
 
 	for (int16_t i = 0; i < MAX_CACHE_TRIES; i++)
 	{
@@ -2311,16 +2330,20 @@ static const byte __far* R_ComposeColumn(const int16_t texture, const texture_t 
     const int16_t xc = (texcolumn & 0xfffc) & tex->widthmask;
 #endif
 
-    uint16_t cachekey = FindColumnCacheItem(texture, xc);
+    const uint16_t cache_value = CACHE_ENTRY(xc, texture);
+    uint16_t cachekey = FindColumnCacheItem(texture, xc, cache_value);
 
     byte __far* colcache = &columnCache[cachekey*128];
     uint16_t cacheEntry = columnCacheEntries[cachekey];
 
     //total++;
 
-    if (cacheEntry != CACHE_ENTRY(xc, texture))
+    if (cacheEntry != cache_value)
     {
         //misses++;
+#if defined NEOGEO_ROM_WALL_COLUMNS
+        R_LoadPrecomposedColumn(texture, xc, tex->height, colcache);
+#else
         byte tmpCache[128];
 
         uint8_t i = 0;
@@ -2347,10 +2370,11 @@ static const byte __far* R_ComposeColumn(const int16_t texture, const texture_t 
             }
         } while(++i < patchcount);
 
-        //Block copy will drop low 2 bits of len.
+        // Block copy will drop the low 2 bits of len.
         _fmemcpy(colcache, tmpCache, (tex->height + 3) & ~3);
+#endif
 
-        columnCacheEntries[cachekey] = CACHE_ENTRY(xc, texture);
+        columnCacheEntries[cachekey] = cache_value;
     }
 
     return colcache;
