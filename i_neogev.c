@@ -694,6 +694,17 @@ void V_SetSTPalette(void)
 }
 
 
+#define MICROFB_UPLOAD_CELL_ASM \
+	"moveq #0,%%d2\n\t" \
+	"move.b %[src]@+,%%d2\n\t" \
+	"add.w %%d2,%%d2\n\t" \
+	"move.w %[map]@(0,%%d2:w),%%d1\n\t" \
+	"move.b %%d1,%%d0\n\t" \
+	"move.w %%d0,%[vramrw]@\n\t" \
+	"clr.b %%d1\n\t" \
+	"move.w %%d1,%[vramrw]@\n\t"
+
+
 static void NG_UploadMicroFramebuffer(uint8_t set)
 {
 	const microfb_mode_t *mode = NG_MicroFramebufferMode();
@@ -707,33 +718,54 @@ static void NG_UploadMicroFramebuffer(uint8_t set)
 		if (!chunk_rows)
 			continue;
 
-		for (uint16_t x = 0; x < mode->cols; x++)
+#if MICROFB_CHUNK_CELLS == 28
+		if (chunk_rows == MICROFB_CHUNK_CELLS)
 		{
-			const uint16_t sprite = NG_MicroSpriteIndex(set, chunk, x);
-			const uint8_t *src = MICROFB_COLUMN(x) + row_base;
+			for (uint16_t x = 0; x < mode->cols; x++)
+			{
+				const uint16_t sprite = NG_MicroSpriteIndex(set, chunk, x);
+				const uint8_t *src = MICROFB_COLUMN(x) + row_base;
 
-			*REG_VRAMADDR = ADDR_SCB1 + (sprite * 64u);
-			uint16_t rows = chunk_rows - 1u;
-			__asm__ volatile (
-				"move.w %[tile_base],%%d0\n\t"
-				"1:\n\t"
-				"moveq #0,%%d2\n\t"
-				"move.b %[src]@+,%%d2\n\t"
-				"add.w %%d2,%%d2\n\t"
-				"move.w %[map]@(0,%%d2:w),%%d1\n\t"
-				"move.b %%d1,%%d0\n\t"
-				"move.w %%d0,%[vramrw]@\n\t"
-				"clr.b %%d1\n\t"
-				"move.w %%d1,%[vramrw]@\n\t"
-				"dbra %[rows],1b"
-				: [src] "+&a" (src), [rows] "+&d" (rows)
-				: [map] "a" (_s_color_to_scb1), [vramrw] "a" (REG_VRAMRW),
-				  [tile_base] "i" (MICROFB_TILE_BASE)
-				: "d0", "d1", "d2", "cc", "memory"
-			);
+				*REG_VRAMADDR = ADDR_SCB1 + (sprite * 64u);
+				__asm__ volatile (
+					"move.w %[tile_base],%%d0\n\t"
+					".rept 28\n\t"
+					MICROFB_UPLOAD_CELL_ASM
+					".endr"
+					: [src] "+&a" (src)
+					: [map] "a" (_s_color_to_scb1), [vramrw] "a" (REG_VRAMRW),
+					  [tile_base] "i" (MICROFB_TILE_BASE)
+					: "d0", "d1", "d2", "cc", "memory"
+				);
+			}
+		}
+		else
+#endif
+		{
+			for (uint16_t x = 0; x < mode->cols; x++)
+			{
+				const uint16_t sprite = NG_MicroSpriteIndex(set, chunk, x);
+				const uint8_t *src = MICROFB_COLUMN(x) + row_base;
+
+				*REG_VRAMADDR = ADDR_SCB1 + (sprite * 64u);
+				uint16_t rows = chunk_rows - 1u;
+				__asm__ volatile (
+					"move.w %[tile_base],%%d0\n\t"
+					"1:\n\t"
+					MICROFB_UPLOAD_CELL_ASM
+					"dbra %[rows],1b"
+					: [src] "+&a" (src), [rows] "+&d" (rows)
+					: [map] "a" (_s_color_to_scb1), [vramrw] "a" (REG_VRAMRW),
+					  [tile_base] "i" (MICROFB_TILE_BASE)
+					: "d0", "d1", "d2", "cc", "memory"
+				);
+			}
 		}
 	}
 }
+
+
+#undef MICROFB_UPLOAD_CELL_ASM
 
 
 void I_NeoGeoChangeSpriteQuality(int16_t direction)
