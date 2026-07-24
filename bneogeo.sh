@@ -3,6 +3,25 @@ set -e
 mkdir -p neogeo/rom
 mkdir -p neogeo/assets/generated
 
+SPRITE_DEFS_HEADER="neogeo/assets/generated/doom_sprite_defs.h"
+if [ ! -f "$SPRITE_DEFS_HEADER" ] || \
+   [ tools/gen_neogeo_sprite_defs.py -nt "$SPRITE_DEFS_HEADER" ] || \
+   [ DOOM64TB.WAD -nt "$SPRITE_DEFS_HEADER" ] || \
+   [ doom64ng.h -nt "$SPRITE_DEFS_HEADER" ] || \
+   [ info.c -nt "$SPRITE_DEFS_HEADER" ]
+then
+  python3 tools/gen_neogeo_sprite_defs.py \
+    --iwad DOOM64TB.WAD \
+    --embedded-wad-header doom64ng.h \
+    --sprite-source info.c \
+    --output "$SPRITE_DEFS_HEADER"
+  python3 -B tools/verify_neogeo_sprite_defs.py \
+    --iwad DOOM64TB.WAD \
+    --embedded-wad-header doom64ng.h \
+    --sprite-source info.c \
+    --generated-header "$SPRITE_DEFS_HEADER"
+fi
+
 SECTOR_LINES_HEADER="neogeo/assets/generated/doom_sector_lines.h"
 if [ ! -f "$SECTOR_LINES_HEADER" ] || \
    [ tools/gen_neogeo_sector_lines.py -nt "$SECTOR_LINES_HEADER" ] || \
@@ -56,7 +75,7 @@ unset CFLAGS
 
 CROM_FILE_BYTES="${CROM_FILE_BYTES:-4194304}"
 
-export RENDER_OPTIONS="-DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=104 -DWAD_FILE=\"DOOM64TB.WAD\" -DVIEWWINDOWWIDTH=80 -DVIEWWINDOWHEIGHT=56 -DMAPWIDTH=80 -DLOW_MEMORY -D__NGDEVKIT__ -DNEOGEO_SPRITE_MICROFB -DNEOGEO_ROM_SECTOR_LINES -DNEOGEO_COMPACT_BLOCKMAP -DNEOGEO_COMPACT_SECTORS -DNEOGEO_COMPACT_LINESTATE -DNEOGEO_HEAP_SIZE=44000 ${EXTRA_RENDER_OPTIONS:-}"
+export RENDER_OPTIONS="-DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=104 -DWAD_FILE=\"DOOM64TB.WAD\" -DVIEWWINDOWWIDTH=80 -DVIEWWINDOWHEIGHT=56 -DMAPWIDTH=80 -DLOW_MEMORY -D__NGDEVKIT__ -DNEOGEO_SPRITE_MICROFB -DNEOGEO_ROM_SPRITE_DEFS -DNEOGEO_ROM_SECTOR_LINES -DNEOGEO_COMPACT_BLOCKMAP -DNEOGEO_COMPACT_SECTORS -DNEOGEO_COMPACT_LINESTATE -DNEOGEO_HEAP_SIZE=44000 ${EXTRA_RENDER_OPTIONS:-}"
 
 export CPU=68000
 m68k-neogeo-elf-gcc -c i_neogev.c $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
