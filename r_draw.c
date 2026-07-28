@@ -36,6 +36,7 @@
  *-----------------------------------------------------------------------------*/
 
 #include <stdint.h>
+#include <string.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -88,7 +89,7 @@ typedef struct drawseg_s
 } drawseg_t;
 
 
-#if VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT <= 38 * 28
+#if VIEWWINDOWWIDTH * VIEWWINDOWHEIGHT <= 38 * 28 || defined NEOGEO_SPRITE_MICROFB
 #define MAXDRAWSEGS    64
 #else
 #define MAXDRAWSEGS   128
@@ -122,6 +123,53 @@ static height_t* lastopening;
 #endif
 static const uint8_t viewangletoxTable[4096 - 1023 - VIEWANGLETOXMAX];
 
+#if defined NEOGEO_SPRITE_MICROFB
+static uint8_t render_viewwidth = VIEWWINDOWWIDTH;
+static uint8_t render_viewheight = VIEWWINDOWHEIGHT;
+static uint8_t render_scale_mode = 2;
+#define R_VIEWWIDTH render_viewwidth
+#define R_VIEWHEIGHT render_viewheight
+
+enum
+{
+	RENDER_SCALE_LOW,
+	RENDER_SCALE_MEDIUM,
+	RENDER_SCALE_HIGH,
+	RENDER_SCALE_CUSTOM
+};
+
+static const uint8_t render_base_to_medium[VIEWWINDOWWIDTH + 1] =
+{
+	0, 0, 1, 1, 2, 3, 3, 4, 5, 5, 6, 7, 7, 8, 9, 9,
+	10, 11, 11, 12, 13, 13, 14, 15, 15, 16, 17, 17, 18, 19, 19, 20,
+	21, 21, 22, 23, 23, 24, 25, 25, 26, 27, 27, 28, 29, 29, 30, 31,
+	31, 32, 33, 33, 34, 35, 35, 36, 37, 37, 38, 39, 39, 40, 41, 41,
+	42, 43, 43, 44, 45, 45, 46, 47, 47, 48, 49, 49, 50, 51, 51, 52,
+	53
+};
+
+static uint8_t R_ScaleProjectionX(uint16_t x)
+{
+	if (x > VIEWWINDOWWIDTH)
+		x = VIEWWINDOWWIDTH;
+
+	switch (render_scale_mode)
+	{
+	case RENDER_SCALE_LOW:
+		return x >> 1;
+	case RENDER_SCALE_MEDIUM:
+		return render_base_to_medium[x];
+	case RENDER_SCALE_HIGH:
+		return x;
+	default:
+		return (uint8_t)((x * R_VIEWWIDTH) / VIEWWINDOWWIDTH);
+	}
+}
+#else
+#define R_VIEWWIDTH VIEWWINDOWWIDTH
+#define R_VIEWHEIGHT VIEWWINDOWHEIGHT
+#endif
+
 
 static uint8_t viewangletox(int16_t va)
 {
@@ -133,14 +181,28 @@ static uint8_t viewangletox(int16_t va)
 #endif
 
 #if VIEWANGLETOXMAX == -1023
-	return viewangletoxTable[va];
+	{
+		const uint16_t x = viewangletoxTable[va];
+#if defined NEOGEO_SPRITE_MICROFB
+		return R_ScaleProjectionX(x);
+#else
+		return x;
+#endif
+	}
 #else
 	if (va < VIEWANGLETOXMAX)	//               0 <= va < VIEWANGLETOXMAX
-		return VIEWWINDOWWIDTH;
+		return R_VIEWWIDTH;
 	else if (3073 <= va)		//            3073 <= va < 4096
 		return 0;
 	else						// VIEWANGLETOXMAX <= va < 3073
-		return viewangletoxTable[va - VIEWANGLETOXMAX];
+	{
+		const uint16_t x = viewangletoxTable[va - VIEWANGLETOXMAX];
+#if defined NEOGEO_SPRITE_MICROFB
+		return R_ScaleProjectionX(x);
+#else
+		return x;
+#endif
+	}
 #endif
 }
 
@@ -508,7 +570,8 @@ static fixed_t  rw_scalestep;
 static int32_t      worldtop;
 static int32_t      worldbottom;
 
-static boolean didsolidcol; /* True if at least one column was marked solid */
+static uint16_t didsolidcol; /* True if at least one column was marked solid */
+static uint16_t solidcol_remaining;
 
 static boolean  maskedtexture;
 static int16_t      toptexture;
@@ -565,6 +628,23 @@ uint16_t validcount = 1;         // increment every time a check is made
 
 #define COLEXTRABITS (8 - 1)
 
+#if defined NEOGEO_SPRITE_MICROFB
+static angle16_t render_xtoviewangle[VIEWWINDOWWIDTH + 1];
+
+static int16_t CENTERX = VIEWWINDOWWIDTH  / 2;
+       int16_t CENTERY = VIEWWINDOWHEIGHT / 2;
+
+static fixed_t PROJECTION = (VIEWWINDOWWIDTH / 2L) << FRACBITS;
+
+static uint16_t PSPRITESCALE  = FRACUNIT * VIEWWINDOWWIDTH / SCREENWIDTH_VGA;
+static fixed_t  PSPRITEISCALE = FRACUNIT * SCREENWIDTH_VGA / VIEWWINDOWWIDTH; // = FixedReciprocal(PSPRITESCALE)
+
+static uint16_t PSPRITEYSCALE = FRACUNIT * (VIEWWINDOWHEIGHT * 5 / 4) / SCREENHEIGHT_VGA;
+static uint16_t PSPRITEYFRACSTEP = (FRACUNIT * SCREENHEIGHT_VGA / (VIEWWINDOWHEIGHT * 5 / 4)) >> COLEXTRABITS; // = FixedReciprocal(PSPRITEYSCALE) >> COLEXTRABITS
+static uint16_t render_sky_fracstep = ((FRACUNIT * SCREENHEIGHT_VGA) / (VIEWWINDOWHEIGHT + 16)) >> COLEXTRABITS;
+
+#define R_XTOVIEWANGLE(x) render_xtoviewangle[(x)]
+#else
 static const int16_t CENTERX = VIEWWINDOWWIDTH  / 2;
        const int16_t CENTERY = VIEWWINDOWHEIGHT / 2;
 
@@ -576,7 +656,88 @@ static const fixed_t  PSPRITEISCALE = FRACUNIT * SCREENWIDTH_VGA / VIEWWINDOWWID
 static const uint16_t PSPRITEYSCALE = FRACUNIT * (VIEWWINDOWHEIGHT * 5 / 4) / SCREENHEIGHT_VGA;
 static const uint16_t PSPRITEYFRACSTEP = (FRACUNIT * SCREENHEIGHT_VGA / (VIEWWINDOWHEIGHT * 5 / 4)) >> COLEXTRABITS; // = FixedReciprocal(PSPRITEYSCALE) >> COLEXTRABITS
 
+#define R_XTOVIEWANGLE(x) xtoviewangleTable[(x)]
+#endif
+
 static const angle16_t clipangle = 0x2008; // = xtoviewangleTable[0]
+
+
+#if defined NEOGEO_SPRITE_MICROFB
+void R_SetRenderSize(uint16_t width, uint16_t height)
+{
+	if (width < 1)
+		width = 1;
+	else if (width > VIEWWINDOWWIDTH)
+		width = VIEWWINDOWWIDTH;
+
+	if (height < 1)
+		height = 1;
+	else if (height > VIEWWINDOWHEIGHT)
+		height = VIEWWINDOWHEIGHT;
+
+	render_viewwidth = (uint8_t)width;
+	render_viewheight = (uint8_t)height;
+
+	if (width == 40 && height == 28)
+		render_scale_mode = RENDER_SCALE_LOW;
+	else if (width == 53 && height == 37)
+		render_scale_mode = RENDER_SCALE_MEDIUM;
+	else if (width == VIEWWINDOWWIDTH && height == VIEWWINDOWHEIGHT)
+		render_scale_mode = RENDER_SCALE_HIGH;
+	else
+		render_scale_mode = RENDER_SCALE_CUSTOM;
+
+	CENTERX = render_viewwidth / 2;
+	CENTERY = render_viewheight / 2;
+	PROJECTION = ((fixed_t)render_viewwidth / 2L) << FRACBITS;
+	PSPRITESCALE = FRACUNIT * render_viewwidth / SCREENWIDTH_VGA;
+	PSPRITEISCALE = FRACUNIT * SCREENWIDTH_VGA / render_viewwidth;
+	PSPRITEYSCALE = FRACUNIT * (render_viewheight * 5 / 4) / SCREENHEIGHT_VGA;
+	PSPRITEYFRACSTEP = (FRACUNIT * SCREENHEIGHT_VGA / (render_viewheight * 5 / 4)) >> COLEXTRABITS;
+	render_sky_fracstep = ((FRACUNIT * SCREENHEIGHT_VGA) / (render_viewheight + 16)) >> COLEXTRABITS;
+
+	for (uint16_t x = 0; x <= render_viewwidth; x++)
+	{
+		uint16_t src_x = (x * VIEWWINDOWWIDTH) / render_viewwidth;
+		if (src_x > VIEWWINDOWWIDTH)
+			src_x = VIEWWINDOWWIDTH;
+		render_xtoviewangle[x] = xtoviewangleTable[src_x];
+	}
+
+	for (uint16_t x = render_viewwidth + 1u; x <= VIEWWINDOWWIDTH; x++)
+		render_xtoviewangle[x] = xtoviewangleTable[VIEWWINDOWWIDTH];
+
+	for (uint16_t x = 0; x < VIEWWINDOWWIDTH; x++)
+		screenheightarray[x] = render_viewheight;
+}
+
+
+uint8_t R_RenderViewWidth(void)
+{
+	return render_viewwidth;
+}
+
+
+uint8_t R_RenderViewHeight(void)
+{
+	return render_viewheight;
+}
+
+
+uint16_t R_RenderXToViewAngle(uint16_t x)
+{
+	if (x > render_viewwidth)
+		x = render_viewwidth;
+
+	return R_XTOVIEWANGLE(x);
+}
+
+
+uint16_t R_RenderSkyFracStep(void)
+{
+	return render_sky_fracstep;
+}
+#endif
 
 
 // Emits a mulu.w instruction. It's quite difficult to get gcc to do that :-)
@@ -592,6 +753,57 @@ static uint32_t mulu(uint16_t a, uint16_t b) {
 	);
 	return result;
 #endif
+}
+
+
+/* Exact high word of a 16x32 product.  Wall distance is non-negative and the
+ * tangent tables hold positive quadrant magnitudes, so texture projection does
+ * not need the generic three-multiply 32x32 helper on a 68000.
+ */
+static uint16_t mulu16x32hi(uint16_t a, uint32_t b)
+{
+	const uint32_t low = mulu(a, (uint16_t)b);
+	return (uint16_t)((low >> 16) + mulu(a, (uint16_t)(b >> 16)));
+}
+
+
+static int32_t mulu16xSignedFrac(uint16_t a, fixed_t b)
+{
+	if (b < 0)
+		return -(int32_t)mulu(a, (uint16_t)-b);
+
+	return mulu(a, (uint16_t)b);
+}
+
+
+/* Exact 32-by-16 unsigned division for values whose quotient fits in 16 bits. */
+static uint16_t divu(uint32_t dividend, uint16_t divisor)
+{
+#if C_ONLY
+	return dividend / divisor;
+#else
+	__asm__ (
+		"divu.w %1, %0"
+		: "+d" (dividend)
+		: "d" (divisor)
+	);
+	return dividend;
+#endif
+}
+
+
+/* The 68000 traps when DIVU.W's quotient exceeds 16 bits.  Keep the generic
+ * division unless this comparison proves that the exact quotient is smaller
+ * than 65536.
+ */
+static uint32_t divu_guarded(uint32_t dividend, uint16_t divisor)
+{
+#if defined __GNUC__ && defined __mc68000__
+	if (dividend < ((uint32_t)divisor << 16))
+		return divu(dividend, divisor);
+#endif
+
+	return dividend / divisor;
 }
 
 
@@ -822,7 +1034,13 @@ static CONSTFUNC int16_t SlopeDiv(uint32_t num, uint32_t den)
     if (den == 0)
         return SLOPERANGE;
 
-    const uint16_t ans = (num << 3) / den;//FixedApproxDiv(num << 3, den) >> FRACBITS;
+    /* R_PointToAngle3 passes the smaller magnitude as num.  If the shifted
+     * denominator fits in a word, num <= original den proves that this
+     * quotient is at most ((256 + 255) * 8) / 1 == 4088.
+     */
+    const uint16_t ans = den <= UINT16_MAX
+        ? divu(num << 3, (uint16_t)den)
+        : (num << 3) / den;
 
     return (ans <= SLOPERANGE) ? ans : SLOPERANGE;
 }
@@ -833,7 +1051,7 @@ static CONSTFUNC int16_t SlopeDiv16(uint16_t n, uint16_t d)
 	if (d == 0)
 		return SLOPERANGE;
 
-	const uint16_t ans = ((uint32_t)n * SLOPERANGE) / d;
+	const uint16_t ans = divu((uint32_t)n * SLOPERANGE, d);
 
 	return (ans <= SLOPERANGE) ? ans : SLOPERANGE;
 }
@@ -932,7 +1150,8 @@ CONSTFUNC angle_t R_PointToAngle3(fixed_t x, fixed_t y)
 #define R_PointToAngle(x,y) R_PointToAngle16((x)>>FRACBITS,(y)>>FRACBITS)
 
 
-static angle16_t R_PointToAngle16(int16_t x, int16_t y)
+static inline __attribute__((always_inline))
+angle16_t R_PointToAngle16(int16_t x, int16_t y)
 {
     x = x - (viewx >> FRACBITS);
     y = y - (viewy >> FRACBITS);
@@ -1032,7 +1251,8 @@ static CONSTFUNC int16_t R_PointToDist(int16_t x, int16_t y)
         dy = t;
     }
 
-    return dx / finecosineapprox((FixedApproxDiv(dy,dx) >> DBITS) / 2);
+    const uint16_t cosine = finecosineapprox((FixedApproxDiv(dy,dx) >> DBITS) / 2);
+    return divu(dx, cosine);
 }
 
 
@@ -1107,7 +1327,7 @@ static void R_DrawMaskedColumn(R_DrawColumn_f colfunc, draw_column_vars_t *dcvar
             yl = cclip_x + 1;
 
         // killough 3/2/98, 3/27/98: Failsafe against overflow/crash:
-        if (yl <= yh && yh < VIEWWINDOWHEIGHT)
+        if (yl <= yh && yh < R_VIEWHEIGHT)
         {
             dcvars->source =  (const byte __far*)column + 3;
 
@@ -1144,6 +1364,15 @@ void R_InitColormaps(void)
 typedef struct vissprite_s
 {
   int16_t x1, x2;
+#if defined NEOGEO_COMPACT_BLOCKMAP
+  fixed_t startfrac;           // horizontal position of x1
+  fixed_t scale;
+  fixed_t xiscale;             // negative if flipped
+  uint16_t fracstep;
+  int16_t lump_num;
+  mobjindex_t thing_index;
+  uint8_t colormap_index;
+#else
   fixed_t gx, gy;              // for line side calculation
   fixed_t gz;                   // global bottom for silhouette clipping
   fixed_t startfrac;           // horizontal position of x1
@@ -1157,8 +1386,34 @@ typedef struct vissprite_s
 
   // for color translation and shadow draw, maxbright frames as well
   const uint8_t* colormap;
+#endif
 
 } vissprite_t;
+
+#if defined NEOGEO_COMPACT_BLOCKMAP
+_Static_assert(sizeof(vissprite_t) == 22u,
+               "compact Neo Geo vissprite must stay 22 bytes");
+#define VIS_COLORMAP_SHADOW UINT8_MAX
+
+static const mobj_t __far* R_VisSpriteThing(const vissprite_t *vis)
+{
+    return &_g_thingPool[vis->thing_index];
+}
+
+static uint8_t R_EncodeVisColormap(const uint8_t *colormap)
+{
+    if (!colormap)
+        return VIS_COLORMAP_SHADOW;
+
+    return (uint8_t)((colormap - fullcolormap) / 256);
+}
+
+static const uint8_t* R_DecodeVisColormap(uint8_t colormap_index)
+{
+    return colormap_index == VIS_COLORMAP_SHADOW
+        ? NULL : fullcolormap + (uint16_t)colormap_index * 256u;
+}
+#endif
 
 
 void R_DrawFuzzColumn (const draw_column_vars_t *dcvars);
@@ -1169,13 +1424,16 @@ void R_DrawFuzzColumn (const draw_column_vars_t *dcvars);
 //  mfloorclip and mceilingclip should also be set.
 //
 // CPhipps - new wad lump handling, *'s to const*'s
-static void R_DrawVisSprite(const vissprite_t *vis)
+static void R_DrawVisSprite(const vissprite_t *vis,
+                            fixed_t texturemid,
+                            const uint8_t *colormap,
+                            const patch_t __far* patch)
 {
     fixed_t  frac;
 
     R_DrawColumn_f colfunc = R_DrawColumnSprite;
     draw_column_vars_t dcvars;
-    dcvars.colormap = vis->colormap;
+    dcvars.colormap = colormap;
 
     // killough 4/11/98: rearrange and handle translucent sprites
     // mixed with translucent/non-translucenct 2s normals
@@ -1185,18 +1443,15 @@ static void R_DrawVisSprite(const vissprite_t *vis)
 
     // proff 11/06/98: Changed for high-res
     dcvars.fracstep = vis->fracstep;
-    dcvars.texturemid = vis->texturemid;
+    dcvars.texturemid = texturemid;
     frac = vis->startfrac;
 
     spryscale = vis->scale;
     sprtopscreen = CENTERY * FRACUNIT - FixedMul(dcvars.texturemid, spryscale);
 
-
-    const patch_t __far* patch = W_GetLumpByNum(vis->lump_num);
-
     dcvars.x = vis->x1;
 
-    while (dcvars.x < VIEWWINDOWWIDTH)
+    while (dcvars.x < R_VIEWWIDTH)
     {
         const column_t __far* column = (const column_t __far*) ((const byte __far*)patch + patch->columnofs[frac >> FRACBITS]);
         R_DrawMaskedColumn(colfunc, &dcvars, column);
@@ -1354,10 +1609,29 @@ static void R_DrawSprite (const vissprite_t* spr)
 
     fixed_t scale;
     fixed_t lowscale;
+#if defined NEOGEO_COMPACT_BLOCKMAP
+    const mobj_t __far* thing = R_VisSpriteThing(spr);
+    const fixed_t gx = thing->x;
+    const fixed_t gy = thing->y;
+    const fixed_t gz = thing->z;
+    const patch_t __far* patch = W_GetLumpByNum(spr->lump_num);
+    const int16_t patch_topoffset = patch->topoffset;
+    const fixed_t texturemid =
+        gz + (((int32_t)patch_topoffset) << FRACBITS) - viewz;
+    const uint8_t *colormap = R_DecodeVisColormap(spr->colormap_index);
+#else
+    const fixed_t gx = spr->gx;
+    const fixed_t gy = spr->gy;
+    const fixed_t gz = spr->gz;
+    const patch_t __far* patch = W_GetLumpByNum(spr->lump_num);
+    const int16_t patch_topoffset = spr->patch_topoffset;
+    const fixed_t texturemid = spr->texturemid;
+    const uint8_t *colormap = spr->colormap;
+#endif
 
     for (int16_t x = spr->x1; x <= spr->x2; x++)
     {
-        clipbot[x] = VIEWWINDOWHEIGHT;
+        clipbot[x] = R_VIEWHEIGHT;
         cliptop[x] = -1;
     }
 
@@ -1391,7 +1665,7 @@ static void R_DrawSprite (const vissprite_t* spr)
             scale    = ds->scale2;
         }
 
-        if (scale < spr->scale || (lowscale < spr->scale && !R_PointOnSegSide (spr->gx, spr->gy, ds->curline)))
+        if (scale < spr->scale || (lowscale < spr->scale && !R_PointOnSegSide (gx, gy, ds->curline)))
         {
             if (ds->maskedtexturecol)       // masked mid texture?
                 R_RenderMaskedSegRange(ds, r1, r2);
@@ -1402,25 +1676,25 @@ static void R_DrawSprite (const vissprite_t* spr)
         // clip this piece of the sprite
         // killough 3/27/98: optimized and made much shorter
 
-        fixed_t gzt = spr->gz + (((int32_t)spr->patch_topoffset) << FRACBITS);
+        fixed_t gzt = gz + (((int32_t)patch_topoffset) << FRACBITS);
 
-        if ((ds->silhouette & SIL_BOTTOM && spr->gz < ds->bsilheight)  // bottom sil
+        if ((ds->silhouette & SIL_BOTTOM && gz < ds->bsilheight)  // bottom sil
          && (ds->silhouette & SIL_TOP    && gzt     > ds->tsilheight)) // top sil
         {
             for (int16_t x = r1; x <= r2; x++)
             {
-                if (clipbot[x] == VIEWWINDOWHEIGHT)
+                if (clipbot[x] == R_VIEWHEIGHT)
                     clipbot[x] = ds->sprbottomclip[x];
 
                 if (cliptop[x] == -1)
                     cliptop[x] = ds->sprtopclip[x];
             }
         }
-        else if (ds->silhouette & SIL_BOTTOM && spr->gz < ds->bsilheight) // bottom sil
+        else if (ds->silhouette & SIL_BOTTOM && gz < ds->bsilheight) // bottom sil
         {
             for (int16_t x = r1; x <= r2; x++)
             {
-                if (clipbot[x] == VIEWWINDOWHEIGHT)
+                if (clipbot[x] == R_VIEWHEIGHT)
                     clipbot[x] = ds->sprbottomclip[x];
             }
         }
@@ -1437,7 +1711,7 @@ static void R_DrawSprite (const vissprite_t* spr)
     // all clipping has been performed, so draw the sprite
     mfloorclip   = clipbot;
     mceilingclip = cliptop;
-    R_DrawVisSprite (spr);
+    R_DrawVisSprite(spr, texturemid, colormap, patch);
 }
 
 
@@ -1466,6 +1740,8 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
     vissprite_t   *vis;
     vissprite_t   avis;
     fixed_t       topoffset;
+    fixed_t       texturemid;
+    const uint8_t *colormap;
 
     // decide which patch to use
     sprdef = &sprites[psp->state->sprite];
@@ -1485,7 +1761,7 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
     x2 = CENTERX + (hl >> FRACBITS) - 1;
 
     // off the side
-    if (x2 < 0 || x1 > VIEWWINDOWWIDTH)
+    if (x2 < 0 || x1 > R_VIEWWIDTH)
     {
         return;
     }
@@ -1495,10 +1771,10 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
     // store information in a vissprite
     vis = &avis;
     // killough 12/98: fix psprite positioning problem
-    vis->texturemid = (BASEYCENTER<<FRACBITS) /* +  FRACUNIT/2 */ -
-            (psp->sy-topoffset);
+    texturemid = (BASEYCENTER<<FRACBITS) /* +  FRACUNIT/2 */ -
+        (psp->sy-topoffset);
     vis->x1 = x1 < 0 ? 0 : x1;
-    vis->x2 = x2 >= VIEWWINDOWWIDTH ? VIEWWINDOWWIDTH - 1 : x2;
+    vis->x2 = x2 >= R_VIEWWIDTH ? R_VIEWWIDTH - 1 : x2;
     // proff 11/06/98: Added for high-res
     vis->scale = PSPRITEYSCALE;
     vis->fracstep = PSPRITEYFRACSTEP;
@@ -1512,15 +1788,15 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
     vis->lump_num = sprframe->lump[0];
 
     if (_g_player.powers[pw_invisibility] > 4*32 || _g_player.powers[pw_invisibility] & 8)
-        vis->colormap = NULL;                    // shadow draw
+        colormap = NULL;                    // shadow draw
     else if (fixedcolormap)
-        vis->colormap = fixedcolormap;           // fixed color
+        colormap = fixedcolormap;           // fixed color
     else if (psp->state->frame & FF_FULLBRIGHT)
-        vis->colormap = fullcolormap;            // full bright // killough 3/20/98
+        colormap = fullcolormap;            // full bright // killough 3/20/98
     else
-        vis->colormap = R_LoadColorMap(lightlevel);  // local light
+        colormap = R_LoadColorMap(lightlevel);  // local light
 
-    R_DrawVisSprite(vis);
+    R_DrawVisSprite(vis, texturemid, colormap, patch);
 }
 
 
@@ -1532,7 +1808,7 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
 static void R_DrawPlayerSprites(void)
 {
 
-  int16_t i, lightlevel = _g_player.mo->subsector->sector->lightlevel;
+  int16_t i, lightlevel = SUBSECTOR_SECTOR(_g_player.mo->subsector)->lightlevel;
   pspdef_t *psp;
 
   // clip to screen bounds
@@ -1550,7 +1826,39 @@ static void R_DrawPlayerSprites(void)
 // R_SortVisSprites
 //
 
+#if defined NEOGEO_COMPACT_BLOCKMAP
+#define MAXVISSPRITES 16
+#else
+#define MAXVISSPRITES 8
+#endif
+
+static int16_t num_vissprite;
+static vissprite_t vissprites[MAXVISSPRITES];
+#if defined NEOGEO_COMPACT_BLOCKMAP
+static uint8_t vissprite_order[MAXVISSPRITES];
+#else
+static vissprite_t* vissprite_ptrs[MAXVISSPRITES];
+#endif
+
 // insertion sort
+#if defined NEOGEO_COMPACT_BLOCKMAP
+static void isort(uint8_t *s, int16_t n)
+{
+    for (int16_t i = 1; i < n; i++)
+    {
+        const uint8_t temp = s[i];
+        int16_t j = i;
+
+        while (j > 0
+            && vissprites[s[j - 1]].scale < vissprites[temp].scale)
+        {
+            s[j] = s[j - 1];
+            j--;
+        }
+        s[j] = temp;
+    }
+}
+#else
 static void isort(vissprite_t **s, int16_t n)
 {
 	for (int16_t i = 1; i < n; i++)
@@ -1565,11 +1873,7 @@ static void isort(vissprite_t **s, int16_t n)
 		}
 	}
 }
-
-#define MAXVISSPRITES 8
-static int16_t num_vissprite;
-static vissprite_t vissprites[MAXVISSPRITES];
-static vissprite_t* vissprite_ptrs[MAXVISSPRITES];
+#endif
 
 static void R_SortVisSprites (void)
 {
@@ -1578,9 +1882,15 @@ static void R_SortVisSprites (void)
     if (i)
     {
         while (--i >= 0)
+#if defined NEOGEO_COMPACT_BLOCKMAP
+            vissprite_order[i] = i;
+
+        isort(vissprite_order, num_vissprite);
+#else
             vissprite_ptrs[i] = vissprites + i;
 
         isort(vissprite_ptrs, num_vissprite);
+#endif
     }
 }
 
@@ -1598,7 +1908,11 @@ static void R_DrawMasked(void)
 
     // draw all vissprites back to front
     for (int16_t i = num_vissprite; --i >= 0; )
+#if defined NEOGEO_COMPACT_BLOCKMAP
+        R_DrawSprite(&vissprites[vissprite_order[i]]);
+#else
         R_DrawSprite(vissprite_ptrs[i]);
+#endif
 
     // render any remaining masked mid textures
 
@@ -1613,8 +1927,71 @@ static void R_DrawMasked(void)
 //
 // R_NewVisSprite
 //
-static vissprite_t *R_NewVisSprite(void)
+#if defined NEOGEO_COMPACT_BLOCKMAP
+static uint8_t R_VisSpritePriority(const mobj_t __far* thing)
 {
+    if (thing->flags & (MF_MISSILE | MF_COUNTKILL | MF_SPECIAL))
+        return 2;
+    if (thing->flags & MF_SHOOTABLE)
+        return 1;
+    return 0;
+}
+
+static int16_t R_CompareVisSpritePriority(const mobj_t __far* a,
+                                          fixed_t a_scale,
+                                          mobjindex_t a_index,
+                                          const mobj_t __far* b,
+                                          fixed_t b_scale,
+                                          mobjindex_t b_index)
+{
+    const uint8_t a_priority = R_VisSpritePriority(a);
+    const uint8_t b_priority = R_VisSpritePriority(b);
+
+    if (a_priority != b_priority)
+        return a_priority > b_priority ? 1 : -1;
+    if (a_scale != b_scale)
+        return a_scale > b_scale ? 1 : -1;
+    if (a_index != b_index)
+        return a_index < b_index ? 1 : -1;
+    return 0;
+}
+
+static vissprite_t *R_NewVisSprite(mobj_t __far* thing, fixed_t scale)
+{
+    const mobjindex_t thing_index = thing - _g_thingPool;
+
+    if (num_vissprite < MAXVISSPRITES)
+        return vissprites + num_vissprite++;
+
+    int16_t weakest = 0;
+    for (int16_t i = 1; i < MAXVISSPRITES; i++)
+    {
+        const vissprite_t *current = &vissprites[i];
+        const vissprite_t *weakest_sprite = &vissprites[weakest];
+
+        if (R_CompareVisSpritePriority(
+                R_VisSpriteThing(current), current->scale,
+                current->thing_index,
+                R_VisSpriteThing(weakest_sprite), weakest_sprite->scale,
+                weakest_sprite->thing_index) < 0)
+            weakest = i;
+    }
+
+    const vissprite_t *weakest_sprite = &vissprites[weakest];
+    if (R_CompareVisSpritePriority(
+            thing, scale, thing_index,
+            R_VisSpriteThing(weakest_sprite), weakest_sprite->scale,
+            weakest_sprite->thing_index) <= 0)
+        return NULL;
+
+    return &vissprites[weakest];
+}
+#else
+static vissprite_t *R_NewVisSprite(mobj_t __far* thing, fixed_t scale)
+{
+    (void)thing;
+    (void)scale;
+
     if (num_vissprite >= MAXVISSPRITES)
     {
 #ifdef RANGECHECK
@@ -1625,6 +2002,7 @@ static vissprite_t *R_NewVisSprite(void)
 
     return vissprites + num_vissprite++;
 }
+#endif
 
 
 //
@@ -1650,13 +2028,13 @@ static void R_ClearSprites(void)
 
 static fixed_t R_ScaleFromGlobalAngle(int16_t x)
 {
-  int16_t anglea = ANG90_16 + xtoviewangleTable[x];
+  int16_t anglea = ANG90_16 + R_XTOVIEWANGLE(x);
   int16_t angleb = anglea + viewangle16 - rw_normalangle;
 
-  fixed_t den = rw_distance * finesineapprox(anglea >> ANGLETOFINESHIFT_16);
+  fixed_t den = mulu16xSignedFrac(rw_distance, finesineapprox(anglea >> ANGLETOFINESHIFT_16));
 
 // proff 11/06/98: Changed for high-res
-  fixed_t num = VIEWWINDOWHEIGHT * finesineapprox(angleb >> ANGLETOFINESHIFT_16);
+  fixed_t num = mulu16xSignedFrac(R_VIEWHEIGHT, finesineapprox(angleb >> ANGLETOFINESHIFT_16));
 
   return den > num>>16 ? (num = FixedApproxDiv(num, den)) > 64*FRACUNIT ?
     64*FRACUNIT : num < 256 ? 256 : num : 64*FRACUNIT;
@@ -1720,20 +2098,21 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
 
     /* calculate edges of the shape
      * cph 2003/08/1 - fraggle points out that this offset must be flipped
-     * if the sprite is flipped; e.g. FreeDoom imp is messed up by this. */
+     * if the sprite is flipped; some replacement IWAD sprites expose this. */
     if (flip)
         tx -= ((int32_t)(patch->width - patch->leftoffset)) << FRACBITS;
     else
         tx -= ((int32_t)patch->leftoffset) << FRACBITS;
 
     //const fixed_t xscale = FixedDiv(PROJECTION, tz);
-    const fixed_t xscale = PROJECTION / (tz >> FRACBITS);
+    const uint16_t distance = tz >> FRACBITS;
+    const fixed_t xscale = divu_guarded(PROJECTION, distance);
 
     fixed_t xl = CENTERX * FRACUNIT + FixedMul(tx,xscale);
     const int16_t x1 = (xl >> FRACBITS);
 
     // off the side?
-    if (x1 > VIEWWINDOWWIDTH)
+    if (x1 > R_VIEWWIDTH)
     {
         return;
     }
@@ -1753,9 +2132,12 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
         return;
     }
 
+    //vis->scale           = FixedDiv(PROJECTIONY, tz);
+    const fixed_t scale =
+        divu_guarded(R_VIEWHEIGHT * FRACUNIT, distance);
 
     // store information in a vissprite
-    vissprite_t* vis = R_NewVisSprite ();
+    vissprite_t* vis = R_NewVisSprite(thing, scale);
 
     //No more vissprites.
     if(!vis)
@@ -1763,17 +2145,25 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
         return;
     }
 
-    //vis->scale           = FixedDiv(PROJECTIONY, tz);
-    vis->scale           = (VIEWWINDOWHEIGHT * FRACUNIT) / (tz >> FRACBITS);
-    vis->fracstep        = tz / (VIEWWINDOWHEIGHT << COLEXTRABITS);
+    vis->scale           = scale;
+    /* tz is already constrained to 4..1280 map units.  The largest quotient
+     * is Low mode's (1280 << 16) / (28 << 7) == 23405, so DIVU.W is exact in
+     * every supported render mode.
+     */
+    vis->fracstep        =
+        divu((uint32_t)tz, R_VIEWHEIGHT << COLEXTRABITS);
     vis->lump_num        = sprframe->lump[rot];
+#if defined NEOGEO_COMPACT_BLOCKMAP
+    vis->thing_index     = thing - _g_thingPool;
+#else
     vis->patch_topoffset = patch->topoffset;
     vis->gx              = fx;
     vis->gy              = fy;
     vis->gz              = fz;
     vis->texturemid      = (fz + (((int32_t)patch->topoffset) << FRACBITS)) - viewz;
+#endif
     vis->x1              = x1 < 0 ? 0 : x1;
-    vis->x2              = x2 >= VIEWWINDOWWIDTH ? VIEWWINDOWWIDTH - 1 : x2;
+    vis->x2              = x2 >= R_VIEWWIDTH ? R_VIEWWIDTH - 1 : x2;
 
 
     const fixed_t iscale = FixedReciprocal(xscale);
@@ -1793,14 +2183,21 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
         vis->startfrac += vis->xiscale*(vis->x1-x1);
 
     // get light level
+    const uint8_t *colormap;
     if (thing->flags & MF_SHADOW)
-        vis->colormap = NULL;             // shadow draw
+        colormap = NULL;             // shadow draw
     else if (fixedcolormap)
-        vis->colormap = fixedcolormap;      // fixed map
+        colormap = fixedcolormap;      // fixed map
     else if (thing->frame & FF_FULLBRIGHT)
-        vis->colormap = fullcolormap;     // full bright  // killough 3/20/98
+        colormap = fullcolormap;     // full bright  // killough 3/20/98
     else
-        vis->colormap = R_LoadColorMap(lightlevel); // diminished light
+        colormap = R_LoadColorMap(lightlevel); // diminished light
+
+#if defined NEOGEO_COMPACT_BLOCKMAP
+    vis->colormap_index = R_EncodeVisColormap(colormap);
+#else
+    vis->colormap = colormap;
+#endif
 }
 
 //
@@ -1810,7 +2207,7 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
 // killough 9/18/98: add lightlevel as parameter, fixing underwater lighting
 static void R_AddSprites(subsector_t __far* subsec, int16_t lightlevel)
 {
-  sector_t __far* sec=subsec->sector;
+  sector_t __far* sec=SUBSECTOR_SECTOR(subsec);
   mobj_t __far* thing;
 
   // BSP is traversed by subsector.
@@ -1834,6 +2231,10 @@ static void R_AddSprites(subsector_t __far* subsec, int16_t lightlevel)
 #if defined FLAT_WALL
 #define R_DrawSegTextureColumn(w,x,y,z) R_DrawColumnFlat(x,z)
 #else
+#if defined NEOGEO_ROM_WALL_COLUMNS
+#include "neogeo/assets/generated/doom_wall_columns.h"
+#else
+
 static void R_DrawColumnInCache(const column_t __far* patch, byte* cache, int16_t originy, int16_t cacheheight)
 {
     while (patch->topdelta != 0xff)
@@ -1857,6 +2258,7 @@ static void R_DrawColumnInCache(const column_t __far* patch, byte* cache, int16_
         patch = (const column_t __far*)((const byte __far*)patch + patch->length + 4);
     }
 }
+#endif
 
 /*
  * Draw a column of pixels of the specified texture.
@@ -1865,28 +2267,46 @@ static void R_DrawColumnInCache(const column_t __far* patch, byte* cache, int16_
 */
 
 #define MAX_CACHE_ENTRIES 32
-#define MAX_CACHE_TRIES 4
+#define MAX_CACHE_TRIES 3
 
 static uint16_t CACHE_ENTRY(int16_t column, int16_t texture)
 {
-	return column | (texture << 8);
+	return (column | (texture << 8)) + 1u;
 }
 
 
 #if defined __NGDEVKIT__
 #include <ngdevkit/registers.h>
+#if defined NEOGEO_SPRITE_MICROFB
+static byte *columnCache = (byte *)&MMAP_PALBANK1[64 * 16];
+#else
 static byte *columnCache = (byte *)&MMAP_PALBANK1[16 * 16];
+#endif
 #else
 static byte __far columnCache[MAX_CACHE_ENTRIES*128];
 #endif
 static uint16_t columnCacheEntries[MAX_CACHE_ENTRIES];
 
-static uint16_t FindColumnCacheItem(int16_t texture, int16_t column)
+#if defined NEOGEO_ROM_WALL_COLUMNS
+static __attribute__((noinline, noipa))
+void R_LoadPrecomposedColumn(int16_t texture, int16_t xc,
+                            int16_t height, byte __far* colcache)
+{
+    const uint16_t ref_base = doom_wall_ref_bases[texture];
+    const uint16_t column_id = doom_wall_refs[ref_base + xc];
+
+    /*
+     * Both addresses and the length are 4-byte aligned, so memcpy emits only
+     * long transfers (two word bus cycles) to palette RAM.
+     */
+    _fmemcpy(colcache, doom_wall_columns[column_id], (height + 3) & ~3);
+}
+#endif
+
+static uint16_t FindColumnCacheItem(int16_t texture, int16_t column, uint16_t cx)
 {
 	uint16_t hash = ((column >> 2) ^ (texture * 71)) & (MAX_CACHE_ENTRIES - 1);
 	uint16_t key = hash;
-
-	uint16_t cx = CACHE_ENTRY(column, texture);
 
 	for (int16_t i = 0; i < MAX_CACHE_TRIES; i++)
 	{
@@ -1909,16 +2329,20 @@ static const byte __far* R_ComposeColumn(const int16_t texture, const texture_t 
     const int16_t xc = (texcolumn & 0xfffc) & tex->widthmask;
 #endif
 
-    uint16_t cachekey = FindColumnCacheItem(texture, xc);
+    const uint16_t cache_value = CACHE_ENTRY(xc, texture);
+    uint16_t cachekey = FindColumnCacheItem(texture, xc, cache_value);
 
     byte __far* colcache = &columnCache[cachekey*128];
     uint16_t cacheEntry = columnCacheEntries[cachekey];
 
     //total++;
 
-    if (cacheEntry != CACHE_ENTRY(xc, texture))
+    if (cacheEntry != cache_value)
     {
         //misses++;
+#if defined NEOGEO_ROM_WALL_COLUMNS
+        R_LoadPrecomposedColumn(texture, xc, tex->height, colcache);
+#else
         byte tmpCache[128];
 
         uint8_t i = 0;
@@ -1945,10 +2369,11 @@ static const byte __far* R_ComposeColumn(const int16_t texture, const texture_t 
             }
         } while(++i < patchcount);
 
-        //Block copy will drop low 2 bits of len.
+        // Block copy will drop the low 2 bits of len.
         _fmemcpy(colcache, tmpCache, (tex->height + 3) & ~3);
+#endif
 
-        columnCacheEntries[cachekey] = CACHE_ENTRY(xc, texture);
+        columnCacheEntries[cachekey] = cache_value;
     }
 
     return colcache;
@@ -1990,6 +2415,14 @@ static void R_RenderSegLoop(int16_t rw_x, boolean segtextured, boolean markfloor
 {
     draw_column_vars_t dcvars;
     int16_t  texturecolumn = 0;   // shut up compiler warning
+    height_t *floorp = floorclip + rw_x;
+    height_t *ceilingp = ceilingclip + rw_x;
+    fixed_t loop_rw_scale = rw_scale;
+    fixed_t loop_topfrac = topfrac;
+    fixed_t loop_bottomfrac = bottomfrac;
+    const fixed_t loop_rw_scalestep = rw_scalestep;
+    const fixed_t loop_topstep = topstep;
+    const fixed_t loop_bottomstep = bottomstep;
 
     dcvars.colormap = R_LoadColorMap(rw_lightlevel);
 
@@ -1997,11 +2430,11 @@ static void R_RenderSegLoop(int16_t rw_x, boolean segtextured, boolean markfloor
     {
         // mark floor / ceiling areas
 
-        int16_t yh = bottomfrac>>FRACBITS;
-        int16_t yl = (topfrac+FRACUNIT-1)>>FRACBITS;
+        int16_t yh = loop_bottomfrac>>FRACBITS;
+        int16_t yl = (loop_topfrac+FRACUNIT-1)>>FRACBITS;
 
-        int16_t cc_rwx = ceilingclip[rw_x];
-        int16_t fc_rwx = floorclip[rw_x];
+        int16_t cc_rwx = *ceilingp;
+        int16_t fc_rwx = *floorp;
 
         // no space above wall?
         int16_t bottom,top = cc_rwx+1;
@@ -2068,23 +2501,19 @@ static void R_RenderSegLoop(int16_t rw_x, boolean segtextured, boolean markfloor
             // calculate texture offset
 #if !defined FLAT_WALL
 			texturecolumn = rw_offset;
-			int16_t ang = (angle16_t)(rw_centerangle + xtoviewangleTable[rw_x]) >> ANGLETOFINESHIFT_16;
+			int16_t ang = (angle16_t)(rw_centerangle + R_XTOVIEWANGLE(rw_x)) >> ANGLETOFINESHIFT_16;
 			if (ang < 1024) {			//    0 <= ang < 1024
-				fixed_t tan = finetangentTable_part_4[1023 - ang];
-				texturecolumn += (rw_distance * tan) >> FRACBITS;
+				texturecolumn += mulu16x32hi(rw_distance, finetangentTable_part_4[1023 - ang]);
 			} else if (ang < 2048) {	// 1024 <= ang < 2048
-				fixed_t tan = finetangentTable_part_3[1023 - (ang - 1024)];
-				texturecolumn += (rw_distance * tan) >> FRACBITS;
+				texturecolumn += mulu(rw_distance, finetangentTable_part_3[1023 - (ang - 1024)]) >> FRACBITS;
 			} else if (ang < 3072) {	// 2048 <= ang < 3072
-				fixed_t tan = finetangentTable_part_3[ang - 2048];
-				texturecolumn -= (rw_distance * tan) >> FRACBITS;
+				texturecolumn -= mulu(rw_distance, finetangentTable_part_3[ang - 2048]) >> FRACBITS;
 			} else {					// 3072 <= ang < 4096
-				fixed_t tan = finetangentTable_part_4[ang - 3072];
-				texturecolumn -= (rw_distance * tan) >> FRACBITS;
+				texturecolumn -= mulu16x32hi(rw_distance, finetangentTable_part_4[ang - 3072]);
 			}
 #endif
 
-            dcvars.fracstep = FixedReciprocal((uint32_t)rw_scale) >> COLEXTRABITS;
+            dcvars.fracstep = FixedReciprocal((uint32_t)loop_rw_scale) >> COLEXTRABITS;
         }
 
         // draw the wall tiers
@@ -2098,7 +2527,7 @@ static void R_RenderSegLoop(int16_t rw_x, boolean segtextured, boolean markfloor
 
             R_DrawSegTextureColumn(texmidtexture, midtexture, texturecolumn, &dcvars);
 
-            cc_rwx = VIEWWINDOWHEIGHT;
+            cc_rwx = R_VIEWHEIGHT;
             fc_rwx = -1;
         }
         else
@@ -2175,13 +2604,17 @@ static void R_RenderSegLoop(int16_t rw_x, boolean segtextured, boolean markfloor
                 maskedtexturecol[rw_x] = texturecolumn;
         }
 
-        rw_scale += rw_scalestep;
-        topfrac += topstep;
-        bottomfrac += bottomstep;
+        loop_rw_scale += loop_rw_scalestep;
+        loop_topfrac += loop_topstep;
+        loop_bottomfrac += loop_bottomstep;
 
-        floorclip[rw_x] = fc_rwx;
-        ceilingclip[rw_x] = cc_rwx;
+        *floorp++ = fc_rwx;
+        *ceilingp++ = cc_rwx;
     }
+
+    rw_scale = loop_rw_scale;
+    topfrac = loop_topfrac;
+    bottomfrac = loop_bottomfrac;
 }
 
 static boolean R_CheckOpenings(const int16_t start)
@@ -2201,8 +2634,8 @@ static boolean R_CheckOpenings(const int16_t start)
 static void R_ClearOpeningClippingDetermination(void)
 {
 	// opening / clipping determination
-	for (uint8_t i = 0; i < VIEWWINDOWWIDTH; i++)
-		floorclip[i] = VIEWWINDOWHEIGHT, ceilingclip[i] = -1;
+	for (uint8_t i = 0; i < R_VIEWWIDTH; i++)
+		floorclip[i] = R_VIEWHEIGHT, ceilingclip[i] = -1;
 }
 
 
@@ -2232,6 +2665,31 @@ inline static int16_t CONSTFUNC Mod(uint8_t a, int16_t b)
 }
 
 
+static inline int32_t R_DivScaleStep(int32_t delta, uint16_t span)
+{
+#if defined __GNUC__ && defined __mc68000__
+	const uint32_t magnitude =
+		delta < 0 ? 0u - (uint32_t)delta : (uint32_t)delta;
+
+	if (magnitude < ((uint32_t)span << 15))
+	{
+		int32_t quotient = delta;
+
+		__asm__ (
+			"divs.w %1,%0\n\t"
+			"ext.l %0"
+			: "+d" (quotient)
+			: "d" (span)
+			: "cc"
+		);
+		return quotient;
+	}
+#endif
+
+	return delta / span;
+}
+
+
 //
 // R_StoreWallRange
 // A wall segment will be drawn
@@ -2251,11 +2709,10 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
 
     side_t    __far* sidedef = &_g_sides[curline->sidenum];
     const mapsidedef_t *mapsidedef = &_g_mapsides[curline->sidenum];	
-    linedef = &_g_lines[curline->linenum];
-    maplinedef = &_g_maplines[curline->linenum];
+    // R_AddLine initializes both definitions before clipping this segment.
 
     // mark the segment as visible for auto map
-    linedef->r_flags |= ML_MAPPED;
+    linedef->r_flags |= RF_MAPPED;
 
     // calculate rw_distance for scale calculation
     rw_normalangle = curline->angle;
@@ -2272,7 +2729,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
 
     int16_t hyp = R_PointToDist(curline->v1.x, curline->v1.y);
 
-    rw_distance = (hyp * finecosineapprox(offsetangle >> ANGLETOFINESHIFT_16)) >> FRACBITS;
+    rw_distance = mulu(hyp, (uint16_t)finecosineapprox(offsetangle >> ANGLETOFINESHIFT_16)) >> FRACBITS;
 
     int16_t rw_x = ds_p->x1 = start;
     ds_p->x2 = stop;
@@ -2289,7 +2746,8 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
     if (stop > start)
     {
         ds_p->scale2 = R_ScaleFromGlobalAngle(stop);
-        ds_p->scalestep = rw_scalestep = (ds_p->scale2 - rw_scale) / (stop - start);
+        ds_p->scalestep = rw_scalestep =
+			R_DivScaleStep(ds_p->scale2 - rw_scale, stop - start);
     }
     else
         ds_p->scale2 = ds_p->scale1;
@@ -2432,7 +2890,7 @@ static void R_StoreWallRange(const int16_t start, const int16_t stop)
 
     if (segtextured)
     {
-        fixed_t rw_offset32 = hyp * -finesineapprox(offsetangle >> ANGLETOFINESHIFT_16);
+        fixed_t rw_offset32 = mulu16xSignedFrac(hyp, -finesineapprox(offsetangle >> ANGLETOFINESHIFT_16));
         rw_offset = rw_offset32 >> FRACBITS;
         rw_offset += sidedef->textureoffset + curline->offset;
 
@@ -2565,7 +3023,11 @@ static void R_RecalcLineFlags(void)
 {
     const side_t __far* side = &_g_sides[curline->sidenum];
 
+#if defined NEOGEO_COMPACT_LINESTATE
+    _g_lineRenderValid[curline->linenum] = (uint8_t)_g_gametic;
+#else
     linedef->r_validcount = _g_gametic;
+#endif
 
     /* First decide if the line is closed, normal, or invisible */
     if (!(maplinedef->flags & ML_TWOSIDED)
@@ -2587,7 +3049,7 @@ static void R_RecalcLineFlags(void)
                     frontsector->ceilingpic!= skyflatnum)
                 )
             )
-        linedef->r_flags = (RF_CLOSED | (linedef->r_flags & ML_MAPPED));
+        linedef->r_flags = (RF_CLOSED | (linedef->r_flags & RF_MAPPED));
     else
     {
         // Reject empty lines used for triggers
@@ -2603,9 +3065,9 @@ static void R_RecalcLineFlags(void)
                 || backsector->floorpic != frontsector->floorpic
                 || backsector->lightlevel != frontsector->lightlevel)
         {
-            linedef->r_flags = (linedef->r_flags & ML_MAPPED);
+            linedef->r_flags = (linedef->r_flags & RF_MAPPED);
         } else
-            linedef->r_flags = (RF_IGNORE | (linedef->r_flags & ML_MAPPED));
+            linedef->r_flags = (RF_IGNORE | (linedef->r_flags & RF_MAPPED));
     }
 }
 
@@ -2616,6 +3078,33 @@ static void R_RecalcLineFlags(void)
 // Replaces the old R_Clip*WallSegment functions. It draws bits of walls in those
 // columns which aren't solid, and updates the solidcol[] array appropriately
 
+static inline byte *R_FindClipValue(byte *p, byte value, int16_t count)
+{
+	while (count-- > 0)
+	{
+		if (*p == value)
+			return p;
+		p++;
+	}
+
+	return NULL;
+}
+
+
+static inline void R_FillSolidColumns(byte *p, int16_t count)
+{
+	if (count < 16)
+	{
+		while (count-- > 0)
+			*p++ = 1;
+	}
+	else
+	{
+		memset(p, 1, count);
+	}
+}
+
+
 static void R_ClipWallSegment(int16_t first, int16_t last, const boolean solid)
 {
     byte *p;
@@ -2623,7 +3112,7 @@ static void R_ClipWallSegment(int16_t first, int16_t last, const boolean solid)
     {
         if (solidcol[first])
         {
-            if (!(p = memchr(solidcol+first, 0, last-first)))
+            if (!(p = R_FindClipValue(solidcol + first, 0, last - first)))
                 return; // All solid
 
             first = p - solidcol;
@@ -2631,7 +3120,7 @@ static void R_ClipWallSegment(int16_t first, int16_t last, const boolean solid)
         else
         {
             int16_t to;
-            if (!(p = memchr(solidcol+first, 1, last-first)))
+            if (!(p = R_FindClipValue(solidcol + first, 1, last - first)))
                 to = last;
             else
                 to = p - solidcol;
@@ -2640,7 +3129,9 @@ static void R_ClipWallSegment(int16_t first, int16_t last, const boolean solid)
 
             if (solid)
             {
-                memset(solidcol + first, 1, to - first);
+                /* The interval contained only zeroes before this call. */
+                solidcol_remaining -= to - first;
+                R_FillSolidColumns(solidcol + first, to - first);
             }
 
             first = to;
@@ -2660,8 +3151,6 @@ static void R_ClipWallSegment(int16_t first, int16_t last, const boolean solid)
 
 static void R_AddLine(const seg_t __far* line)
 {
-    curline = line;
-
     angle16_t angle1 = R_PointToAngle16(line->v1.x, line->v1.y);
     angle16_t angle2 = R_PointToAngle16(line->v2.x, line->v2.y);
 
@@ -2711,13 +3200,18 @@ static void R_AddLine(const seg_t __far* line)
     if (x1 >= x2)       // killough 1/31/98 -- change == to >= for robustness
         return;
 
+    curline = line;
     backsector = line->backsectornum != NO_INDEX8 ? &_g_sectors[line->backsectornum] : NULL;
 
     /* cph - roll up linedef properties in flags */
     linedef = &_g_lines[curline->linenum];
     maplinedef = &_g_maplines[curline->linenum];
 
+#if defined NEOGEO_COMPACT_LINESTATE
+    if (_g_lineRenderValid[curline->linenum] != (uint8_t)_g_gametic)
+#else
     if (linedef->r_validcount != (uint16_t)_g_gametic)
+#endif
         R_RecalcLineFlags();
 
     if (!(linedef->r_flags & RF_IGNORE))
@@ -2740,7 +3234,7 @@ static void R_Subsector(int16_t num)
     subsector_t __far* sub;
 
     sub = &_g_subsectors[num];
-    frontsector = sub->sector;
+    frontsector = SUBSECTOR_SECTOR(sub);
     count = _g_mapsubsectors[num].numsegs;
     line = &_g_segs[_g_mapsubsectors[num].firstseg];
 
@@ -2791,8 +3285,8 @@ static void R_Subsector(int16_t num)
     {
         R_AddLine (line);
         line++;
-        curline = NULL; /* cph 2001/11/18 - must clear curline now we're done with it, so R_LoadColorMap doesn't try using it for other things */
     }
+    curline = NULL; /* cph 2001/11/18 - must clear curline now we're done with it, so R_LoadColorMap doesn't try using it for other things */
 }
 
 //
@@ -2820,6 +3314,9 @@ static const byte checkcoord[12][4] =
 
 static boolean R_CheckBBox(const int16_t __far* bspcoord)
 {
+    if (!solidcol_remaining)
+        return false;
+
     // Find the corners of the box
     // that define the edges from current viewpoint.
     int16_t boxpos = (viewx <= ((fixed_t)bspcoord[BOXLEFT]<<FRACBITS) ? 0 : viewx < ((fixed_t)bspcoord[BOXRIGHT]<<FRACBITS) ? 1 : 2) +
@@ -2993,7 +3490,8 @@ static void R_ClearDrawSegs(void)
 
 static void R_ClearClipSegs (void)
 {
-    memset(solidcol, 0, VIEWWINDOWWIDTH);
+    memset(solidcol, 0, R_VIEWWIDTH);
+    solidcol_remaining = R_VIEWWIDTH;
 }
 
 
@@ -3003,6 +3501,15 @@ static void R_ClearClipSegs (void)
 
 static void R_SetupFrame (player_t *player)
 {
+#if defined NEOGEO_COMPACT_LINESTATE
+    static int32_t last_render_valid_reset = -1;
+    if (!((uint8_t)_g_gametic) && last_render_valid_reset != _g_gametic)
+    {
+        _fmemset(_g_lineRenderValid, 0xff, _g_numlines);
+        last_render_valid_reset = _g_gametic;
+    }
+#endif
+
     viewx = player->mo->x;
     viewy = player->mo->y;
     viewz = player->viewz;

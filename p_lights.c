@@ -187,9 +187,9 @@ static int16_t P_FindMinSurroundingLight(sector_t __far* sector, int16_t max)
   sector_t __far*   check;
 
   min = max;
-  for (i=0 ; i < sector->linecount ; i++)
+  for (i=0 ; i < SECTOR_LINECOUNT(sector) ; i++)
   {
-    line = sector->lines[i];
+    line = SECTOR_LINE(sector, i);
     check = getNextSector(line,sector);
 
     if (!check)
@@ -331,8 +331,8 @@ void EV_LightTurnOn(const line_t __far* line, int16_t bright)
 		// bright = 0 means to search for highest light level surrounding sector
 
 		if (!bright)
-			for (j = 0;j < sector->linecount; j++)
-				if ((temp = getNextSector(sector->lines[j],sector)) && temp->lightlevel > tbright)
+			for (j = 0;j < SECTOR_LINECOUNT(sector); j++)
+				if ((temp = getNextSector(SECTOR_LINE(sector, j),sector)) && temp->lightlevel > tbright)
 					tbright = temp->lightlevel;
 
 		sector->lightlevel = tbright;

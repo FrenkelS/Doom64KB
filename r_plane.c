@@ -78,6 +78,37 @@ byte R_GetPlaneColor(int16_t picnum, int16_t lightlevel)
 #else
 
 
+#if defined NEOGEO_SPRITE_MICROFB
+static uint8_t R_BaseViewX(uint16_t x)
+{
+	const uint8_t width = R_RenderViewWidth();
+	if (width != VIEWWINDOWWIDTH)
+		x = (x * VIEWWINDOWWIDTH) / width;
+
+	return x >= VIEWWINDOWWIDTH ? VIEWWINDOWWIDTH - 1 : (uint8_t)x;
+}
+
+
+static uint8_t R_BaseViewY(uint16_t y)
+{
+	const uint8_t height = R_RenderViewHeight();
+	if (height != VIEWWINDOWHEIGHT)
+		y = (y * VIEWWINDOWHEIGHT) / height;
+
+	return y >= VIEWWINDOWHEIGHT ? VIEWWINDOWHEIGHT - 1 : (uint8_t)y;
+}
+#else
+#define R_BaseViewX(x) ((uint8_t)(x))
+#define R_BaseViewY(y) ((uint8_t)(y))
+#endif
+
+#if defined NEOGEO_SPRITE_MICROFB
+#define R_PLANE_XTOVIEWANGLE(x) R_RenderXToViewAngle(x)
+#else
+#define R_PLANE_XTOVIEWANGLE(x) xtoviewangleTable[(x)]
+#endif
+
+
 static const fixed_t yslopeTable[VIEWWINDOWHEIGHT / 2] =
 {
     132104,134218,136400,138655,140985,143395,145889,148471,151146,153919,156796,159783,162886,166111,
@@ -102,13 +133,22 @@ static const uint16_t distscaleTable[VIEWWINDOWWIDTH] =
 
 static fixed_t yslope(uint8_t y)
 {
+	y = R_BaseViewY(y);
+
+#if defined NEOGEO_SPRITE_MICROFB
+	if (y >= VIEWWINDOWHEIGHT / 2)
+		y = VIEWWINDOWHEIGHT - 1 - y;
+#else
 	if (y >= 64)
 		y = 127 - y;
+#endif
+
 	return yslopeTable[y];
 }
 
 static fixed_t distscale(uint8_t x)
 {
+	x = R_BaseViewX(x);
 	return 0x010000 | distscaleTable[x];
 }
 
@@ -118,8 +158,8 @@ static void R_MapPlane(uint16_t y, uint16_t x1, uint16_t x2, draw_span_vars_t *d
     const fixed_t distance = FixedMul(planeheight, yslope(y));
     dsvars->step = ((FixedMul(distance,basexscale) << 10) & 0xffff0000) | ((FixedMul(distance,baseyscale) >> 6) & 0x0000ffff);
 
-    fixed_t length = FixedMul (distance, distscale(x1));
-    int16_t angle = (viewangle + (((angle_t)xtoviewangleTable[x1]) << FRACBITS)) >> ANGLETOFINESHIFT;
+	fixed_t length = FixedMul (distance, distscale(x1));
+	int16_t angle = (viewangle + (((angle_t)R_PLANE_XTOVIEWANGLE(x1)) << FRACBITS)) >> ANGLETOFINESHIFT;
 
     // killough 2/28/98: Add offsets
     uint32_t xfrac =  viewx + FixedMulAngle(length, finecosineapprox(angle));
@@ -192,7 +232,12 @@ static void R_DoDrawPlane(visplane_t __far* pl)
 
 void R_DrawPlanes (void)
 {
-    static const fixed_t iprojection = (1L << FRACBITS) / (VIEWWINDOWWIDTH / 2);
+    const fixed_t iprojection =
+#if defined NEOGEO_SPRITE_MICROFB
+            (1L << FRACBITS) / (R_RenderViewWidth() / 2);
+#else
+            (1L << FRACBITS) / (VIEWWINDOWWIDTH / 2);
+#endif
 
     basexscale = FixedMul(viewsin,iprojection);
     baseyscale = FixedMul(viewcos,iprojection);
@@ -287,7 +332,12 @@ visplane_t __far* R_FindPlane(fixed_t height, int16_t picnum, int16_t lightlevel
     check->height = height;
     check->picnum = picnum;
     check->lightlevel = lightlevel;
-    check->minx = VIEWWINDOWWIDTH;
+    check->minx =
+#if defined NEOGEO_SPRITE_MICROFB
+            R_RenderViewWidth();
+#else
+            VIEWWINDOWWIDTH;
+#endif
     check->maxx = -1;
 
     _fmemset(check->top, -1, sizeof(check->top));

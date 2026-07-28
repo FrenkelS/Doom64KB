@@ -198,6 +198,18 @@
 /* cph 2006/08/28 - move Prev[XYZ] fields to the end of the struct. Add any
  * other new fields to the end, and make sure you don't break savegames! */
 
+#if defined NEOGEO_COMPACT_MSECNODES && !defined __NGDEVKIT__
+#error NEOGEO_COMPACT_MSECNODES requires the Neo Geo Work-RAM ABI
+#endif
+
+#if defined NEOGEO_COMPACT_MSECNODES
+typedef uint16_t msecnode_link_t;
+#else
+typedef struct msecnode_s __far* msecnode_link_t;
+#endif
+
+#define MSECNODE_NULL ((msecnode_link_t)0)
+
 typedef struct mobj_s
 {
     // List: thinker links.
@@ -219,8 +231,11 @@ typedef struct mobj_s
 
     // Interaction info, by BLOCKMAP.
     // Links in blocks (if needed).
-    struct mobj_s __far*      bnext;
-    struct mobj_s __far*__far*     bprev; // killough 8/11/98: change to ptr-to-ptr
+#if defined NEOGEO_COMPACT_BLOCKMAP
+    uint8_t             bnext; // Index into _g_thingPool, or MOBJ_NO_INDEX.
+#else
+    uint16_t            bnext; // Index into _g_thingPool, or MOBJ_NO_INDEX.
+#endif
 
     struct subsector_s __far* subsector;
 
@@ -275,10 +290,25 @@ typedef struct mobj_s
 
                                        // phares 3/17/98
     // a linked list of sectors where this object appears
-    struct msecnode_s __far* touching_sectorlist;
+    msecnode_link_t touching_sectorlist;
 
     // SEE WARNING ABOVE ABOUT POINTER FIELDS!!!
 } mobj_t;
+
+#if defined NEOGEO_COMPACT_MSECNODES
+_Static_assert(sizeof(mobj_t) == 110,
+               "compact Neo Geo mobj_t must be 110 bytes");
+_Static_assert(_Alignof(mobj_t) >= 2,
+               "compact Neo Geo mobj_t must stay 68000-aligned");
+#endif
+
+#if defined NEOGEO_COMPACT_BLOCKMAP
+typedef uint8_t mobjindex_t;
+#define MOBJ_NO_INDEX UINT8_MAX
+#else
+typedef uint16_t mobjindex_t;
+#define MOBJ_NO_INDEX UINT16_MAX
+#endif
 
 // External declarations (fomerly in p_local.h) -- killough 5/2/98
 
@@ -299,9 +329,11 @@ void    P_SpawnPuff(fixed_t x, fixed_t y, fixed_t z);
 void    P_SpawnBlood(fixed_t x, fixed_t y, fixed_t z, int16_t damage);
 mobj_t __far* P_SpawnMissile(mobj_t __far* source, mobj_t __far* dest, mobjtype_t type);
 void    P_SpawnPlayerMissile(mobj_t __far* source);
-void    P_SpawnMapThing (const mapthing_t __far* mthing);
+mobjtype_t P_MapThingMobjType(const mapthing_t __far* mthing);
+mobj_t __far* P_SpawnMapThing(const mapthing_t __far* mthing,
+                              mobjtype_t type,
+                              boolean count_totals);
 
 struct player_s* P_MobjIsPlayer(const mobj_t __far* mobj);
 
 #endif
-

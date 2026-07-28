@@ -58,6 +58,7 @@ void M_Ticker (void);
 // draws the menus directly into the screen buffer.
 
 void M_Drawer (void);
+void M_NeoGeoInvalidateMenu(void);
 
 // Called by D_DoomMain,
 // loads the config file.

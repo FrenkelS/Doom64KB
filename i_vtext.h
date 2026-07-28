@@ -56,4 +56,9 @@ void V_ClearString(int16_t y, size_t len);
 void I_InitScreenPage(void);
 void I_InitScreenPages(void);
 
+#if defined __NGDEVKIT__
+void V_DrawFixPatch(int16_t x, int16_t y, const uint16_t *entries, uint16_t cols, uint16_t rows);
+void V_DrawFixEntry(int16_t x, int16_t y, uint16_t entry);
+#endif
+
 #endif

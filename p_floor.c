@@ -43,6 +43,9 @@
 #include "p_tick.h"
 #include "s_sound.h"
 #include "sounds.h"
+#if defined NEOGEO_COMPACT_MSECNODES
+#include "i_system.h"
+#endif
 
 #include "globdata.h"
 
@@ -161,7 +164,11 @@ static void PIT_ChangeSector(mobj_t __far* thing)
 
 static boolean P_CheckSector(sector_t __far* sector)
   {
+#if defined NEOGEO_COMPACT_MSECNODES
+  msecnode_link_t link;
+#else
   msecnode_t __far* n;
+#endif
 
   nofit = false;
 
@@ -175,6 +182,32 @@ static boolean P_CheckSector(sector_t __far* sector)
 
   // Mark all things invalid
 
+#if defined NEOGEO_COMPACT_MSECNODES
+  for (link = sector->touching_thinglist; link != MSECNODE_NULL;)
+    {
+    msecnode_t __far* const n = P_MsecnodeFromLink(link);
+    P_MsecnodeSetVisited(n, false);
+    link = P_MsecnodeSectorNext(n);
+    }
+
+  do
+    for (link = sector->touching_thinglist; link != MSECNODE_NULL;)
+      {
+      msecnode_t __far* const n = P_MsecnodeFromLink(link);
+      if (!P_MsecnodeVisited(n))       // unprocessed thing found
+        {
+        P_MsecnodeSetVisited(n, true); // mark thing as processed
+        mobj_t __far* const thing = P_MsecnodeThing(n);
+        if (!thing)
+          I_Error("P_CheckSector: null thing in sector list");
+        if (!(thing->flags & MF_NOBLOCKMAP)) // jff 4/7/98 don't do these
+          PIT_ChangeSector(thing);      // may remove the current node
+        break;                         // exit and start over
+        }
+      link = P_MsecnodeSectorNext(n);
+      }
+  while (link != MSECNODE_NULL);
+#else
   for (n=sector->touching_thinglist; n; n=n->m_snext)
     n->visited = false;
 
@@ -188,6 +221,7 @@ static boolean P_CheckSector(sector_t __far* sector)
         break;                 // exit and start over
         }
   while (n);  // repeat from scratch until all things left are marked valid
+#endif
 
   return nofit;
   }
@@ -409,7 +443,7 @@ static void T_MoveFloor(floormove_t __far* floor)
       }
     }
 
-    floor->sector->floordata = NULL; //jff 2/22/98
+    SECTOR_RELEASE_FLOOR(floor->sector); //jff 2/22/98
     P_RemoveThinker(&floor->thinker);//remove this floor from list of movers
 
     // make floor stop sound
@@ -434,13 +468,13 @@ fixed_t P_FindNextHighestFloor(sector_t __far* sec)
   sector_t __far* other;
   int16_t i;
 
-  for (i=0 ;i < sec->linecount ; i++)
-    if ((other = getNextSector(sec->lines[i],sec)) &&
+  for (i=0 ;i < SECTOR_LINECOUNT(sec) ; i++)
+    if ((other = getNextSector(SECTOR_LINE(sec, i),sec)) &&
          other->floorheight > currentheight)
     {
       fixed_t height = other->floorheight;
-      while (++i < sec->linecount)
-        if ((other = getNextSector(sec->lines[i],sec)) &&
+      while (++i < SECTOR_LINECOUNT(sec))
+        if ((other = getNextSector(SECTOR_LINE(sec, i),sec)) &&
             other->floorheight < height &&
             other->floorheight > currentheight)
           height = other->floorheight;
@@ -483,14 +517,14 @@ boolean EV_DoFloor(int16_t line_tag, floor_e floortype)
     sec = &_g_sectors[secnum];
 
     // Don't start a second thinker on the same floor
-    if (sec->floordata != NULL)
+    if (SECTOR_FLOOR_ACTIVE(sec))
       continue;
 
     // new floor thinker
     rtn = true;
     floor = Z_CallocLevSpec(sizeof(*floor));
     P_AddThinker (&floor->thinker);
-    sec->floordata = floor; //jff 2/22/98
+    SECTOR_CLAIM_FLOOR(sec, floor); //jff 2/22/98
     floor->thinker.function = T_MoveFloor;
     floor->type = floortype;
 
@@ -593,7 +627,7 @@ boolean EV_BuildStairs(const line_t __far* line)
    sector_t __far*     sec = &_g_sectors[secnum];
 
     // don't start a stair if the first step's floor is already moving
-   if (sec->floordata == NULL) {
+   if (!SECTOR_FLOOR_ACTIVE(sec)) {
     floormove_t __far*  floor;
     int16_t       texture;
     fixed_t       height;
@@ -605,7 +639,7 @@ boolean EV_BuildStairs(const line_t __far* line)
     rtn = true;
     floor = Z_CallocLevSpec(sizeof(*floor));
     P_AddThinker (&floor->thinker);
-    sec->floordata = floor;
+    SECTOR_CLAIM_FLOOR(sec, floor);
     floor->thinker.function = T_MoveFloor;
     floor->direction = 1;
     floor->sector = sec;
@@ -629,11 +663,12 @@ boolean EV_BuildStairs(const line_t __far* line)
       int16_t i;
       ok = false;
 
-      for (i = 0;i < sec->linecount;i++)
+      for (i = 0;i < SECTOR_LINECOUNT(sec);i++)
       {          
-        sector_t __far* tsec = LN_FRONTSECTOR((sec->lines[i]));
+        const line_t __far* line = SECTOR_LINE(sec, i);
+        sector_t __far* tsec = LN_FRONTSECTOR(line);
         int16_t newsecnum;
-        if ( !((sec->lines[i])->flags & ML_TWOSIDED) )
+        if ( !(line->flags & ML_TWOSIDED) )
           continue;
 
         newsecnum = tsec-_g_sectors;
@@ -641,7 +676,7 @@ boolean EV_BuildStairs(const line_t __far* line)
         if (secnum != newsecnum)
           continue;
 
-        tsec = LN_BACKSECTOR((sec->lines[i]));
+        tsec = LN_BACKSECTOR(line);
         if (!tsec) continue;     //jff 5/7/98 if no backside, continue
         newsecnum = tsec - _g_sectors;
 
@@ -650,7 +685,7 @@ boolean EV_BuildStairs(const line_t __far* line)
           continue;
 
         // if sector's floor already moving, look for another
-        if (tsec->floordata != NULL)
+        if (SECTOR_FLOOR_ACTIVE(tsec))
           continue;
 
         height += stairsize;
@@ -662,7 +697,7 @@ boolean EV_BuildStairs(const line_t __far* line)
         floor = Z_CallocLevSpec(sizeof(*floor));
         P_AddThinker (&floor->thinker);
 
-        sec->floordata = floor; //jff 2/22/98
+        SECTOR_CLAIM_FLOOR(sec, floor); //jff 2/22/98
         floor->thinker.function = T_MoveFloor;
         floor->direction = 1;
         floor->sector = sec;
@@ -706,34 +741,36 @@ boolean EV_DoDonut(const line_t __far* line)
     s1 = &_g_sectors[secnum];                // s1 is pillar's sector
 
     // do not start the donut if the pillar is already moving
-    if (s1->floordata != NULL)
+    if (SECTOR_FLOOR_ACTIVE(s1))
       continue;
 
-    s2 = getNextSector(s1->lines[0],s1);  // s2 is pool's sector
+    s2 = getNextSector(SECTOR_LINE(s1, 0),s1);  // s2 is pool's sector
     if (!s2) continue;                    // note lowest numbered line around
                                           // pillar must be two-sided
 
     /* do not start the donut if the pool is already moving
      * cph - DEMOSYNC - was !compatibility */
-    if (s2->floordata != NULL)
+    if (SECTOR_FLOOR_ACTIVE(s2))
       continue;                           //jff 5/7/98
 
     // find a two sided line around the pool whose other side isn't the pillar
-    for (i = 0;i < s2->linecount;i++)
+    for (i = 0;i < SECTOR_LINECOUNT(s2);i++)
     {
 
 
-        if (!LN_BACKSECTOR((s2->lines[i])) || LN_BACKSECTOR((s2->lines[i])) == s1)
+        const line_t __far* line = SECTOR_LINE(s2, i);
+
+        if (!LN_BACKSECTOR(line) || LN_BACKSECTOR(line) == s1)
             continue;
 
       rtn = true; //jff 1/26/98 no donut action - no switch change on return
 
-      s3 = LN_BACKSECTOR((s2->lines[i]));      // s3 is model sector for changes
+      s3 = LN_BACKSECTOR(line);      // s3 is model sector for changes
 
       //  Spawn rising slime
       floor = Z_CallocLevSpec(sizeof(*floor));
       P_AddThinker (&floor->thinker);
-      s2->floordata = floor; //jff 2/22/98
+      SECTOR_CLAIM_FLOOR(s2, floor); //jff 2/22/98
       floor->thinker.function = T_MoveFloor;
       floor->type = donutRaise;
       floor->direction = 1;
@@ -745,7 +782,7 @@ boolean EV_DoDonut(const line_t __far* line)
       //  Spawn lowering donut-hole pillar
       floor = Z_CallocLevSpec(sizeof(*floor));
       P_AddThinker (&floor->thinker);
-      s1->floordata = floor; //jff 2/22/98
+      SECTOR_CLAIM_FLOOR(s1, floor); //jff 2/22/98
       floor->thinker.function = T_MoveFloor;
       floor->type = lowerFloor;
       floor->direction = -1;

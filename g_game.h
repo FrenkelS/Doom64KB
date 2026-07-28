@@ -45,6 +45,9 @@
 void G_Responder(event_t *ev);
 void G_CheckDemoStatus(void);
 void G_DeferedInitNew(skill_t skill);
+#if defined NEOGEO_MAP_TEST
+void G_TestInitNew(void);
+#endif
 void G_DeferedPlayDemo(const char *demo);
 void G_LoadGame(int16_t slot);
 void G_SaveGame(int16_t slot); // Called by M_Responder.

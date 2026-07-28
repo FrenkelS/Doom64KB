@@ -150,8 +150,13 @@ static const uint8_t mapcolor_sngl = 208;    // 255 255 255 single player arrow 
 #if !defined MAPWIDTH
 #define MAPWIDTH SCREENWIDTH
 #endif
+#if defined NEOGEO_SPRITE_MICROFB
+static int16_t f_w;
+static int16_t f_h;
+#else
 static const int16_t f_w = MAPWIDTH;
 static const int16_t f_h = VIEWWINDOWHEIGHT;// to allow runtime setting of width/height
+#endif
 
 
 typedef struct
@@ -333,6 +338,43 @@ static void AM_findMinMaxBoundaries(void)
     max_scale_mtof = FixedApproxDiv((int32_t)f_h<<FRACBITS, 2*PLAYERRADIUS);
 }
 
+#if defined NEOGEO_SPRITE_MICROFB
+static boolean AM_updateFrameDimensions(void)
+{
+    const int16_t width = R_RenderViewWidth();
+    const int16_t height = R_RenderViewHeight();
+
+    if (f_w == width && f_h == height)
+        return false;
+
+    f_w = width;
+    f_h = height;
+    return true;
+}
+
+static void AM_clampScaleToBounds(void)
+{
+    if (scale_mtof < min_scale_mtof)
+        scale_mtof = min_scale_mtof;
+    else if (scale_mtof > max_scale_mtof)
+        scale_mtof = max_scale_mtof;
+
+    scale_ftom = FixedReciprocal(scale_mtof);
+}
+
+static void AM_refreshViewport(void)
+{
+    if (!AM_updateFrameDimensions())
+        return;
+
+    AM_findMinMaxBoundaries();
+    AM_clampScaleToBounds();
+    AM_activateNewScale();
+}
+#else
+#define AM_refreshViewport() ((void)0)
+#endif
+
 //
 // AM_changeWindowLoc()
 //
@@ -438,17 +480,30 @@ static void AM_Start(void)
 {
     static int16_t lastlevel   = -1;
     static int16_t lastepisode = -1;
+#if defined NEOGEO_SPRITE_MICROFB
+    boolean viewport_changed;
+#endif
 
     if (!stopped)
         AM_Stop();
 
     stopped = false;
+#if defined NEOGEO_SPRITE_MICROFB
+    viewport_changed = AM_updateFrameDimensions();
+#endif
     if (lastlevel != _g_gamemap || lastepisode != 1)
     {
         AM_LevelInit();
         lastlevel = _g_gamemap;
         lastepisode = 1;
     }
+#if defined NEOGEO_SPRITE_MICROFB
+    else if (viewport_changed)
+    {
+        AM_findMinMaxBoundaries();
+        AM_clampScaleToBounds();
+    }
+#endif
     AM_initVariables();
 }
 
@@ -670,6 +725,8 @@ void AM_Ticker (void)
 {
     if (!(automapmode & am_active))
         return;
+
+    AM_refreshViewport();
 
     if (automapmode & am_follow)
         AM_doFollowPlayer();
@@ -926,7 +983,7 @@ static void AM_drawWalls(void)
         }
 
         // if line has been seen or IDDT has been used
-        if (_g_lines[i].r_flags & ML_MAPPED)
+        if (_g_lines[i].r_flags & RF_MAPPED)
         {
             if (_g_maplines[i].flags & ML_DONTDRAW)
                 continue;
@@ -1072,6 +1129,8 @@ void AM_Drawer (void)
 {
     // CPhipps - all automap modes put into one enum
     if (!(automapmode & am_active)) return;
+
+    AM_refreshViewport();
 
     V_InitDrawLine();
 

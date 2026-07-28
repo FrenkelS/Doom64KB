@@ -1,25 +1,156 @@
-mkdir neogeo/rom
-
 set -e
+
+mkdir -p neogeo/rom
+mkdir -p neogeo/assets/generated
+
+fix_ui_inputs="
+  tools/gen_neogeo_fix_menu.py
+  DOOM64TB.WAD
+  doom64ng.h
+  neogeo/assets/doom64kb.fix
+"
+fix_ui_outputs="
+  neogeo/assets/doom-menu.fix
+  neogeo/assets/doom-title.c1
+  neogeo/assets/doom-title.c2
+  neogeo/doom_fix_menu_assets.h
+  neogeo/doom_fix_intermission_assets.h
+  neogeo/doom_fix_menu_palette.h
+  neogeo/doom_fix_wipe_assets.h
+  neogeo/doom_title_assets.h
+"
+fix_ui_needs_rebuild=false
+for asset in $fix_ui_outputs
+do
+  if [ ! -f "$asset" ]
+  then
+    fix_ui_needs_rebuild=true
+    break
+  fi
+
+  for source in $fix_ui_inputs
+  do
+    if [ "$source" -nt "$asset" ]
+    then
+      fix_ui_needs_rebuild=true
+      break 2
+    fi
+  done
+done
+
+if [ "$fix_ui_needs_rebuild" = true ]
+then
+  python3 -B tools/gen_neogeo_fix_menu.py \
+    --iwad DOOM64TB.WAD \
+    --embedded-wad-header doom64ng.h \
+    --base-srom neogeo/assets/doom64kb.fix \
+    --out-fix neogeo/assets/doom-menu.fix \
+    --out-menu-header neogeo/doom_fix_menu_assets.h \
+    --out-intermission-header neogeo/doom_fix_intermission_assets.h \
+    --out-menu-palette-header neogeo/doom_fix_menu_palette.h \
+    --out-wipe-header neogeo/doom_fix_wipe_assets.h \
+    --out-title-c1 neogeo/assets/doom-title.c1 \
+    --out-title-c2 neogeo/assets/doom-title.c2 \
+    --out-title-header neogeo/doom_title_assets.h
+fi
+
+SPRITE_DEFS_HEADER="neogeo/assets/generated/doom_sprite_defs.h"
+if [ ! -f "$SPRITE_DEFS_HEADER" ] || \
+   [ tools/gen_neogeo_sprite_defs.py -nt "$SPRITE_DEFS_HEADER" ] || \
+   [ DOOM64TB.WAD -nt "$SPRITE_DEFS_HEADER" ] || \
+   [ doom64ng.h -nt "$SPRITE_DEFS_HEADER" ] || \
+   [ info.c -nt "$SPRITE_DEFS_HEADER" ]
+then
+  python3 tools/gen_neogeo_sprite_defs.py \
+    --iwad DOOM64TB.WAD \
+    --embedded-wad-header doom64ng.h \
+    --sprite-source info.c \
+    --output "$SPRITE_DEFS_HEADER"
+  python3 -B tools/verify_neogeo_sprite_defs.py \
+    --iwad DOOM64TB.WAD \
+    --embedded-wad-header doom64ng.h \
+    --sprite-source info.c \
+    --generated-header "$SPRITE_DEFS_HEADER"
+fi
+
+SECTOR_LINES_HEADER="neogeo/assets/generated/doom_sector_lines.h"
+if [ ! -f "$SECTOR_LINES_HEADER" ] || \
+   [ tools/gen_neogeo_sector_lines.py -nt "$SECTOR_LINES_HEADER" ] || \
+   [ DOOM64TB.WAD -nt "$SECTOR_LINES_HEADER" ]
+then
+  python3 tools/gen_neogeo_sector_lines.py \
+    --iwad DOOM64TB.WAD \
+    --output "$SECTOR_LINES_HEADER"
+fi
+
+WALL_COLUMNS_HEADER="neogeo/assets/generated/doom_wall_columns.h"
+if [ ! -f "$WALL_COLUMNS_HEADER" ] || \
+   [ tools/gen_neogeo_wall_columns.py -nt "$WALL_COLUMNS_HEADER" ] || \
+   [ tools/gen_neogeo_sprite_defs.py -nt "$WALL_COLUMNS_HEADER" ] || \
+   [ doom64ng.h -nt "$WALL_COLUMNS_HEADER" ]
+then
+  python3 -B tools/gen_neogeo_wall_columns.py \
+    --embedded-wad-header doom64ng.h \
+    --output "$WALL_COLUMNS_HEADER"
+fi
+
+AUDIO_ASSET_DIR="neogeo/assets/generated/audio"
+AUDIO_VROM_BYTES="${AUDIO_VROM_BYTES:-16777216}"
+AUDIO_REPORT="$AUDIO_ASSET_DIR/doom_audio_report.txt"
+
+mkdir -p "$AUDIO_ASSET_DIR"
+
+audio_needs_rebuild=false
+for asset in doom_audio.vrom doom_audio_generated.inc doom_audio_generated.h doom_audio_report.txt
+do
+  if [ ! -f "$AUDIO_ASSET_DIR/$asset" ]
+  then
+    audio_needs_rebuild=true
+  fi
+done
+
+if [ "$audio_needs_rebuild" = false ] && \
+   { [ tools/gen_neogeo_audio.py -nt "$AUDIO_REPORT" ] || \
+     [ DOOM64TB.WAD -nt "$AUDIO_REPORT" ]; }
+then
+  audio_needs_rebuild=true
+fi
+
+if [ "$audio_needs_rebuild" = true ]
+then
+  python3 tools/gen_neogeo_audio.py \
+    --iwad DOOM64TB.WAD \
+    --out-dir "$AUDIO_ASSET_DIR" \
+    --vrom-size "$AUDIO_VROM_BYTES"
+fi
+
+z80-neogeo-ihx-sdasz80 -g -p -u \
+  -I"$AUDIO_ASSET_DIR" \
+  -o "$AUDIO_ASSET_DIR/doomsnd.rel" \
+  neogeo/sound/doomsnd.s
+z80-neogeo-ihx-sdldz80 -i \
+  "$AUDIO_ASSET_DIR/doomsnd.ihx" \
+  "$AUDIO_ASSET_DIR/doomsnd.rel"
 
 unset CFLAGS
 
 
-export RENDER_OPTIONS="-DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=104 -DWAD_FILE=\"DOOM64TB.WAD\" -DVIEWWINDOWWIDTH=38 -DVIEWWINDOWHEIGHT=28 -DMAPWIDTH=38 -DLOW_MEMORY -D__NGDEVKIT__"
+CROM_FILE_BYTES="${CROM_FILE_BYTES:-4194304}"
+
+export RENDER_OPTIONS="-DFLAT_SPAN -DFLAT_NUKAGE1_COLOR=104 -DWAD_FILE=\"DOOM64TB.WAD\" -DVIEWWINDOWWIDTH=80 -DVIEWWINDOWHEIGHT=56 -DMAPWIDTH=80 -DLOW_MEMORY -D__NGDEVKIT__ -DNEOGEO_SPRITE_MICROFB -DNEOGEO_ROM_SPRITE_DEFS -DNEOGEO_ROM_SECTOR_LINES -DNEOGEO_ROM_WALL_COLUMNS -DNEOGEO_COMPACT_BLOCKMAP -DNEOGEO_COMPACT_SECTORS -DNEOGEO_COMPACT_LINESTATE -DNEOGEO_COMPACT_MSECNODES -DNEOGEO_HEAP_SIZE=44000 ${EXTRA_RENDER_OPTIONS:-}"
 
 export CPU=68000
-
-m68k-neogeo-elf-gcc -c i_neogev.c $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure
-m68k-neogeo-elf-gcc -c p_enemy2.c $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure
-m68k-neogeo-elf-gcc -c p_map.c    $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure
-m68k-neogeo-elf-gcc -c p_maputl.c $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure
-m68k-neogeo-elf-gcc -c p_mobj.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure
-m68k-neogeo-elf-gcc -c p_sight.c  $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure
-m68k-neogeo-elf-gcc -c r_data.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure
-m68k-neogeo-elf-gcc -c r_draw.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure
-m68k-neogeo-elf-gcc -c r_plane.c  $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure
-m68k-neogeo-elf-gcc -c tables.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure
-m68k-neogeo-elf-gcc -c w_wad.c    $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure
+m68k-neogeo-elf-gcc -c i_neogev.c $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
+m68k-neogeo-elf-gcc -c p_enemy2.c $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
+m68k-neogeo-elf-gcc -c p_map.c    $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
+m68k-neogeo-elf-gcc -c p_maputl.c $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
+m68k-neogeo-elf-gcc -c p_mobj.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
+m68k-neogeo-elf-gcc -c p_sight.c  $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
+m68k-neogeo-elf-gcc -c r_data.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
+m68k-neogeo-elf-gcc -c r_draw.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -O3 -fomit-frame-pointer -flto -fwhole-program -funroll-loops -fira-loop-pressure -funsafe-loop-optimizations -freorder-blocks-algorithm=stc -fno-tree-pre
+m68k-neogeo-elf-gcc -c r_plane.c  $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
+m68k-neogeo-elf-gcc -c tables.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
+m68k-neogeo-elf-gcc -c w_wad.c    $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure -fno-tree-pre
 m68k-neogeo-elf-gcc -c z_zone.c   $RENDER_OPTIONS -std=gnu17 -mlra -march=$CPU -Ofast -fomit-frame-pointer -fgcse-sm -flto -fwhole-program -funroll-loops -fira-loop-pressure
 
 export CFLAGS="-std=gnu17 -mlra -march=$CPU -Oz -fomit-frame-pointer -flto -fwhole-program -fira-loop-pressure"
@@ -90,7 +221,7 @@ export GLOBOBJS+=" st_text.c"
 export GLOBOBJS+=" tables.o"
 #export GLOBOBJS+=" w_wad.c"
 export GLOBOBJS+=" w_wad.o"
-export GLOBOBJS+=" wi_libt.c"
+export GLOBOBJS+=" wi_libn.c"
 export GLOBOBJS+=" wi_stuff.c"
 export GLOBOBJS+=" z_bmallo.c"
 #export GLOBOBJS+=" z_zone.c"
@@ -113,15 +244,22 @@ rm z_zone.o
 
 m68k-neogeo-elf-objcopy -O binary -S -R .text2 --gap-fill 0xff --pad-to             1048576   neogeo/DOOM64KB.elf neogeo/rom/doom64kb-p1.p1 && dd if=neogeo/rom/doom64kb-p1.p1 of=neogeo/rom/doom64kb-p1.p1 conv=notrunc,swab status=none
 m68k-neogeo-elf-objcopy -O binary    -j .text2 --gap-fill 0xff --pad-to $((0x200000+1048576)) neogeo/DOOM64KB.elf neogeo/rom/doom64kb-p2.p2 && dd if=neogeo/rom/doom64kb-p2.p2 of=neogeo/rom/doom64kb-p2.p2 conv=notrunc,swab status=none
-z80-neogeo-ihx-sdobjcopy -I ihex -O binary neogeo/assets/demo_driver.ihx neogeo/rom/doom64kb-m1.m1 --pad-to 131072
-cp neogeo/assets/base-crom-logo.c1 neogeo/rom/doom64kb-c1.c1
-cp neogeo/assets/base-crom-logo.c2 neogeo/rom/doom64kb-c2.c2
-cp neogeo/assets/doom64kb.fix      neogeo/rom/doom64kb-s1.s1
-cp neogeo/assets/samples.v1        neogeo/rom/doom64kb-v1.v1
-truncate -s 2097152 neogeo/rom/doom64kb-c1.c1
-truncate -s 2097152 neogeo/rom/doom64kb-c2.c2
-truncate -s 131072  neogeo/rom/doom64kb-s1.s1
-truncate -s 524288  neogeo/rom/doom64kb-v1.v1
+z80-neogeo-ihx-sdobjcopy -I ihex -O binary "$AUDIO_ASSET_DIR/doomsnd.ihx" neogeo/rom/doom64kb-m1.m1 --pad-to 131072
+python3 tools/gen_neogeo_color_tiles.py \
+  --base-c1 neogeo/assets/base-crom-logo.c1 \
+  --base-c2 neogeo/assets/base-crom-logo.c2 \
+  --title-c1 neogeo/assets/doom-title.c1 \
+  --title-c2 neogeo/assets/doom-title.c2 \
+  --out-c1 neogeo/assets/generated/doom_color_microfb.c1 \
+  --out-c2 neogeo/assets/generated/doom_color_microfb.c2 \
+  --crom-size "$CROM_FILE_BYTES"
+cp neogeo/assets/generated/doom_color_microfb.c1 neogeo/rom/doom64kb-c1.c1 && truncate -s "$CROM_FILE_BYTES" neogeo/rom/doom64kb-c1.c1
+cp neogeo/assets/generated/doom_color_microfb.c2 neogeo/rom/doom64kb-c2.c2 && truncate -s "$CROM_FILE_BYTES" neogeo/rom/doom64kb-c2.c2
+cp neogeo/assets/doom64kb.fix neogeo/rom/doom64kb-s1.s1
+dd if=neogeo/assets/doom-menu.fix of=neogeo/rom/doom64kb-s1.s1 bs=32 seek=2393 conv=notrunc status=none
+cp "$AUDIO_ASSET_DIR/doom_audio.vrom" neogeo/rom/doom64kb-v1.v1
+truncate -s 131072 neogeo/rom/doom64kb-s1.s1
+truncate -s "$AUDIO_VROM_BYTES" neogeo/rom/doom64kb-v1.v1
 romtool.py -b cartridge -f zip   -p neogeo/rom/doom64kb-p1.p1 neogeo/rom/doom64kb-p2.p2 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -x "zip.comment="              -o neogeo/rom/doom64kb.zip
 romtool.py -b hash      -f mame  -p neogeo/rom/doom64kb-p1.p1 neogeo/rom/doom64kb-p2.p2 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -l "Doom64KB: Neo Geo Edition" -o neogeo/rom/neogeo.xml
 romtool.py -b hash      -f gngeo -p neogeo/rom/doom64kb-p1.p1 neogeo/rom/doom64kb-p2.p2 -c neogeo/rom/doom64kb-c1.c1 neogeo/rom/doom64kb-c2.c2 -v neogeo/rom/doom64kb-v1.v1 -s neogeo/rom/doom64kb-s1.s1 -m neogeo/rom/doom64kb-m1.m1 -n doom64kb -l "Doom64KB: Neo Geo Edition" -o neogeo/rom/gngeo_data.zip -x gngeo.data=/usr/share/ngdevkit-gngeo/gngeo_data.zip

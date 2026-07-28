@@ -185,7 +185,7 @@ boolean EV_DoPlat(const line_t __far* line, plattype_e type)
     sec = &_g_sectors[secnum];
 
     // don't start a second floor function if already moving
-    if (sec->floordata != NULL) // multiple thinkers
+    if (SECTOR_FLOOR_ACTIVE(sec)) // multiple thinkers
       continue;
 
     // Create a thinker
@@ -195,7 +195,7 @@ boolean EV_DoPlat(const line_t __far* line, plattype_e type)
 
     plat->type = type;
     plat->sector = sec;
-    plat->sector->floordata = plat; //jff 2/23/98 multiple thinkers
+    SECTOR_CLAIM_FLOOR(plat->sector, plat); //jff 2/23/98 multiple thinkers
     plat->thinker.function = T_PlatRaise;
     plat->tag = line->tag;
 
@@ -208,7 +208,7 @@ boolean EV_DoPlat(const line_t __far* line, plattype_e type)
     {
       case raiseToNearestAndChange:
         plat->speed = PLATSPEED/2;
-        sec->floorpic = _g_sides[line->sidenum[0]].sector->floorpic;
+        sec->floorpic = SIDE_SECTOR(&_g_sides[line->sidenum[0]])->floorpic;
         plat->high = P_FindNextHighestFloor(sec);
         plat->wait = 0;
         plat->status = up;
@@ -280,7 +280,7 @@ static void P_AddActivePlat(plat_t __far* plat)
 static void P_RemoveActivePlat(plat_t __far* plat)
 {
   platlist_t __far* list = plat->list;
-  plat->sector->floordata = NULL; //jff 2/23/98 multiple thinkers
+  SECTOR_RELEASE_FLOOR(plat->sector); //jff 2/23/98 multiple thinkers
 
   P_RemoveThinker(&plat->thinker);
 

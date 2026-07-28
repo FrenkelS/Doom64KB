@@ -71,6 +71,7 @@
 #include "p_inter.h"
 #include "g_game.h"
 #include "i_system.h"
+#include "i_video.h"
 
 #include "globdata.h"
 
@@ -302,6 +303,14 @@ void G_BuildTiccmd(void)
 
 static void G_DoLoadLevel (void)
 {
+#if defined NEOGEO_SPRITE_MICROFB
+    /*
+     * Preserve the frame that is actually on screen before level setup and
+     * its loading presentation reuse the software framebuffer.
+     */
+    wipe_StartScreen();
+#endif
+
     if (wipegamestate == GS_LEVEL)
         wipegamestate = -1;             // force a wipe
 
@@ -319,6 +328,9 @@ static void G_DoLoadLevel (void)
 
     P_SetSecnodeFirstpoolToNull();
 
+#if defined NEOGEO_SPRITE_MICROFB
+    I_NeoGeoShowLoadingScreen(_g_gamemap);
+#endif
 
     P_SetupLevel (_g_gamemap);
 
@@ -917,6 +929,13 @@ static void G_InitNew(skill_t skill, int16_t map)
     G_DoLoadLevel ();
 }
 
+#if defined NEOGEO_MAP_TEST
+void G_TestInitNew(void)
+{
+    G_InitNew(sk_medium, NEOGEO_MAP_TEST);
+}
+#endif
+
 //
 // DEMO RECORDING
 //
@@ -1000,9 +1019,6 @@ static const byte __far* G_ReadDemoHeader(const byte __far* demo_p)
     skill = *demo_p++;
     demo_p++;
     map = *demo_p++;
-#if defined LOW_MEMORY
-    map = 1;
-#endif
     demo_p++;
     demo_p++;
     demo_p++;
@@ -1102,4 +1118,3 @@ void G_CheckDemoStatus (void)
         D_AdvanceDemo ();
     }
 }
-

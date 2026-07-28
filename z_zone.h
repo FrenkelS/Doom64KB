@@ -31,10 +31,12 @@
 
 void Z_Init(void);
 void __far* Z_TryMallocStatic(uint16_t size);
+void __far* Z_TryMallocLevel(uint16_t size, void __far*__far* user);
 void __far* Z_MallocStatic(uint16_t size);
 void __far* Z_MallocLevel(uint16_t size, void __far*__far* user);
 void __far* Z_CallocLevel(uint16_t size);
 void __far* Z_CallocLevSpec(uint16_t size);
+uint16_t Z_LargestFreeBlock(void);
 void Z_Free(const void __far* ptr);
 void Z_FreeTags(void);
 void Z_CheckHeap(void);

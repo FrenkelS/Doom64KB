@@ -193,7 +193,7 @@ static boolean P_LookForTargets(mobj_t __far* actor, boolean allaround)
 
 void A_Look(mobj_t __far* actor)
 {
-    mobj_t __far* targ = actor->subsector->sector->soundtarget;
+    mobj_t __far* targ = SUBSECTOR_SECTOR(actor->subsector)->soundtarget;
     actor->threshold = 0; // any shot will wake up
     actor->pursuecount = 0;
 

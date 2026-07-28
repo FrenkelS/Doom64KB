@@ -76,7 +76,11 @@ static void D_UpdateFPS(void);
 
 //jff 1/22/98 parms for disabling music and sound
       boolean nosfxparm   = false;
+#if defined __NGDEVKIT__
+const boolean nomusicparm = false;
+#else
 const boolean nomusicparm = true;
+#endif
 
 const boolean nodrawers = false;
 
@@ -190,9 +194,11 @@ static void D_Display (void)
             AM_Drawer();
 
         ST_doPaletteStuff();  // Do red-/gold-shifts from damage/items
-        ST_Drawer();
-
-        HU_Drawer();
+        if (!_g_menuactive)
+        {
+            ST_Drawer();
+            HU_Drawer();
+        }
     }
 
     oldgamestate = wipegamestate = _g_gamestate;
@@ -495,6 +501,9 @@ static void D_DoomMainSetup(void)
 
     I_InitGraphics();
 
+#if defined NEOGEO_MAP_TEST
+    G_TestInitNew();
+#else
     int16_t p = M_CheckParm("-timedemo");
     if (p && p < myargc - 1)
     {
@@ -507,6 +516,7 @@ static void D_DoomMainSetup(void)
     {
         D_StartTitle();                 // start up intro loop
     }
+#endif
 }
 
 //

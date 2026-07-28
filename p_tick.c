@@ -38,6 +38,7 @@
 #include "p_spec.h"
 #include "p_tick.h"
 #include "p_map.h"
+#include "p_setup.h"
 
 #include "globdata.h"
 
@@ -223,9 +224,13 @@ void P_Ticker (void)
   if(_g_gamestate==GS_LEVEL)
     P_PlayerThink(&_g_player);
 
+#if defined LOW_MEMORY && defined NEOGEO_SPRITE_MICROFB
+  if (!(_g_leveltime & 7))
+    P_UpdateMapThings();
+#endif
+
   P_RunThinkers();
   P_UpdateSpecials();
   P_MapEnd();
   _g_leveltime++;                       // for par times
 }
-

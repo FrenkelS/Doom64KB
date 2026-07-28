@@ -68,14 +68,25 @@ typedef struct
 
 typedef struct
 {
+  uint16_t first;
+  uint16_t count;
+} sectorlinespan_t;
+
+typedef struct
+{
   int16_t x, y;
 } vertex16_t;
 
 // Each sector has a degenmobj_t in its center for sound origin purposes.
 typedef struct
 {
+#if defined NEOGEO_COMPACT_SECTORS
+  int16_t x;
+  int16_t y;
+#else
   fixed_t x;
   fixed_t y;
+#endif
 } degenmobj_t;
 
 //
@@ -94,28 +105,59 @@ typedef struct
 
 
   // thinker_t for reversable actions
+#if defined NEOGEO_COMPACT_SECTORS
+  uint8_t floordata;        // nonzero while a floor thinker owns this sector
+#else
   void __far* floordata;    // jff 2/22/98 make thinkers on
+#endif
   void __far* ceilingdata;  // floors, ceilings, lighting,
 
   // list of mobjs that are at least partially in the sector
   // thinglist is a subset of touching_thinglist
-  struct msecnode_s __far* touching_thinglist;
+  msecnode_link_t touching_thinglist;
 
-  const struct line_s __far*__far*lines;
+#if !defined NEOGEO_ROM_SECTOR_LINES
+  uint16_t __far* lines;        // Indexes into _g_maplines.
+#endif
 
   uint16_t validcount;        // if == validcount, already checked
+#if !defined NEOGEO_ROM_SECTOR_LINES
   int16_t linecount;
+#endif
 
+#if defined NEOGEO_COMPACT_SECTORS
+  uint8_t floorpic;
+  uint8_t ceilingpic;
+#else
   int16_t floorpic;
   int16_t ceilingpic;
+#endif
 
-  int16_t lightlevel;
-  int16_t special;
-  int16_t oldspecial;      //jff 2/16/98 remembers if sector WAS secret (automap)
+  uint8_t lightlevel;
+  int8_t special;
+  int8_t oldspecial;      //jff 2/16/98 remembers if sector WAS secret (automap)
 
-  int16_t soundtraversed;    // 0 = untraversed, 1,2 = sndlines-1
+  int8_t soundtraversed;    // 0 = untraversed, 1,2 = sndlines-1
 
 } sector_t;
+
+#if defined NEOGEO_COMPACT_MSECNODES
+_Static_assert(sizeof(sector_t) == 36,
+               "compact Neo Geo sector_t must be 36 bytes");
+_Static_assert(_Alignof(sector_t) >= 2,
+               "compact Neo Geo sector_t must stay 68000-aligned");
+#endif
+
+#if defined NEOGEO_COMPACT_SECTORS
+#define SECTOR_FLOOR_ACTIVE(sec) ((sec)->floordata != 0)
+#define SECTOR_CLAIM_FLOOR(sec, thinker) \
+  ((void)(thinker), (sec)->floordata = 1)
+#define SECTOR_RELEASE_FLOOR(sec) ((sec)->floordata = 0)
+#else
+#define SECTOR_FLOOR_ACTIVE(sec) ((sec)->floordata != NULL)
+#define SECTOR_CLAIM_FLOOR(sec, thinker) ((sec)->floordata = (thinker))
+#define SECTOR_RELEASE_FLOOR(sec) ((sec)->floordata = NULL)
+#endif
 
 typedef struct {
   int16_t floorheight;
@@ -135,16 +177,18 @@ typedef char assertMapsectorSize[sizeof(mapsector_t) == 12 ? 1 : -1];
 // by setting textures and offsets.
 //
 
-typedef struct
+typedef PACKEDATTR_PRE struct
 {
-    sector_t __far* sector;      // Sector the SideDef is facing.
+    uint8_t sector;              // Index of the sector this SideDef faces.
 
     uint8_t textureoffset; // add this to the calculated texture column
 
     int8_t toptexture;
     int8_t bottomtexture;
     int8_t midtexture;
-} side_t;
+} PACKEDATTR_POST side_t;
+
+typedef char assertSideSize[sizeof(side_t) == 5 ? 1 : -1];
 
 typedef PACKEDATTR_PRE struct {
   int16_t textureoffset;
@@ -170,6 +214,7 @@ typedef char assertMapsidedefSize[sizeof(mapsidedef_t) == 8 ? 1 : -1];
 
 typedef enum
 {
+    RF_MAPPED   = 1,     // Line was already seen by the automap
     RF_IGNORE   = 8,     // Renderer can skip this line
     RF_CLOSED   =16      // Line blocks view
 } flags_e;
@@ -178,11 +223,19 @@ typedef enum
 typedef struct linedata_s
 {
     uint16_t validcount;        // if == validcount, already checked
+#if !defined NEOGEO_COMPACT_LINESTATE
     uint16_t r_validcount;      // cph: if == gametic, r_flags already done
+#endif
 
-    int16_t r_flags;
-    int16_t special;
+    uint8_t r_flags;
+    int8_t special;
 } linedata_t;
+
+#if defined NEOGEO_COMPACT_LINESTATE
+typedef char assertLinedataSize[sizeof(linedata_t) == 4 ? 1 : -1];
+#else
+typedef char assertLinedataSize[sizeof(linedata_t) == 6 ? 1 : -1];
+#endif
 
 typedef PACKEDATTR_PRE struct line_s
 {
@@ -203,8 +256,9 @@ typedef PACKEDATTR_PRE struct line_s
 typedef char assertLineSize[sizeof(line_t) == 32 ? 1 : -1];
 
 
-#define LN_FRONTSECTOR(l) (_g_sides[(l)->sidenum[0]].sector)
-#define LN_BACKSECTOR(l) ((l)->sidenum[1] != NO_INDEX ? _g_sides[(l)->sidenum[1]].sector : NULL)
+#define SIDE_SECTOR(s) (&_g_sectors[(s)->sector])
+#define LN_FRONTSECTOR(l) SIDE_SECTOR(&_g_sides[(l)->sidenum[0]])
+#define LN_BACKSECTOR(l) ((l)->sidenum[1] != NO_INDEX ? SIDE_SECTOR(&_g_sides[(l)->sidenum[1]]) : NULL)
 
 #define LN_SPECIAL(l) (_g_lines[(l)->lineno].special)
 
@@ -225,6 +279,32 @@ typedef char assertLineSize[sizeof(line_t) == 32 ? 1 : -1];
 //
 // For the links, NULL means top or end of list.
 
+#if defined NEOGEO_COMPACT_MSECNODES
+
+#define MSECNODE_SECTOR_OFFSET_MASK UINT16_C(0x7fff)
+#define MSECNODE_VISITED_MASK       UINT16_C(0x8000)
+#define MSECNODE_SECTOR_MAX_BYTES \
+  (((uint32_t)MSECNODE_SECTOR_OFFSET_MASK + 1) * 2)
+
+typedef uint16_t mobj_wram_handle_t;
+
+typedef struct msecnode_s
+{
+  uint16_t m_sector_visited;  // sector halfword offset plus visited high bit
+  mobj_wram_handle_t m_thing; // even-address Neo Geo Work-RAM handle
+  msecnode_link_t m_tprev;    // prev node on Thing thread
+  msecnode_link_t m_tnext;    // next node on Thing thread
+  msecnode_link_t m_sprev;    // prev node on sector thread
+  msecnode_link_t m_snext;    // next node on sector thread
+} msecnode_t;
+
+_Static_assert(sizeof(msecnode_t) == 12,
+               "compact Neo Geo msecnode_t must be 12 bytes");
+_Static_assert(_Alignof(msecnode_t) >= 2,
+               "compact Neo Geo msecnode_t must stay 68000-aligned");
+
+#else
+
 typedef struct msecnode_s
 {
   sector_t          __far* m_sector; // a sector containing this object
@@ -235,6 +315,8 @@ typedef struct msecnode_s
   struct msecnode_s __far* m_snext;  // next msecnode_t for this sector
   boolean visited; // killough 4/4/98, 4/7/98: used in search algorithms
 } msecnode_t;
+
+#endif
 
 //
 // The LineSeg.
@@ -289,8 +371,12 @@ typedef char assertSegSize[sizeof(seg_t) == 18 ? 1 : -1];
 
 typedef struct subsector_s
 {
-  sector_t __far* sector;
+  uint8_t sector;
 } subsector_t;
+
+typedef char assertSubsectorSize[sizeof(subsector_t) == 1 ? 1 : -1];
+
+#define SUBSECTOR_SECTOR(s) (&_g_sectors[(s)->sector])
 
 typedef struct {
 	int16_t		numsegs;

@@ -41,5 +41,7 @@
 
 void P_SetupLevel(int16_t map);
 void P_Init(void);               /* Called by startup code. */
+void P_UpdateMapThings(void);
+void P_MapThingRemoved(const mobj_t __far* mobj);
 
 #endif

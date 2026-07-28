@@ -35,6 +35,15 @@ void I_ReloadPalette(void);
 void I_SetPalette(int8_t pal);
 void I_FinishUpdate(void);
 
+#if defined NEOGEO_SPRITE_MICROFB
+void I_NeoGeoVBlank(void);
+void I_NeoGeoChangeSpriteQuality(int16_t direction);
+const char *I_NeoGeoSpriteQualityName(void);
+void I_NeoGeoSetFixMenuPalette(boolean active);
+boolean I_NeoGeoFixWipeActive(void);
+void I_NeoGeoShowLoadingScreen(int16_t map);
+#endif
+
 
 void R_DrawColumnSprite(const draw_column_vars_t *dcvars);
 void R_DrawColumnWall(const draw_column_vars_t *dcvars);

@@ -45,10 +45,28 @@
 
 #include "globdata.h"
 
+#if defined __NGDEVKIT__ && defined NEOGEO_ROM_SPRITE_DEFS
+#include "neogeo/assets/generated/doom_sprite_defs.h"
+#endif
+
 
 // variables used to look up and range check thing_t sprites patches
 spritedef_t __far* sprites;
 
+#if defined __NGDEVKIT__ && defined NEOGEO_ROM_SPRITE_DEFS
+
+void R_InitSprites(void)
+{
+  // The legacy renderer API is mutable, but these tables are lookup-only.
+  sprites = (spritedef_t __far*)doom_sprite_definitions;
+}
+
+
+void R_InitSpriteLumps(void)
+{
+}
+
+#else
 
 static int8_t maxframe;
 
@@ -259,3 +277,5 @@ void R_InitSpriteLumps(void)
 
 	numentries = lastspritelump - firstspritelump + 1;
 }
+
+#endif

@@ -49,7 +49,7 @@ fixed_t CONSTFUNC FixedReciprocal(fixed_t v)
 static int __builtin_clzl(uint32_t v)
 {
 	const int bits = sizeof(v) * CHAR_BIT;
-	
+
 	for (int i = 0; i < bits; i++)
 		if ((v >> (bits - 1 - i)) & 1)
 			return i;

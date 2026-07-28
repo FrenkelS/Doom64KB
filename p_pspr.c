@@ -380,10 +380,10 @@ static void P_RecursiveSound(sector_t __far* sec, int16_t soundblocks, mobj_t __
   sec->soundtraversed = soundblocks+1;
   sec->soundtarget    = soundtarget;
 
-  for (i=0; i<sec->linecount; i++)
+  for (i=0; i<SECTOR_LINECOUNT(sec); i++)
     {
       sector_t __far* other;
-      const line_t __far* check = sec->lines[i];
+      const line_t __far* check = SECTOR_LINE(sec, i);
 
       if (!(check->flags & ML_TWOSIDED))
         continue;
@@ -393,7 +393,7 @@ static void P_RecursiveSound(sector_t __far* sec, int16_t soundblocks, mobj_t __
       if (_g_openrange <= 0)
         continue;       // closed door
 
-      other=_g_sides[check->sidenum[_g_sides[check->sidenum[0]].sector==sec]].sector;
+      other=SIDE_SECTOR(&_g_sides[check->sidenum[SIDE_SECTOR(&_g_sides[check->sidenum[0]])==sec]]);
 
       if (!(check->flags & ML_SOUNDBLOCK))
         P_RecursiveSound(other, soundblocks, soundtarget);
@@ -411,7 +411,7 @@ static void P_RecursiveSound(sector_t __far* sec, int16_t soundblocks, mobj_t __
 static void P_NoiseAlert(mobj_t __far* emitter)
 {
   validcount++;
-  P_RecursiveSound(emitter->subsector->sector, 0, emitter);
+  P_RecursiveSound(SUBSECTOR_SECTOR(emitter->subsector), 0, emitter);
 }
 
 
