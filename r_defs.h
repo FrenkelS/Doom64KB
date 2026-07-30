@@ -359,20 +359,12 @@ typedef struct
   // If false use 0 for any position.
   // Note: as eight entries are available,
   //  we might as well insert the same name eight times.
-  boolean rotate;
+  byte rotate;
 
 } spriteframe_t;
 
+typedef char assertSpriteframeSize[sizeof(spriteframe_t) == 18 ? 1 : -1];
 
-//
-// A sprite definition:
-//  a number of animation frames.
-//
-
-typedef struct
-{
-  spriteframe_t __far* spriteframes;
-} spritedef_t;
 
 //
 // Now what is a visplane, anyway?

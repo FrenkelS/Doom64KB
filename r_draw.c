@@ -1461,16 +1461,15 @@ static void R_DrawPSprite (pspdef_t *psp, int16_t lightlevel)
 {
     int16_t           x1, x2;
     uint32_t hl;
-    spritedef_t   __far* sprdef;
-    spriteframe_t __far* sprframe;
+    const spriteframe_t *sprdef;
+    const spriteframe_t __far* sprframe;
     vissprite_t   *vis;
     vissprite_t   avis;
     fixed_t       topoffset;
 
     // decide which patch to use
-    sprdef = &sprites[psp->state->sprite];
-
-    sprframe = &sprdef->spriteframes[psp->state->frame & FF_FRAMEMASK];
+    sprdef   = &sprites[psp->state->sprite * MAX_SPRITE_FRAMES];
+    sprframe = &sprdef[psp->state->frame & FF_FRAMEMASK];
 
     const patch_t __far* patch = W_GetLumpByNum(sprframe->lump[0]);
     // calculate edges of the shape
@@ -1703,8 +1702,8 @@ static void R_ProjectSprite (mobj_t __far* thing, int16_t lightlevel)
         return;
 
     // decide which patch to use for sprite relative to player
-    const spritedef_t __far*   sprdef   = &sprites[thing->sprite];
-    const spriteframe_t __far* sprframe = &sprdef->spriteframes[thing->frame & FF_FRAMEMASK];
+    const spriteframe_t       *sprdef   = &sprites[thing->sprite * MAX_SPRITE_FRAMES];
+    const spriteframe_t __far* sprframe = &sprdef[thing->frame & FF_FRAMEMASK];
 
     uint16_t rot = 0;
 
