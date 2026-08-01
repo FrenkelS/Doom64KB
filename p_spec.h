@@ -81,18 +81,24 @@
 
 // p_plats
 
-typedef enum
+enum
 {
   up,
   down,
   waiting,
-} plat_e;
+};
 
-typedef enum
+typedef int8_t plat_e;
+
+
+enum
 {
   downWaitUpStay,
   raiseToNearestAndChange,
-} plattype_e;
+};
+
+typedef int8_t plattype_e;
+
 
 // p_doors
 
@@ -183,10 +189,10 @@ typedef struct
   fixed_t speed;
   fixed_t low;
   fixed_t high;
-  int16_t wait;
-  int16_t count;
-  plat_e status;
   int16_t tag;
+  int8_t wait;
+  int8_t count;
+  plat_e status;
   plattype_e type;
 
   struct platlist __far* list;
