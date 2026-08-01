@@ -61,8 +61,12 @@ typedef struct
 } channel_t;
 
 
+// number of channels available
+#define numChannels 1
+
+
 // the set of channels available
-static channel_t *channels;
+static channel_t channels[numChannels];
 
 // music currently being played
 static musicenum_t mus_playing;
@@ -96,9 +100,6 @@ int16_t snd_SfxVolume = 15;
 int16_t snd_MusicVolume = 15;
 
 
-// number of channels available
-static const int16_t numChannels = 1;
-
 //
 // Internals.
 //
@@ -124,14 +125,6 @@ void S_Init(int16_t sfxVolume, int16_t musicVolume)
         printf("S_Init: default sfx volume %d\n", sfxVolume);
 
         S_SetSfxVolume(sfxVolume);
-
-        // Allocating the internal channels for mixing
-        // (the maximum numer of sounds rendered
-        // simultaneously) within zone memory.
-        // CPhipps - calloc
-        channels =
-                (channel_t *) Z_MallocStatic(numChannels * sizeof(channel_t));
-        memset(channels, 0, numChannels * sizeof(channel_t));
     }
 
     // CPhipps - music init reformatted
