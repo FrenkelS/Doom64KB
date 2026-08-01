@@ -322,7 +322,7 @@ boolean P_UseSpecialLine(mobj_t __far* thing, const line_t __far* line);
 
 void P_SpawnLightFlash(sector_t __far* sector);
 
-void P_SpawnStrobeFlash(sector_t __far* sector, int16_t fastOrSlow, boolean inSync);
+void P_SpawnStrobeFlash(sector_t __far* sector, int8_t fastOrSlow, boolean inSync);
 
 void P_SpawnGlowingLight(sector_t __far* sector);
 
