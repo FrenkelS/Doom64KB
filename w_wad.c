@@ -79,7 +79,7 @@ static unsigned char doom_iwad_maps[1 * 1014 * 1024];
 #include "doommapl.h"
 #elif defined __NGDEVKIT__
 #include "doom64ng.h"
-#include "doommapb.h"
+#include "doom64nm.h"
 #else
 #error unsupported compiler
 #endif
@@ -102,13 +102,6 @@ typedef struct
 
 #if !defined WAD_FILE
 #define WAD_FILE "DOOM1.WAD"
-#endif
-
-#if BYTE_ORDER == LITTLE_ENDIAN
-#define MAP_WAD_FILE "DOOMMAPL.WAD"
-#endif
-#if BYTE_ORDER == BIG_ENDIAN
-#define MAP_WAD_FILE "DOOMMAPB.WAD"
 #endif
 
 
