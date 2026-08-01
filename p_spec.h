@@ -258,7 +258,7 @@ void T_VerticalDoor(vldoor_t __far* door);
 // p_floor
 
 result_e T_MovePlaneFloor  (sector_t __far* sector, fixed_t speed, fixed_t dest, int8_t direction);
-result_e T_MovePlaneCeiling(sector_t __far* sector, fixed_t speed, fixed_t dest, int16_t direction);
+result_e T_MovePlaneCeiling(sector_t __far* sector, fixed_t speed, fixed_t dest, int8_t direction);
 
 
 ////////////////////////////////////////////////////////////////

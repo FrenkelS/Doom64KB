@@ -142,7 +142,7 @@ typedef struct
   sector_t __far* sector;
   int16_t minlight;
   int16_t maxlight;
-  int16_t direction;
+  int8_t direction;
 } glow_t;
 
 static void T_Glow(glow_t __far* g)
