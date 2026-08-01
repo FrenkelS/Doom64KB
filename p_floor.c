@@ -375,8 +375,8 @@ result_e T_MovePlaneCeiling(sector_t __far* sector, fixed_t speed, fixed_t dest,
 typedef struct
 {
   thinker_t thinker;
-  floor_e type;
   sector_t __far* sector;
+  floor_e type;
   int16_t direction;
   int16_t texture;
   fixed_t floordestheight;

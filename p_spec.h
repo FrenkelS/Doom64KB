@@ -96,12 +96,14 @@ typedef enum
 
 // p_doors
 
-typedef enum
+enum
 {
   normal,
   close30ThenOpen,
   dopen,
-} vldoor_e;
+};
+
+typedef int8_t vldoor_e;
 
 
 // p_floor
@@ -194,25 +196,24 @@ typedef struct
 typedef struct
 {
   thinker_t thinker;
-  vldoor_e type;
   sector_t __far* sector;
   fixed_t topheight;
   fixed_t speed;
 
-  // 1 = up, 0 = waiting at top, -1 = down
-  int16_t direction;
+  //jff 1/31/98 keep track of line door is triggered by
+  const line_t __far* line;
 
-  // tics to wait at the top
-  int16_t topwait;
   // (keep in case a door going down is reset)
   // when it reaches 0, start going down
   int16_t topcountdown;
 
-  //jff 1/31/98 keep track of line door is triggered by
-  const line_t __far* line;
+  vldoor_e type;
+
+  // 1 = up, 0 = waiting at top, -1 = down
+  int8_t direction;
 
   /* killough 10/98: sector tag for gradual lighting effects */
-  int16_t lighttag;
+  int8_t lighttag;
 } vldoor_t;
 
 
