@@ -376,12 +376,15 @@ typedef struct
 {
   thinker_t thinker;
   sector_t __far* sector;
-  int16_t texture;
   fixed_t floordestheight;
   fixed_t speed;
+  int16_t texture;
   floor_e type;
   int8_t direction;
 } floormove_t;
+
+typedef char assertFloormoveSize[sizeof(floormove_t) == 28 ? 1 : -1];
+
 
 static void T_MoveFloor(floormove_t __far* floor)
 {

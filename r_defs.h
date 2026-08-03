@@ -78,6 +78,9 @@ typedef struct
   fixed_t y;
 } degenmobj_t;
 
+typedef char assertDegenmobjSize[sizeof(degenmobj_t) == 8 ? 1 : -1];
+
+
 //
 // The SECTORS record, at runtime.
 // Stores things/mobjs.
@@ -117,6 +120,9 @@ typedef struct
 
 } sector_t;
 
+typedef char assertSectorSize[sizeof(sector_t) == 56 ? 1 : -1];
+
+
 typedef struct {
   int16_t floorheight;
   int16_t ceilingheight;
@@ -145,6 +151,9 @@ typedef struct
     int8_t bottomtexture;
     int8_t midtexture;
 } side_t;
+
+typedef char assertSideSize[sizeof(side_t) == 8 ? 1 : -1];
+
 
 typedef PACKEDATTR_PRE struct {
   int16_t textureoffset;
@@ -291,6 +300,9 @@ typedef struct subsector_s
 {
   sector_t __far* sector;
 } subsector_t;
+
+typedef char assertSubsectorSize[sizeof(subsector_t) == 4 ? 1 : -1];
+
 
 typedef struct {
 	int16_t		numsegs;

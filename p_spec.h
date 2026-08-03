@@ -186,6 +186,7 @@ typedef struct
 {
   thinker_t thinker;
   sector_t __far* sector;
+  struct platlist __far* list;
   fixed_t speed;
   fixed_t low;
   fixed_t high;
@@ -194,9 +195,13 @@ typedef struct
   int8_t count;
   plat_e status;
   plattype_e type;
-
-  struct platlist __far* list;
 } plat_t;
+
+#if defined __NGDEVKIT__
+typedef char assertPlatSize[sizeof(plat_t) == 38 ? 1 : -1];
+#else
+typedef char assertPlatSize[sizeof(plat_t) == 40 ? 1 : -1];
+#endif
 
 
 // p_ceilng
@@ -223,6 +228,12 @@ typedef struct
   /* killough 10/98: sector tag for gradual lighting effects */
   int8_t lighttag;
 } vldoor_t;
+
+#if defined __NGDEVKIT__
+typedef char assertVldoorSize[sizeof(vldoor_t) == 34 ? 1 : -1];
+#else
+typedef char assertVldoorSize[sizeof(vldoor_t) == 36 ? 1 : -1];
+#endif
 
 
 ////////////////////////////////////////////////////////////////

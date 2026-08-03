@@ -68,6 +68,13 @@ typedef struct
   int8_t count;
 } lightflash_t;
 
+#if defined __NGDEVKIT__
+typedef char assertLightflashSize[sizeof(lightflash_t) == 22 ? 1 : -1];
+#else
+typedef char assertLightflashSize[sizeof(lightflash_t) == 24 ? 1 : -1];
+#endif
+
+
 static void T_LightFlash (lightflash_t __far* flash)
 {
   if (--flash->count)
@@ -105,6 +112,13 @@ typedef struct
   int8_t darktime;
 } strobe_t;
 
+#if defined __NGDEVKIT__
+typedef char assertStrobeSize[sizeof(strobe_t) == 22 ? 1 : -1];
+#else
+typedef char assertStrobeSize[sizeof(strobe_t) == 24 ? 1 : -1];
+#endif
+
+
 static void T_StrobeFlash (strobe_t __far*   flash)
 {
   if (--flash->count)
@@ -139,6 +153,13 @@ typedef struct
   int16_t maxlight;
   int8_t direction;
 } glow_t;
+
+#if defined __NGDEVKIT__
+typedef char assertGlowSize[sizeof(glow_t) == 22 ? 1 : -1];
+#else
+typedef char assertGlowSize[sizeof(glow_t) == 24 ? 1 : -1];
+#endif
+
 
 static void T_Glow(glow_t __far* g)
 {
